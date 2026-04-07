@@ -1,6 +1,22 @@
 import React, { useState, useRef, useCallback } from 'react'
 const API = import.meta.env.VITE_API_URL || ''
 
+const DEMO_RESULT = {
+  ok: true,
+  brand: 'Nike',
+  products: ['Nike Air Max 270 React — Black/White'],
+  promotionTitle: 'Nike Air Max 270 React',
+  productCategory: 'Shoes',
+  discountAmount: '25%',
+  promotionDescription: 'Classic Nike Air Max 270 React with a sleek black and white colorway. Lightweight cushioning, breathable mesh upper, and a bold React foam midsole.',
+  coupons: [{ code: 'SAVE25', description: '25% off sitewide' }, { code: 'FREESHIP', description: 'Free shipping' }],
+  productPrice: { sale: '$112.49', original: '$149.99' },
+  redirectUrl: 'https://www.nike.com/t/air-max-270-react',
+  checkoutUrl: 'https://www.nike.com/cart',
+  urlSource: 'SERP-verified',
+  confidence: 'high'
+}
+
 export default function Lens() {
   const [image, setImage] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -10,7 +26,10 @@ export default function Lens() {
   const [dragOver, setDragOver] = useState(false)
   const [autoRedirect, setAutoRedirect] = useState(true)
   const [countdown, setCountdown] = useState(null)
+  const [demo, setDemo] = useState(false)
+  const [demoStep, setDemoStep] = useState(0) // 0=idle, 1=uploading, 2=analyzing, 3=result
   const countdownRef = useRef(null)
+  const demoRef = useRef(null)
   const fileRef = useRef()
 
   const handleFile = useCallback((file) => {
@@ -72,6 +91,26 @@ export default function Lens() {
     setCountdown(null)
   }
 
+  const runDemo = () => {
+    reset()
+    setDemo(true)
+    setDemoStep(1) // show "uploading"
+    demoRef.current = setTimeout(() => {
+      setDemoStep(2) // show "analyzing"
+      demoRef.current = setTimeout(() => {
+        setDemoStep(3) // show result
+        setResult(DEMO_RESULT)
+      }, 2200)
+    }, 1200)
+  }
+
+  const exitDemo = () => {
+    clearTimeout(demoRef.current)
+    setDemo(false)
+    setDemoStep(0)
+    reset()
+  }
+
   return (
     <section style={{ minHeight: '80vh', padding: '80px 20px 60px' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
@@ -80,9 +119,47 @@ export default function Lens() {
           <h1 style={{ fontSize: '2.4rem', fontWeight: 800, margin: 0 }}>Promo Lens</h1>
           <span style={{ background: 'linear-gradient(135deg,#4285F4,#EA4335,#FBBC05,#34A853)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>AI</span>
         </div>
-        <p style={{ color: '#6a6880', fontSize: 16, marginBottom: 32 }}>
+        <p style={{ color: '#6a6880', fontSize: 16, marginBottom: 16 }}>
           Upload any product image or promotional screenshot — our AI identifies the product and finds where to buy it online.
         </p>
+
+        {!demo && !result && (
+          <button onClick={runDemo} style={{ ...btnSecondary, marginBottom: 28, gap: 6, display: 'inline-flex', alignItems: 'center' }}>
+            ▶️ View Demo
+          </button>
+        )}
+
+        {/* Demo simulation */}
+        {demo && !result && (
+          <div style={{ marginBottom: 24 }}>
+            {/* Demo banner */}
+            <div style={{ background: 'linear-gradient(135deg,#FFA726,#FF7043)', color: '#fff', borderRadius: 12, padding: '10px 20px', marginBottom: 20, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>🎬 Demo Mode — Simulated walkthrough</span>
+              <button onClick={exitDemo} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Exit Demo</button>
+            </div>
+
+            {/* Step 1: upload animation */}
+            {demoStep >= 1 && (
+              <div style={{
+                border: '2.5px dashed #34A853', borderRadius: 20, padding: 16,
+                background: '#fafafe', marginBottom: 20, animation: 'fadeIn 0.5s ease'
+              }}>
+                <div style={{ fontSize: 56, marginBottom: 4 }}>👟</div>
+                <div style={{ fontSize: 14, color: '#34A853', fontWeight: 700 }}>✓ Image uploaded — Nike shoe detected</div>
+              </div>
+            )}
+
+            {/* Step 2: analyzing */}
+            {demoStep === 2 && (
+              <div style={{ padding: 24, animation: 'fadeIn 0.5s ease' }}>
+                <div style={{ width: '100%', height: 6, background: '#e8e6f0', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: '80%', height: '100%', background: 'linear-gradient(90deg,#6D4AFF,#4285F4)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                </div>
+                <p style={{ color: '#6a6880', marginTop: 12, fontSize: 14 }}>🤖 AI is analyzing... identifying brand, model, finding best prices and coupons.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Auto-redirect toggle */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20 }}>
@@ -155,8 +232,14 @@ export default function Lens() {
         )}
 
         {result && (
-          <div style={{ textAlign: 'left', background: '#fff', border: '1px solid #e8e6f0', borderRadius: 20, padding: 28, marginTop: 8 }}>
-            {countdown !== null && countdown > 0 && (
+          <div style={{ textAlign: 'left', background: '#fff', border: '1px solid #e8e6f0', borderRadius: 20, padding: 28, marginTop: 8, animation: 'fadeIn 0.5s ease' }}>
+            {demo && (
+              <div style={{ background: 'linear-gradient(135deg,#FFA726,#FF7043)', color: '#fff', borderRadius: 12, padding: '10px 20px', marginBottom: 16, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>🎬 Demo Result — This is what Lens returns for a real product image</span>
+                <button onClick={exitDemo} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Exit Demo</button>
+              </div>
+            )}
+            {!demo && countdown !== null && countdown > 0 && (
               <div style={{ background: 'linear-gradient(135deg,#6D4AFF,#4285F4)', color: '#fff', borderRadius: 12, padding: '12px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 14, fontWeight: 600 }}>🚀 Redirecting to product page in {countdown}s...</span>
                 <button onClick={cancelRedirect} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
@@ -206,7 +289,7 @@ export default function Lens() {
                   🛍️ Checkout Page
                 </a>
               )}
-              <button onClick={reset} style={btnSecondary}>🔄 Try Another</button>
+              <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? '🔍 Try It For Real' : '🔄 Try Another'}</button>
             </div>
 
             <div style={{ marginTop: 16, fontSize: 12, color: '#aaa' }}>
@@ -215,7 +298,7 @@ export default function Lens() {
           </div>
         )}
 
-        <style>{`@keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }`}</style>
+        <style>{`@keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} } @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }`}</style>
       </div>
     </section>
   )
