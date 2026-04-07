@@ -32,7 +32,9 @@ app.use(cors({
     'http://localhost:3000',
     'http://localhost:5173',
     'https://priceklick.com',
-    'https://www.priceklick.com'
+    'https://www.priceklick.com',
+    'http://15.222.243.251',
+    'http://ec2-15-222-243-251.ca-central-1.compute.amazonaws.com'
   ],
   credentials: true
 }));
