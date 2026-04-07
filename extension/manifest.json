@@ -1,0 +1,50 @@
+{
+  "name": "PriceKlick",
+  "description": "Applies coupons, compares prices, and lets you save items to wishlist.",
+  "version": "1.0.0",
+  "manifest_version": 3,
+
+  "action": {
+    "default_title": "PriceKlick",
+    "default_popup": "popup.html"
+  },
+
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*",
+    "http://127.0.0.1:5050/*",
+    "http://localhost:5050/*",
+    "https://api.priceklick.com/*"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "options_page": "options.html"
+}

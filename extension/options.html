@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <style>
+      body { font-family: Inter, system-ui, Arial, sans-serif; margin: 20px; max-width: 720px; }
+      .input { padding:10px; border:1px solid #e8e6f5; border-radius:10px; width:100%; }
+      .btn { padding:10px 12px; border-radius:10px; border:1px solid #e8e6f5; background:#fff; font-weight:600; }
+      .btn.primary { border:none; color:#fff; background: linear-gradient(180deg,#6D4AFF,#9B5BFF); }
+      .row { display:flex; gap:8px; }
+      .muted { color:#6a6880; }
+      ul { padding-left: 18px; }
+      li { margin-bottom:8px }
+    </style>
+  </head>
+  <body>
+    <h2>PriceKlick – Options</h2>
+    <p class="muted">Control which sites allow auto-apply and whether to auto-apply or ask first.</p>
+
+    <h3>Allowed checkout hostnames</h3>
+    <div class="row">
+      <input id="hostInput" class="input" placeholder="e.g. checkout.shop.com"/>
+      <button id="addHost" class="btn">Add</button>
+    </div>
+    <ul id="hostList"></ul>
+
+    <h3>Auto-apply behavior</h3>
+    <label><input type="checkbox" id="autoApply"/> Auto-apply coupons when found</label>
+
+    <div style="margin-top:16px">
+      <button id="save" class="btn primary">Save</button>
+      <span id="status" class="muted"></span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

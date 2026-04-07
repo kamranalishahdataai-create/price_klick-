@@ -1,0 +1,55 @@
+.section {
+  padding: 60px 0;
+}
+
+.section.subhero {
+  background: linear-gradient(180deg, #f5f1ff, transparent);
+}
+
+.section-title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.section-title h2 {
+  margin: 0 0 6px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .section {
+    padding: 50px 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 40px 0;
+  }
+  
+  .section-title {
+    margin-bottom: 16px;
+  }
+  
+  .section-title h2 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section {
+    padding: 30px 0;
+  }
+  
+  .section-title {
+    margin-bottom: 12px;
+  }
+  
+  .section-title h2 {
+    font-size: 20px;
+  }
+}

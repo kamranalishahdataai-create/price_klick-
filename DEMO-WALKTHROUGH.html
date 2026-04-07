@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PriceKlick — Client Demo Walkthrough</title>
+<style>
+  :root { --brand: #6f41e8; --brand2: #4a2fe6; --bg: #f8f6ff; --card: #fff; --text: #1a1a2e; --muted: #666; --green: #27ae60; --red: #e74c3c; --orange: #f39c12; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  h1 { font-size: 2.2rem; background: linear-gradient(135deg, var(--brand), var(--brand2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+  .subtitle { color: var(--muted); font-size: 1.1rem; margin-bottom: 40px; }
+  h2 { font-size: 1.5rem; color: var(--brand); margin: 40px 0 16px; padding-top: 24px; border-top: 2px solid #e8e0ff; }
+  h2:first-of-type { border-top: none; margin-top: 0; }
+  h3 { font-size: 1.15rem; color: var(--text); margin: 24px 0 10px; }
+  p, li { font-size: 0.97rem; color: #333; }
+  ul, ol { padding-left: 24px; margin: 10px 0; }
+  li { margin-bottom: 6px; }
+  .step { background: var(--card); border-radius: 14px; padding: 24px 28px; margin: 16px 0; box-shadow: 0 2px 12px rgba(111,65,232,0.07); border-left: 4px solid var(--brand); }
+  .step-num { display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center; background: var(--brand); color: #fff; border-radius: 50%; font-weight: 700; font-size: 14px; margin-right: 10px; }
+  .step h3 { display: inline; vertical-align: middle; }
+  .credentials { background: #1e1e2e; color: #e0e0e0; border-radius: 10px; padding: 18px 24px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9rem; margin: 12px 0; }
+  .credentials .role { color: #ff6b6b; font-weight: 700; }
+  .credentials .email { color: #82e0aa; }
+  .credentials .pw { color: #f9e79f; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+  .badge.admin { background: #ffe0e0; color: #c0392b; }
+  .badge.user { background: #e0f0ff; color: #2471a3; }
+  .url { background: #eee; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; }
+  .highlight { background: linear-gradient(120deg, #f0e6ff 0%, #e0d4ff 100%); padding: 16px 20px; border-radius: 10px; margin: 12px 0; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .feature-card { background: var(--card); border-radius: 10px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+  .feature-card h4 { font-size: 0.95rem; margin-bottom: 6px; }
+  .feature-card p { font-size: 0.85rem; color: var(--muted); }
+  .tag { display: inline-block; background: #f0e6ff; color: var(--brand); padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin: 2px; }
+  .warn { background: #fff8e1; border-left: 4px solid var(--orange); padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 0.9rem; }
+  .success { background: #e8f8f0; border-left: 4px solid var(--green); padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 0.9rem; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+  th { background: var(--brand); color: #fff; padding: 10px 14px; text-align: left; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eee; }
+  tr:nth-child(even) { background: #faf8ff; }
+  @media (max-width:600px) { .grid-2 { grid-template-columns: 1fr; } h1 { font-size: 1.6rem; } }
+  .toc { background: var(--card); border-radius: 12px; padding: 20px 28px; margin-bottom: 32px; box-shadow: 0 2px 12px rgba(111,65,232,0.07); }
+  .toc a { color: var(--brand); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🎯 PriceKlick — Client Demo Walkthrough</h1>
+<p class="subtitle">Step-by-step guide to demonstrate the User Interface and Admin Panel to your client</p>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <strong>📋 Table of Contents</strong>
+  <ol>
+    <li><a href="#prereq">Prerequisites & Setup (2 min)</a></li>
+    <li><a href="#demo-user">Demo: User Interface (5 min)</a></li>
+    <li><a href="#demo-admin">Demo: Admin Panel (5 min)</a></li>
+    <li><a href="#flow">How Admin Controls User Data</a></li>
+    <li><a href="#architecture">Technical Architecture</a></li>
+    <li><a href="#talking">Client Talking Points</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════ SECTION 1 ═══════ -->
+<h2 id="prereq">1 — Prerequisites & Quick Setup</h2>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Start MongoDB</h3>
+  <p>Make sure MongoDB is running locally on port 27017 (or set <code>MONGODB_URI</code> in <code>server/.env</code>).</p>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Seed demo data</h3>
+  <p>Open a terminal in the project root and run:</p>
+  <div class="credentials">
+    <span style="color:#82e0aa">cd</span> PriceKlick-fullstack-final<br>
+    <span style="color:#82e0aa">node</span> server/seed-demo.js
+  </div>
+  <p>This creates 5 demo accounts (1 admin + 4 users) with realistic data.</p>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Start the app</h3>
+  <div class="credentials">
+    <span style="color:#82e0aa">START-ALL.bat</span>  &nbsp;&nbsp;(or run server & web separately)
+  </div>
+  <p>Backend → <span class="url">http://localhost:5050</span> &nbsp;|&nbsp; Frontend → <span class="url">http://localhost:3000</span></p>
+</div>
+
+<div class="highlight">
+  <strong>🔑 Demo Credentials</strong> — password for ALL accounts is <code>Demo1234</code>
+</div>
+
+<div class="credentials">
+  <span class="role">ADMIN</span>  <span class="email">admin@PriceKlick.com</span>  <span class="pw">Demo1234</span><br>
+  <span class="role">USER </span>  <span class="email">alice@example.com</span>       <span class="pw">Demo1234</span><br>
+  <span class="role">USER </span>  <span class="email">bob@example.com</span>         <span class="pw">Demo1234</span><br>
+  <span class="role">USER </span>  <span class="email">carol@example.com</span>       <span class="pw">Demo1234</span><br>
+  <span class="role">USER </span>  <span class="email">dave@example.com</span>        <span class="pw">Demo1234</span>
+</div>
+
+<!-- ═══════════════════════════════════════ SECTION 2 ═══════ -->
+<h2 id="demo-user">2 — Demo: User Interface</h2>
+<p>Log in as <strong>alice@example.com</strong> to show the regular user experience.</p>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Login Flow</h3>
+  <ul>
+    <li>Go to <span class="url">http://localhost:3000/login</span></li>
+    <li>Enter credentials → click Login</li>
+    <li><strong>Show:</strong> Navbar updates to show user name, Logout button, and Dashboard link</li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>User Dashboard — Overview Tab</h3>
+  <ul>
+    <li>Navigate to <span class="url">/user-dashboard</span> (click "Dashboard" in navbar)</li>
+    <li><strong>Show:</strong> Three stat cards — Coupons Saved, Total Searches, Active Alerts</li>
+    <li><strong>Show:</strong> Recommendations section (personalized brand suggestions based on search history)</li>
+    <li><strong>Show:</strong> Trending brands section (what other users are searching)</li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>User Dashboard — History Tab</h3>
+  <ul>
+    <li>Click the <strong>History</strong> tab</li>
+    <li><strong>Show:</strong> Complete search history table with query, brand, date columns</li>
+    <li><strong>Explain:</strong> Every coupon search the user does is tracked here for their reference</li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">4</span><h3>User Dashboard — Profile Tab</h3>
+  <ul>
+    <li>Click the <strong>Profile</strong> tab</li>
+    <li><strong>Show:</strong> User can view and edit their First Name, Last Name</li>
+    <li><strong>Show:</strong> Read-only fields: Email, Role (user), Verification status</li>
+    <li><strong>Demo:</strong> Change the name and click "Update Profile" to show it works</li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">5</span><h3>User Dashboard — Settings Tab</h3>
+  <ul>
+    <li>Click the <strong>Settings</strong> tab</li>
+    <li><strong>Show:</strong> Change password form (current + new password)</li>
+    <li><strong>Show:</strong> Notification preferences toggle (email alerts on/off)</li>
+    <li><strong>Show:</strong> Danger zone — Delete Account button (with confirmation prompt)</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════ SECTION 3 ═══════ -->
+<h2 id="demo-admin">3 — Demo: Admin Panel</h2>
+<p>Log out, then log in as <strong>admin@PriceKlick.com</strong>.</p>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Admin Access</h3>
+  <ul>
+    <li>After login, navbar shows a red <strong>🛡️ Admin</strong> badge/link</li>
+    <li>Click it → goes to <span class="url">/admin</span></li>
+    <li><strong>Show:</strong> Only admin-role users can access this page; regular users are redirected away</li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Admin Dashboard Tab</h3>
+  <div class="grid-2">
+    <div class="feature-card">
+      <h4>📊 Stat Cards</h4>
+      <p>Total Users, Total Coupons, Total Searches, Active Alerts — all at a glance</p>
+    </div>
+    <div class="feature-card">
+      <h4>⚡ Quick Actions</h4>
+      <p>One-click buttons: Process Alerts, Refresh Stats, Export Data</p>
+    </div>
+    <div class="feature-card">
+      <h4>🔥 Trending Brands</h4>
+      <p>Live table showing which brands are being searched most right now</p>
+    </div>
+    <div class="feature-card">
+      <h4>📈 At-a-Glance</h4>
+      <p>Admin sees platform-wide metrics without digging into details</p>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Admin Users Tab — User Management</h3>
+  <ul>
+    <li><strong>Show:</strong> Full list of all registered users in a table</li>
+    <li><strong>Show:</strong> Search bar to find users by name/email instantly</li>
+    <li><strong>Show:</strong> Filter dropdown — All / Admin / User roles</li>
+    <li><strong>Show:</strong> Pagination for large user bases</li>
+    <li><strong>Click a user row</strong> → opens the <strong>User Detail Modal</strong></li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">4</span><h3>User Detail Modal (key demo moment)</h3>
+  <p>When you click on a user in the Users tab, a modal appears showing:</p>
+  <table>
+    <tr><th>Feature</th><th>What Admin Can Do</th></tr>
+    <tr><td>👤 User Info</td><td>See name, email, join date, last login, verified status</td></tr>
+    <tr><td>🔄 Change Role</td><td>Promote user to Admin or demote back to User</td></tr>
+    <tr><td>🔒 Suspend / Unsuspend</td><td>Temporarily disable a user's account</td></tr>
+    <tr><td>🗑️ Delete User</td><td>Permanently remove a user (with confirmation)</td></tr>
+    <tr><td>📜 Search History</td><td>View that user's entire search history inside the modal</td></tr>
+  </table>
+  <div class="warn">⚡ <strong>Client impact:</strong> This is where you show the real admin power — complete control over every user account.</div>
+</div>
+
+<div class="step">
+  <span class="step-num">5</span><h3>Admin Analytics Tab</h3>
+  <ul>
+    <li><strong>Brand Lookup:</strong> Type any brand name → see total searches, unique users, trending status</li>
+    <li><strong>Trending Table:</strong> Top brands across the entire platform ranked by search volume</li>
+    <li><strong>Explain:</strong> This data helps understand which brands/stores are most popular</li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">6</span><h3>Admin Alerts Tab</h3>
+  <ul>
+    <li><strong>Show:</strong> "Process Alerts" button — runs brand alert notifications in batch</li>
+    <li><strong>Show:</strong> Brands exceeding the alert threshold (10+ unique users searching)</li>
+    <li><strong>Show:</strong> Registered brands list (brands that opted into notifications)</li>
+    <li><strong>Explain:</strong> When a brand gets enough searches, the system can notify them</li>
+  </ul>
+</div>
+
+<div class="step">
+  <span class="step-num">7</span><h3>Admin Settings Tab</h3>
+  <ul>
+    <li><strong>Show:</strong> System configuration overview — MongoDB status, JWT settings, feature flags</li>
+    <li><strong>Explain:</strong> Admin can see all system settings at a glance for troubleshooting</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════ SECTION 4 ═══════ -->
+<h2 id="flow">4 — How Admin Controls User Data</h2>
+
+<h3>Access Control Flow</h3>
+<div class="highlight">
+  <pre style="font-family:monospace; font-size:0.85rem; white-space:pre-wrap; line-height:1.6;">
+User registers → Gets "user" role by default
+       ↓
+Admin logs in → Sees all users in Admin Panel
+       ↓
+Admin clicks user → Opens User Modal
+       ↓
+Admin can:
+  ✅ View full profile & search history
+  ✅ Change role (user ↔ admin)
+  ✅ Suspend account (blocks login)  
+  ✅ Delete account permanently
+  ✅ Monitor search patterns & behavior
+       ↓
+All actions happen instantly via secure API
+(JWT authentication + admin-role verification)</pre>
+</div>
+
+<h3>Security Layers</h3>
+<table>
+  <tr><th>Layer</th><th>Protection</th></tr>
+  <tr><td>JWT Token</td><td>Every API request must carry a valid access token</td></tr>
+  <tr><td>Role Check</td><td>Admin endpoints verify <code>user.role === 'admin'</code> server-side</td></tr>
+  <tr><td>Frontend Guard</td><td>Admin page redirects non-admin users automatically</td></tr>
+  <tr><td>Password Hashing</td><td>bcrypt with 12 salt rounds — passwords never stored in plain text</td></tr>
+  <tr><td>Token Refresh</td><td>Auto-refresh system with 30-day refresh tokens</td></tr>
+</table>
+
+<h3>Data the Admin Has Access To</h3>
+<div class="grid-2">
+  <div class="feature-card">
+    <h4>👥 User Accounts</h4>
+    <p>Name, email, role, join date, last login, verified status, preferences</p>
+  </div>
+  <div class="feature-card">
+    <h4>🔍 Search Activity</h4>
+    <p>Every search query, brand, product, timestamp — per user & aggregated</p>
+  </div>
+  <div class="feature-card">
+    <h4>📊 Platform Analytics</h4>
+    <p>Trending brands, search volume, unique users per brand, time-based patterns</p>
+  </div>
+  <div class="feature-card">
+    <h4>🔔 Alert System</h4>
+    <p>Brand alert thresholds, registered brands, notification processing</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ SECTION 5 ═══════ -->
+<h2 id="architecture">5 — Technical Architecture</h2>
+
+<table>
+  <tr><th>Component</th><th>Technology</th><th>Purpose</th></tr>
+  <tr><td>Frontend</td><td>React 18 + Vite + React Router</td><td>User-facing web app (dashboard, admin panel)</td></tr>
+  <tr><td>Backend API</td><td>Express.js + Node.js</td><td>REST API server with auth, CRUD, analytics</td></tr>
+  <tr><td>Database</td><td>MongoDB + Mongoose</td><td>User accounts, persistent data storage</td></tr>
+  <tr><td>Auth System</td><td>JWT (access + refresh tokens)</td><td>Secure stateless authentication</td></tr>
+  <tr><td>Browser Extension</td><td>Chrome Manifest V3</td><td>Auto PriceKlick, screen monitor, promo lens</td></tr>
+  <tr><td>Search Analytics</td><td>In-memory Maps (server)</td><td>Real-time trending, recommendations, brand alerts</td></tr>
+</table>
+
+<h3>API Endpoints Overview</h3>
+<table>
+  <tr><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td><code>POST /api/auth/register</code></td><td>Public</td><td>Create new user account</td></tr>
+  <tr><td><code>POST /api/auth/login</code></td><td>Public</td><td>Login → receive JWT tokens</td></tr>
+  <tr><td><code>GET /api/admin/stats</code></td><td><span class="badge admin">Admin</span></td><td>Dashboard statistics</td></tr>
+  <tr><td><code>GET /api/admin/users</code></td><td><span class="badge admin">Admin</span></td><td>List all users (paginated)</td></tr>
+  <tr><td><code>PUT /api/admin/users/:id</code></td><td><span class="badge admin">Admin</span></td><td>Update user role/profile</td></tr>
+  <tr><td><code>DELETE /api/admin/users/:id</code></td><td><span class="badge admin">Admin</span></td><td>Delete a user</td></tr>
+  <tr><td><code>POST /api/admin/users/:id/suspend</code></td><td><span class="badge admin">Admin</span></td><td>Suspend/unsuspend user</td></tr>
+  <tr><td><code>GET /api/admin/analytics/*</code></td><td><span class="badge admin">Admin</span></td><td>Trending, brand stats, alerts</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ SECTION 6 ═══════ -->
+<h2 id="talking">6 — Client Talking Points</h2>
+
+<div class="success">
+  <strong>Key messages to emphasize during the demo:</strong>
+</div>
+
+<ol>
+  <li><strong>"Two-level access system"</strong> — Regular users see their own dashboard; admins see everything. Clean separation of concerns.</li>
+  <li><strong>"Full user lifecycle control"</strong> — Admin can create, view, edit, suspend, and delete any user account from one panel.</li>
+  <li><strong>"Real-time analytics"</strong> — The admin panel shows live trending data, search patterns, and platform health without any extra tools.</li>
+  <li><strong>"Built-in security"</strong> — JWT tokens, password hashing, role-based guards on both frontend AND backend. No shortcuts.</li>
+  <li><strong>"Scalable architecture"</strong> — MongoDB for data, Express for API, React for UI — industry-standard stack that scales.</li>
+  <li><strong>"Brand intelligence"</strong> — When enough users search for a brand, the system automatically detects the trend and can notify the brand. This is monetizable data.</li>
+  <li><strong>"Self-service for users"</strong> — Users manage their own profile, password, preferences, and can delete their account (GDPR-friendly).</li>
+  <li><strong>"Extension integration"</strong> — The browser extension feeds data back to this dashboard. Users install the extension, search for coupons, and all activity flows into the analytics engine.</li>
+</ol>
+
+<h3>Suggested Demo Flow (10 minutes)</h3>
+<table>
+  <tr><th>Time</th><th>Action</th><th>Talking Point</th></tr>
+  <tr><td>0:00</td><td>Open homepage, show navbar</td><td>"Here's the public-facing site"</td></tr>
+  <tr><td>0:30</td><td>Register a new account</td><td>"Users sign up in seconds"</td></tr>
+  <tr><td>1:30</td><td>Log in as user, show dashboard</td><td>"Every user gets a personal dashboard"</td></tr>
+  <tr><td>3:00</td><td>Browse tabs: History, Profile, Settings</td><td>"Full self-service account management"</td></tr>
+  <tr><td>4:00</td><td>Log out, log in as admin</td><td>"Now let me show you the admin side"</td></tr>
+  <tr><td>4:30</td><td>Show Admin Dashboard stats</td><td>"Platform health at a glance"</td></tr>
+  <tr><td>5:30</td><td>Go to Users tab, click a user</td><td>"Complete control over every user"</td></tr>
+  <tr><td>7:00</td><td>Demo: change role / suspend</td><td>"One click to promote or restrict"</td></tr>
+  <tr><td>8:00</td><td>Show Analytics tab</td><td>"Real-time brand intelligence"</td></tr>
+  <tr><td>9:00</td><td>Show Alerts tab</td><td>"Automated brand notifications"</td></tr>
+  <tr><td>9:30</td><td>Wrap up</td><td>"Secure, scalable, ready to grow"</td></tr>
+</table>
+
+<div style="margin-top:48px; padding:24px; text-align:center; background:linear-gradient(135deg,#6f41e8,#4a2fe6); color:#fff; border-radius:14px;">
+  <h2 style="color:#fff; border:none; margin:0 0 8px; padding:0;">Ready to Demo! 🚀</h2>
+  <p style="color:#e0d4ff; margin:0;">Run <code style="background:rgba(255,255,255,.15); padding:2px 8px; border-radius:4px;">node server/seed-demo.js</code> then <code style="background:rgba(255,255,255,.15); padding:2px 8px; border-radius:4px;">START-ALL.bat</code></p>
+</div>
+
+</div>
+</body>
+</html>

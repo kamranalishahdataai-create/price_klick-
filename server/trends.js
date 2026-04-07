@@ -1,0 +1,2 @@
+import googleTrends from 'google-trends-api';
+export async function trendSummary(keyword){ const now=new Date(); const start=new Date(now.getFullYear()-1,now.getMonth(),now.getDate()); const payload=await googleTrends.interestOverTime({keyword,startTime:start,endTime:now}); const parsed=JSON.parse(payload); const points=parsed.default.timelineData.map(p=>({time:p.formattedTime,value:Number(p.value[0])})); const avg=points.reduce((a,b)=>a+b.value,0)/(points.length||1); const latest=points.at(-1)?.value||0; return { keyword, avg, latest, points }; }

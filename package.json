@@ -1,0 +1,17 @@
+{
+  "name": "priceklick-fullstack",
+  "version": "1.0.0",
+  "description": "PriceKlick - Full Stack Coupon & Price Comparison Application",
+  "private": true,
+  "scripts": {
+    "setup-all": "npm --prefix server install && npm --prefix web install",
+    "start-all": "npm run start-server & npm run start-web & npm run info",
+    "start-server": "npm --prefix server run dev",
+    "start-web": "npm --prefix web run dev",
+    "build-web": "npm --prefix web run build",
+    "info": "node print-info.js"
+  },
+  "keywords": ["coupon", "price-comparison", "chrome-extension", "ecommerce"],
+  "author": "PriceKlick Team",
+  "license": "MIT"
+}

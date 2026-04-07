@@ -1,0 +1,64 @@
+/* Performance-optimized animations */
+/* Use transform and opacity for smooth 60fps animations */
+
+/* Hardware acceleration for smooth animations */
+.animate-fade-in-up,
+.animate-fade-in-scale,
+.animate-slide-in-left,
+.animate-slide-in-right,
+.btn,
+.feature-card,
+.badge,
+.mw-card {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Optimize animations for mobile devices */
+@media (max-width: 768px) {
+  .animate-fade-in-up,
+  .animate-fade-in-scale,
+  .animate-slide-in-left,
+  .animate-slide-in-right {
+    animation-duration: 0.4s;
+  }
+  
+  .btn:hover,
+  .feature-card:hover,
+  .badge:hover,
+  .mw-card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* GPU acceleration for complex animations */
+.hero::before,
+.mw-fill::before,
+.btn::before {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Optimize for performance */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

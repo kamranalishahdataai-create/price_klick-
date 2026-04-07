@@ -1,0 +1,299 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <style>
+      body { font-family: Inter, system-ui, Arial, sans-serif; margin: 12px; width: 380px; }
+      .row { display:flex; gap:8px; margin-bottom: 10px; }
+      .col { display:flex; flex-direction:column; gap:8px; margin-bottom: 10px; }
+      .input { flex:1; padding:10px; border:1px solid #e8e6f5; border-radius:10px; font-size:13px; }
+      .input-full { width: 100%; padding:10px; border:1px solid #e8e6f5; border-radius:10px; font-size:13px; box-sizing:border-box; }
+      .btn { padding:10px 12px; border-radius:10px; border:1px solid #e8e6f5; background:#fff; font-weight:600; cursor:pointer; transition: all 0.2s; }
+      .btn:hover { background: #f8f6ff; }
+      .btn.primary { border:none; color:#fff; background: linear-gradient(180deg,#6D4AFF,#9B5BFF); }
+      .btn.primary:hover { background: linear-gradient(180deg,#5D3AEF,#8B4BEF); }
+      .btn.full { width:100%; }
+      .muted { color:#6a6880; font-size:12px; }
+      .line { height:1px; background:#f0ecff; margin:10px 0; }
+      .small { font-size:12px }
+      .section-title { font-weight:700; color:#3a2d7d; margin-bottom:8px; font-size:14px; display:flex; align-items:center; gap:6px; }
+      .results { max-height:200px; overflow-y:auto; margin-top:10px; }
+      .result-item { padding:8px; border:1px solid #e8e6f5; border-radius:8px; margin-bottom:6px; font-size:12px; }
+      .result-item .name { font-weight:600; color:#3a2d7d; }
+      .result-item .location { color:#6a6880; font-size:11px; }
+      .result-item .price { color:#6D4AFF; font-weight:600; }
+      
+      /* Dynamic Promo Area */
+      .promo-area {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+        position: relative;
+        overflow: hidden;
+        min-height: 60px;
+      }
+      .promo-area::before {
+        content: '';
+        position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(109,74,255,0.1), transparent);
+        animation: promoSweep 3s ease-in-out infinite;
+      }
+      @keyframes promoSweep { 0%{left:-100%} 100%{left:100%} }
+      .promo-code-display {
+        font-family: 'Courier New', monospace;
+        font-size: 20px; font-weight: 800; color: #fff;
+        text-align: center; padding: 8px;
+        background: rgba(109,74,255,0.3);
+        border-radius: 8px; letter-spacing: 2px;
+        position: relative; z-index: 1;
+        animation: codeFlash 0.5s ease-out;
+      }
+      @keyframes codeFlash {
+        0% { opacity: 0; transform: scale(0.8); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      .promo-status {
+        color: #9B5BFF; font-size: 11px; text-align: center;
+        margin-top: 6px; position: relative; z-index: 1;
+      }
+      .promo-verified {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%) !important;
+      }
+      .promo-verified .promo-code-display {
+        background: rgba(255,255,255,0.2);
+      }
+      .promo-verified .promo-status { color: #a5d6a7; }
+
+      /* Trending / Recommendations */
+      .trending-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+      .trending-tag {
+        display: inline-flex; align-items: center; gap: 4px;
+        background: #f8f6ff; border: 1px solid #e8e6f5; border-radius: 16px;
+        padding: 4px 10px; font-size: 11px; font-weight: 600; color: #6D4AFF;
+        cursor: pointer; transition: all 0.2s;
+      }
+      .trending-tag:hover { background: #6D4AFF; color: #fff; }
+      .trending-tag.hot { border-color: #FF6B00; color: #FF6B00; }
+      .trending-tag.hot:hover { background: #FF6B00; color: #fff; }
+
+      /* Screenshot Upload Styles */
+      .upload-zone {
+        border: 2px dashed #e8e6f5;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: #faf9ff;
+      }
+      .upload-zone:hover {
+        border-color: #6D4AFF;
+        background: #f0ecff;
+      }
+      .upload-zone.dragover {
+        border-color: #6D4AFF;
+        background: #ebe5ff;
+      }
+      .upload-icon { font-size: 32px; margin-bottom: 8px; }
+      .upload-text { font-size: 13px; color: #6a6880; }
+      .upload-text strong { color: #6D4AFF; }
+      
+      #screenshotPreview {
+        max-width: 100%;
+        max-height: 120px;
+        border-radius: 8px;
+        margin-top: 8px;
+        display: none;
+      }
+      
+      .coupon-card {
+        background: linear-gradient(135deg, #6D4AFF 0%, #9B5BFF 100%);
+        color: white;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+      }
+      .coupon-code {
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        font-weight: 700;
+        background: rgba(255,255,255,0.2);
+        padding: 6px 12px;
+        border-radius: 6px;
+        display: inline-block;
+        margin-bottom: 6px;
+      }
+      .coupon-desc { font-size: 12px; opacity: 0.9; margin-bottom: 8px; }
+      .coupon-confidence { font-size: 11px; opacity: 0.7; }
+      .coupon-actions { display: flex; gap: 6px; margin-top: 8px; }
+      .coupon-actions .btn { padding: 6px 10px; font-size: 11px; }
+      
+      .ai-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: linear-gradient(135deg, #6D4AFF, #9B5BFF);
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
+      
+      .loading-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #e8e6f5;
+        border-top-color: #6D4AFF;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      /* Screenshot Capture Button */
+      .capture-btn {
+        background: linear-gradient(135deg, #FF6B00, #FF9800);
+        color: white; border: none; padding: 8px 14px;
+        border-radius: 8px; font-weight: 700; cursor: pointer;
+        font-size: 12px; display: flex; align-items: center; gap: 6px;
+        transition: all 0.2s; width: 100%; justify-content: center;
+      }
+      .capture-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(255,107,0,0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <h3>PriceKlick</h3>
+    
+    <!-- Dynamic Promo Area - Rotating Coupon Codes -->
+    <div class="section-title">
+      <span>🎫 Live Promo Codes</span>
+      <span class="ai-badge">⚡ LIVE</span>
+    </div>
+    <div id="promoArea" class="promo-area">
+      <div id="promoCodeDisplay" class="promo-code-display">SCANNING...</div>
+      <div id="promoStatus" class="promo-status">🔄 Searching for active codes...</div>
+    </div>
+    <div id="promoActions" class="row" style="display:none;">
+      <button id="copyPromoBtn" class="btn primary" style="flex:1;">📋 Copy Code</button>
+      <button id="goCheckoutBtn" class="btn" style="flex:1;">🛒 Go to Checkout</button>
+    </div>
+    
+    <div class="line"></div>
+
+    <!-- Trending & Recommendations -->
+    <div class="section-title">
+      <span>🔥 Trending & For You</span>
+    </div>
+    <div id="trendingSection" class="trending-list">
+      <span class="muted small">Loading trends...</span>
+    </div>
+    <div id="recommendationsSection" style="margin-top:8px;"></div>
+    
+    <div class="line"></div>
+
+    <!-- AI Screenshot Section -->
+    <div class="section-title">
+      <span>🤖 AI Coupon Scanner</span>
+      <span class="ai-badge">✨ AI Powered</span>
+    </div>
+    <button id="capturePageBtn" class="capture-btn" style="margin-bottom:8px;">
+      📸 Capture Page Promotions
+    </button>
+    <div id="uploadZone" class="upload-zone">
+      <div class="upload-icon">📸</div>
+      <div class="upload-text">
+        <strong>Click to upload</strong> or drag & drop<br/>
+        a screenshot with coupon codes
+      </div>
+      <input type="file" id="screenshotInput" accept="image/*" style="display:none"/>
+      <img id="screenshotPreview" alt="Preview"/>
+    </div>
+    <div class="muted small" id="screenshotStatus" style="margin-top:8px;"></div>
+    <div id="extractedCoupons" class="results"></div>
+
+    <div class="line"></div>
+
+    <!-- Google Lens-like Promo Finder -->
+    <div class="section-title">
+      <span>🔎 Promo Lens</span>
+      <span class="ai-badge" style="background:linear-gradient(135deg,#4285F4,#EA4335,#FBBC05,#34A853);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:bold;">🔍 Lens AI</span>
+    </div>
+    <div style="font-size:11px;color:#888;margin-bottom:8px;">
+      Upload a screenshot of any promotion → we'll find the official deal page
+    </div>
+    <div id="promoLensZone" class="upload-zone" style="border-color:#4285F4;">
+      <div class="upload-icon" style="font-size:28px;">🔎</div>
+      <div class="upload-text">
+        <strong>Upload promo screenshot</strong><br/>
+        We'll find the official promotion page
+      </div>
+      <input type="file" id="promoLensInput" accept="image/*" style="display:none"/>
+      <img id="promoLensPreview" alt="Promo Preview" style="display:none;max-width:100%;max-height:120px;border-radius:6px;margin-top:8px;"/>
+    </div>
+    <div id="promoLensStatus" class="muted small" style="margin-top:8px;"></div>
+    <div id="promoLensResult" style="display:none;margin-top:8px;padding:10px;border-radius:8px;background:linear-gradient(135deg,rgba(66,133,244,0.1),rgba(52,168,83,0.1));border:1px solid rgba(66,133,244,0.3);">
+      <div id="promoLensBrand" style="font-weight:bold;font-size:13px;margin-bottom:4px;"></div>
+      <div id="promoLensTitle" style="font-size:12px;color:#6a6880;margin-bottom:4px;"></div>
+      <div id="promoLensDiscount" style="font-size:13px;color:#4CAF50;margin-bottom:6px;font-weight:bold;"></div>
+      <div id="promoLensProduct" style="font-size:12px;color:#9C27B0;margin-bottom:4px;font-weight:600;display:none;"></div>
+      <div id="promoLensPrice" style="font-size:12px;color:#FF6B00;margin-bottom:6px;font-weight:600;display:none;"></div>
+      <div id="promoLensCoupons" style="margin-bottom:6px;"></div>
+      <div id="promoLensCountdown" style="display:none;text-align:center;font-size:12px;color:#FBBC05;margin-bottom:6px;font-weight:600;"></div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button id="promoLensProductBtn" class="btn primary" style="width:100%;background:linear-gradient(135deg,#FF6B00,#FF9800);border:none;font-size:13px;padding:12px;font-weight:700;display:none;">
+          🛍️ Find Product on Store
+        </button>
+        <div style="display:flex;gap:6px;">
+          <button id="promoLensCheckoutBtn" class="btn" style="flex:1;background:linear-gradient(135deg,#2E7D32,#4CAF50);border:none;color:#fff;font-size:12px;padding:10px;font-weight:700;">
+            🛒 Go to Checkout
+          </button>
+          <button id="promoLensGoBtn" class="btn" style="flex:1;border:1px solid #4285F4;color:#4285F4;font-size:12px;padding:10px;font-weight:600;">
+            🔗 View Deal
+          </button>
+        </div>
+      </div>
+      <div id="promoLensCopied" style="display:none;text-align:center;font-size:11px;color:#34A853;margin-top:4px;">✅ Coupon code copied to clipboard!</div>
+    </div>
+
+    <div class="line"></div>
+    <div class="section-title">🔍 Search Services</div>
+    <div class="col">
+      <input id="service" class="input-full" placeholder="Service (e.g., plumber, electrician)"/>
+      <input id="location" class="input-full" placeholder="Location (e.g., New York, 10001)"/>
+      <input id="maxPrice" class="input-full" type="number" placeholder="Max Price (e.g., 100)"/>
+      <button id="searchBtn" class="btn primary full">Search</button>
+    </div>
+    <div class="muted small" id="searchStatus"></div>
+    <div id="searchResults" class="results"></div>
+
+    <div class="line"></div>
+
+    <!-- Email Section -->
+    <div class="row">
+      <input id="email" class="input" placeholder="Email (for alerts)"/>
+      <button id="saveEmail" class="btn primary">Save</button>
+    </div>
+    <div class="muted small" id="status"></div>
+
+    <div class="line"></div>
+
+    <!-- Action Buttons -->
+    <div class="row">
+      <button id="compareBtn" class="btn">Compare price</button>
+      <button id="applyBtn" class="btn primary">Apply coupon</button>
+    </div>
+    <div class="row">
+      <button id="wishlistBtn" class="btn">Add to wishlist</button>
+      <button id="optionsBtn" class="btn">Options</button>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
