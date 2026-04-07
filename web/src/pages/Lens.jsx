@@ -8,6 +8,9 @@ export default function Lens() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [dragOver, setDragOver] = useState(false)
+  const [autoRedirect, setAutoRedirect] = useState(true)
+  const [countdown, setCountdown] = useState(null)
+  const countdownRef = useRef(null)
   const fileRef = useRef()
 
   const handleFile = useCallback((file) => {
@@ -34,6 +37,20 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
+      // Auto-redirect to product page
+      const url = data.redirectUrl || data.checkoutUrl
+      if (autoRedirect && url) {
+        setCountdown(5)
+        let t = 5
+        countdownRef.current = setInterval(() => {
+          t -= 1
+          setCountdown(t)
+          if (t <= 0) {
+            clearInterval(countdownRef.current)
+            window.open(url, '_blank', 'noopener,noreferrer')
+          }
+        }, 1000)
+      }
     } catch (e) {
       setError(e.message)
     } finally {
@@ -42,10 +59,17 @@ export default function Lens() {
   }
 
   const reset = () => {
+    clearInterval(countdownRef.current)
+    setCountdown(null)
     setImage(null)
     setPreview(null)
     setResult(null)
     setError(null)
+  }
+
+  const cancelRedirect = () => {
+    clearInterval(countdownRef.current)
+    setCountdown(null)
   }
 
   return (
@@ -59,6 +83,22 @@ export default function Lens() {
         <p style={{ color: '#6a6880', fontSize: 16, marginBottom: 32 }}>
           Upload any product image or promotional screenshot — our AI identifies the product and finds where to buy it online.
         </p>
+
+        {/* Auto-redirect toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#555' }}>
+            <span onClick={() => setAutoRedirect(!autoRedirect)} style={{
+              width: 40, height: 22, borderRadius: 12, background: autoRedirect ? '#6D4AFF' : '#d1d0e0',
+              position: 'relative', display: 'inline-block', transition: 'background 0.2s', cursor: 'pointer'
+            }}>
+              <span style={{
+                position: 'absolute', top: 2, left: autoRedirect ? 20 : 2,
+                width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px #0003'
+              }} />
+            </span>
+            Auto-redirect to product page
+          </label>
+        </div>
 
         {!result && (
           <>
@@ -116,6 +156,12 @@ export default function Lens() {
 
         {result && (
           <div style={{ textAlign: 'left', background: '#fff', border: '1px solid #e8e6f0', borderRadius: 20, padding: 28, marginTop: 8 }}>
+            {countdown !== null && countdown > 0 && (
+              <div style={{ background: 'linear-gradient(135deg,#6D4AFF,#4285F4)', color: '#fff', borderRadius: 12, padding: '12px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>🚀 Redirecting to product page in {countdown}s...</span>
+                <button onClick={cancelRedirect} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
               {preview && <img src={preview} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 12 }} />}
               <div>
