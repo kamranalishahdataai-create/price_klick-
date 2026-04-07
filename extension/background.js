@@ -1,7 +1,7 @@
 // extension/background.js
 // Proxy fetch to backend from the service worker.
 // View logs: chrome://extensions → your extension → "service worker"
-const API_BASE = "http://127.0.0.1:5050";
+const API_BASE = "https://priceklick.com";
 const log = (...a) => console.log("[CF BG]", ...a);
 
 chrome.runtime.onInstalled.addListener(() => {

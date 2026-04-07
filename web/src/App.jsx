@@ -13,6 +13,8 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import UserDashboard from './pages/UserDashboard.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
+import Contact from './pages/Contact.jsx'
+import Privacy from './pages/Privacy.jsx'
 import AuthProvider from './context/AuthContext.jsx'
 
 export default function App(){
@@ -40,6 +42,8 @@ export default function App(){
               <Route path="/admin" element={<AdminPanel/>} />
               <Route path="/login" element={<Login/>} />
               <Route path="/register" element={<Register/>} />
+              <Route path="/contact" element={<Contact/>} />
+              <Route path="/privacy" element={<Privacy/>} />
             </Routes>
             <Footer/>
           </>

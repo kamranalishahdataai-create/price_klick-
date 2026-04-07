@@ -1,7 +1,7 @@
 // extension/content.js
 (() => {
   // Use 127.0.0.1 instead of localhost to avoid some Windows/AV blocks
-  const API_BASE = "http://127.0.0.1:5050";
+  const API_BASE = "https://priceklick.com";
   const log = (...a) => console.log("[PriceKlick Agent]", ...a);
 
   // ============================================================
