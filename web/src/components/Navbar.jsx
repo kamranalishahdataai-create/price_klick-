@@ -33,6 +33,7 @@ export default function Navbar(){
             <NavLink to="/dashboard">Dashboard</NavLink>
           )}
           <NavLink to="/how-it-works">How It Works</NavLink>
+          <NavLink to="/lens">🔍 Lens</NavLink>
           <NavLink to="/stores">Stores</NavLink>
           <NavLink to="/install">Install</NavLink>
           {isAuthenticated && user?.role === 'admin' && (

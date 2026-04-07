@@ -15,6 +15,7 @@ import UserDashboard from './pages/UserDashboard.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
 import Contact from './pages/Contact.jsx'
 import Privacy from './pages/Privacy.jsx'
+import Lens from './pages/Lens.jsx'
 import AuthProvider from './context/AuthContext.jsx'
 
 export default function App(){
@@ -44,6 +45,7 @@ export default function App(){
               <Route path="/register" element={<Register/>} />
               <Route path="/contact" element={<Contact/>} />
               <Route path="/privacy" element={<Privacy/>} />
+              <Route path="/lens" element={<Lens/>} />
             </Routes>
             <Footer/>
           </>
