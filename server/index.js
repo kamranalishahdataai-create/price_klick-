@@ -31,6 +31,8 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:5173',
+    'http://priceklick.com',
+    'http://www.priceklick.com',
     'https://priceklick.com',
     'https://www.priceklick.com',
     'http://15.222.243.251',
