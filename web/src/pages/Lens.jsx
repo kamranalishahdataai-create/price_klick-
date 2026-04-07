@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 const API = import.meta.env.VITE_API_URL || ''
 
 const DEMO_RESULT = {
@@ -31,6 +32,15 @@ export default function Lens() {
   const countdownRef = useRef(null)
   const demoRef = useRef(null)
   const fileRef = useRef()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('demo') === '1') {
+      searchParams.delete('demo')
+      setSearchParams(searchParams, { replace: true })
+      setTimeout(() => runDemo(), 300)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFile = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return
