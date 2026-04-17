@@ -66,8 +66,8 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
-      // Auto-redirect to product page
-      const url = data.redirectUrl || data.checkoutUrl
+      // Auto-redirect to product page — prefer productUrl (SERP-verified exact product)
+      const url = data.productUrl || data.redirectUrl || data.checkoutUrl
       if (autoRedirect && url) {
         setCountdown(5)
         let t = 5
@@ -289,8 +289,8 @@ export default function Lens() {
             )}
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
-              {result.redirectUrl && (
-                <a href={result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {(result.productUrl || result.redirectUrl) && (
+                <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   🛒 Go to Product Page
                 </a>
               )}

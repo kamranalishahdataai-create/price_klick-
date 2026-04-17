@@ -580,7 +580,10 @@ const STORE_SEARCH_PATTERNS = {
 const PRODUCT_PAGE_INDICATORS = [
   '/dp/', '/ip/', '/product/', '/pdp/', '/p/', '/item/',
   '/listing/', '/buy/', '/shop/product', '/products/',
-  '.html', '.htm', '/sku/', '/model/'
+  '.html', '.htm', '/sku/', '/model/',
+  '/t/', '/gp/', '/itm/', '/offer/', '/deal/',
+  '-pid-', '/pid/', '/sku-', '/style/',
+  '/en/pdp/', '/fr/pdp/'
 ];
 
 // URL patterns that indicate a search/listing page (less desirable)
