@@ -592,6 +592,28 @@ const SEARCH_PAGE_INDICATORS = [
   '/browse/', '/category/', '/catalog/', 'query='
 ];
 
+// URL patterns that indicate non-buyable pages (support, docs, specs)
+const NON_BUYABLE_INDICATORS = [
+  'support.', '/support/', '/help/', '/faq/', '/docs/', '/documentation/',
+  '/specs/', '/specifications/', '/manual/', '/troubleshoot/', '/drivers/',
+  '/downloads/', '/community/', '/forum/', '/blog/', '/article/', '/wiki/',
+  '/about/', '/careers/', 'aerospace.', '/press/', '/newsroom/'
+];
+
+// Major retailers to search when brand site doesn't have buyable pages
+const RETAILER_DOMAINS = [
+  'amazon.com', 'walmart.com', 'bestbuy.com', 'target.com', 'ebay.com',
+  'amazon.ca', 'canadiantire.ca', 'costco.com', 'homedepot.com', 'newegg.com'
+];
+
+/**
+ * Check if a URL is a buyable product page (not support/docs/info)
+ */
+function isBuyablePage(url) {
+  const lower = (url || '').toLowerCase();
+  return !NON_BUYABLE_INDICATORS.some(p => lower.includes(p));
+}
+
 /**
  * Check if a URL looks like a direct product page (vs search results)
  */
@@ -689,19 +711,19 @@ async function buildProductCheckoutUrl(promoDetails) {
         const serpData = await serpRes.json();
         const results = serpData.organic_results || [];
 
-        // First pass: find a direct product page URL
+        // First pass: find a direct product page URL (must be buyable)
         for (const r of results) {
           if (!r.link) continue;
-          if (isDirectProductPage(r.link)) {
+          if (isDirectProductPage(r.link) && isBuyablePage(r.link)) {
             console.log(`  🎯 SERP found exact product page: ${r.link}`);
             return { productUrl: r.link, source: 'serp_exact_product' };
           }
         }
 
-        // Second pass: find any result from the store (but NOT a search results page)
+        // Second pass: find any buyable result from the store (but NOT a search results page)
         for (const r of results) {
           if (!r.link) continue;
-          if (r.link.includes(cleanDomain) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p))) {
+          if (r.link.includes(cleanDomain) && isBuyablePage(r.link) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p))) {
             console.log(`  🛒 SERP found store page: ${r.link}`);
             return { productUrl: r.link, source: 'serp_store_product' };
           }
@@ -810,6 +832,42 @@ async function buildProductCheckoutUrl(promoDetails) {
       }
     } catch (e) {
       console.log('  Google Shopping search failed:', e.message);
+    }
+
+    // 2b. Retailer SERP search — find buyable product page on Amazon/Walmart/BestBuy etc.
+    if (searchQuery) {
+      try {
+        const retailerQuery = `${searchQuery}${brand ? ' ' + brand : ''} buy`;
+        const retailerUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(retailerQuery)}&api_key=${serpKey}&num=15`;
+        console.log(`  🏪 Retailer SERP search: "${retailerQuery}"`);
+        const retailerRes = await fetch(retailerUrl);
+        if (retailerRes.ok) {
+          const retailerData = await retailerRes.json();
+          const retailerResults = retailerData.organic_results || [];
+          // Find a direct product page on a major retailer
+          for (const r of retailerResults) {
+            if (!r.link) continue;
+            const link = r.link.toLowerCase();
+            const isRetailer = RETAILER_DOMAINS.some(d => link.includes(d));
+            if (isRetailer && isDirectProductPage(r.link) && isBuyablePage(r.link)) {
+              console.log(`  🎯 Retailer product page found: ${r.link}`);
+              return { productUrl: r.link, source: 'retailer_product' };
+            }
+          }
+          // Accept any retailer page that's not a search page
+          for (const r of retailerResults) {
+            if (!r.link) continue;
+            const link = r.link.toLowerCase();
+            const isRetailer = RETAILER_DOMAINS.some(d => link.includes(d));
+            if (isRetailer && isBuyablePage(r.link) && !SEARCH_PAGE_INDICATORS.some(p => link.includes(p))) {
+              console.log(`  🏪 Retailer page found: ${r.link}`);
+              return { productUrl: r.link, source: 'retailer_page' };
+            }
+          }
+        }
+      } catch (e) {
+        console.log('  Retailer SERP search failed:', e.message);
+      }
     }
   }
 

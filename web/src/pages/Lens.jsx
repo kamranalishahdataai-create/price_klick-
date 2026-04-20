@@ -66,11 +66,11 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
-      // Auto-redirect to product page — prefer productUrl (SERP-verified exact product)
-      const url = data.productUrl || data.redirectUrl || data.checkoutUrl
+      // Auto-redirect to checkout/product — prefer productUrl (SERP-verified buyable page)
+      const url = data.productUrl || data.checkoutUrl || data.redirectUrl
       if (autoRedirect && url) {
-        setCountdown(5)
-        let t = 5
+        setCountdown(3)
+        let t = 3
         countdownRef.current = setInterval(() => {
           t -= 1
           setCountdown(t)
@@ -183,7 +183,7 @@ export default function Lens() {
                 width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px #0003'
               }} />
             </span>
-            Auto-redirect to product page
+            Auto-redirect to checkout page
           </label>
         </div>
 
@@ -251,7 +251,7 @@ export default function Lens() {
             )}
             {!demo && countdown !== null && countdown > 0 && (
               <div style={{ background: 'linear-gradient(135deg,#6D4AFF,#4285F4)', color: '#fff', borderRadius: 12, padding: '12px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>🚀 Redirecting to product page in {countdown}s...</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>🚀 Taking you to checkout in {countdown}s...</span>
                 <button onClick={cancelRedirect} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
               </div>
             )}
@@ -291,12 +291,12 @@ export default function Lens() {
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
               {(result.productUrl || result.redirectUrl) && (
                 <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  🛒 Go to Product Page
+                  🛒 Buy Now
                 </a>
               )}
-              {result.checkoutUrl && result.checkoutUrl !== result.redirectUrl && (
+              {result.checkoutUrl && result.checkoutUrl !== (result.productUrl || result.redirectUrl) && (
                 <a href={result.checkoutUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  🛍️ Checkout Page
+                  🛍️ View Cart
                 </a>
               )}
               <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? '🔍 Try It For Real' : '🔄 Try Another'}</button>
