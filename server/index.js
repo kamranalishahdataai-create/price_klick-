@@ -1063,6 +1063,8 @@ app.post('/api/promo/find-url', async (req, res) => {
       checkoutSource: result.checkoutSource || null,
       productUrl: result.productUrl || null,
       productSource: result.productSource || null,
+      hasDirectProductMatch: result.hasDirectProductMatch || false,
+      similarProducts: result.similarProducts || [],
       productPrice: result.productPrice || null,
       productCategory: result.productCategory || null,
       productSearchQuery: result.productSearchQuery || null,

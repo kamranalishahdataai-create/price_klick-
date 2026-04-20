@@ -14,6 +14,8 @@ const DEMO_RESULT = {
   productPrice: { sale: '$112.49', original: '$149.99' },
   redirectUrl: 'https://www.nike.com/t/air-max-270-react',
   checkoutUrl: 'https://www.nike.com/cart',
+  hasDirectProductMatch: true,
+  similarProducts: [],
   urlSource: 'SERP-verified',
   confidence: 'high'
 }
@@ -33,6 +35,8 @@ export default function Lens() {
   const demoRef = useRef(null)
   const fileRef = useRef()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  const hasDirectProductMatch = result?.hasDirectProductMatch !== false
 
   useEffect(() => {
     if (searchParams.get('demo') === '1') {
@@ -66,8 +70,8 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
-      // Auto-redirect to checkout/product — prefer productUrl (SERP-verified buyable page)
-      const url = data.productUrl || data.checkoutUrl || data.redirectUrl
+      // Auto-redirect only when we found a direct product match.
+      const url = data.hasDirectProductMatch ? (data.productUrl || data.checkoutUrl || data.redirectUrl) : null
       if (autoRedirect && url) {
         setCountdown(3)
         let t = 3
@@ -269,6 +273,33 @@ export default function Lens() {
               <p style={{ color: '#555', fontSize: 14, marginBottom: 16 }}>{result.promotionDescription}</p>
             )}
 
+            {!hasDirectProductMatch && result.similarProducts?.length > 0 && (
+              <div style={{ marginBottom: 20, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 16 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6 }}>Similar products you can buy now</div>
+                <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>
+                  We could not find the exact product page for this upload, so here are similar items from online stores.
+                </p>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {result.similarProducts.map((item, index) => (
+                    <div key={`${item.url}-${index}`} style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14, background: '#fff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 4 }}>{item.title}</div>
+                          <div style={{ fontSize: 12, color: '#64748b', marginBottom: item.snippet ? 6 : 0 }}>
+                            {[item.source, item.price].filter(Boolean).join(' • ')}
+                          </div>
+                          {item.snippet && <div style={{ fontSize: 13, color: '#475569' }}>{item.snippet}</div>}
+                        </div>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, padding: '10px 16px', fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                          View Similar
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {result.coupons?.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Coupon Codes:</div>
@@ -289,14 +320,19 @@ export default function Lens() {
             )}
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
-              {(result.productUrl || result.redirectUrl) && (
+              {hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
                 <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   🛒 Buy Now
                 </a>
               )}
-              {result.checkoutUrl && result.checkoutUrl !== (result.productUrl || result.redirectUrl) && (
+              {hasDirectProductMatch && result.checkoutUrl && result.checkoutUrl !== (result.productUrl || result.redirectUrl) && (
                 <a href={result.checkoutUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   🛍️ View Cart
+                </a>
+              )}
+              {!hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
+                <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  🔎 Browse Store Results
                 </a>
               )}
               <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? '🔍 Try It For Real' : '🔄 Try Another'}</button>

@@ -606,6 +606,13 @@ const RETAILER_DOMAINS = [
   'amazon.ca', 'canadiantire.ca', 'costco.com', 'homedepot.com', 'newegg.com'
 ];
 
+const DIRECT_PRODUCT_SOURCES = new Set([
+  'serp_exact_product', 'serp_store_product', 'serp_loose_product',
+  'serp_loose_store', 'serp_broad_exact', 'serp_broad_store',
+  'serp_broad_product', 'google_shopping_exact', 'google_shopping',
+  'retailer_product', 'retailer_page'
+]);
+
 /**
  * Check if a URL is a buyable product page (not support/docs/info)
  */
@@ -622,6 +629,99 @@ function isDirectProductPage(url) {
   const hasProductIndicator = PRODUCT_PAGE_INDICATORS.some(p => lower.includes(p));
   const hasSearchIndicator = SEARCH_PAGE_INDICATORS.some(p => lower.includes(p));
   return hasProductIndicator && !hasSearchIndicator;
+}
+
+function getHostname(url) {
+  try {
+    return new URL(enforceHttps(url)).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function isDirectProductMatch(productUrl, productSource) {
+  if (!productUrl || !isBuyablePage(productUrl)) return false;
+  return isDirectProductPage(productUrl) || DIRECT_PRODUCT_SOURCES.has(productSource);
+}
+
+function pushSimilarProduct(similarProducts, seenLinks, item) {
+  if (!item?.link) return;
+  const link = enforceHttps(item.link);
+  if (!link || seenLinks.has(link) || !isBuyablePage(link)) return;
+
+  similarProducts.push({
+    title: item.title || 'Similar product',
+    url: link,
+    price: item.price || null,
+    source: item.source || null,
+    snippet: item.snippet || null
+  });
+  seenLinks.add(link);
+}
+
+async function findSimilarProducts(promoDetails, excludeUrl = null) {
+  const serpKey = process.env.SERP_API_KEY || process.env.SERPAPI_KEY;
+  const searchQuery = promoDetails.productSearchQuery || promoDetails.products?.[0] || null;
+  const brand = promoDetails.brand || '';
+  const similarProducts = [];
+  const seenLinks = new Set();
+
+  if (excludeUrl) {
+    seenLinks.add(enforceHttps(excludeUrl));
+  }
+
+  if (!serpKey || !searchQuery) {
+    return [];
+  }
+
+  try {
+    const shoppingQuery = `${searchQuery}${brand ? ` ${brand}` : ''}`.trim();
+    const shoppingUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(shoppingQuery)}&api_key=${serpKey}&tbm=shop&num=6`;
+    const shoppingRes = await fetch(shoppingUrl);
+    if (shoppingRes.ok) {
+      const shoppingData = await shoppingRes.json();
+      for (const item of (shoppingData.shopping_results || [])) {
+        if (!item.link) continue;
+        const merchant = item.source || getHostname(item.link) || 'Retailer';
+        pushSimilarProduct(similarProducts, seenLinks, {
+          title: item.title,
+          link: item.link,
+          price: item.price,
+          source: merchant,
+          snippet: item.snippet || 'Similar product found from shopping results'
+        });
+        if (similarProducts.length >= 4) return similarProducts;
+      }
+    }
+  } catch (e) {
+    console.log('  Similar products shopping search failed:', e.message);
+  }
+
+  try {
+    const organicQuery = `${searchQuery}${brand ? ` ${brand}` : ''} buy`;
+    const organicUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(organicQuery)}&api_key=${serpKey}&num=10`;
+    const organicRes = await fetch(organicUrl);
+    if (organicRes.ok) {
+      const organicData = await organicRes.json();
+      for (const item of (organicData.organic_results || [])) {
+        if (!item.link) continue;
+        const lowerLink = item.link.toLowerCase();
+        const isRetailer = RETAILER_DOMAINS.some(domain => lowerLink.includes(domain));
+        if (!isRetailer || !isDirectProductPage(item.link)) continue;
+        pushSimilarProduct(similarProducts, seenLinks, {
+          title: item.title,
+          link: item.link,
+          source: getHostname(item.link) || 'Retailer',
+          snippet: item.snippet || 'Similar product found from search results'
+        });
+        if (similarProducts.length >= 4) return similarProducts;
+      }
+    }
+  } catch (e) {
+    console.log('  Similar products organic search failed:', e.message);
+  }
+
+  return similarProducts;
 }
 
 /**
@@ -1290,6 +1390,16 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     console.log(`  🛒 Product URL: ${productUrl} (${productSource})`);
   }
 
+  const hasDirectProductMatch = isDirectProductMatch(productUrl, productSource);
+  let similarProducts = [];
+  if (!hasDirectProductMatch) {
+    console.log('  → No direct product match, finding similar products...');
+    similarProducts = await findSimilarProducts(promoDetails, productUrl || redirectUrl || null);
+    if (similarProducts.length > 0) {
+      console.log(`  🧩 Found ${similarProducts.length} similar product options`);
+    }
+  }
+
   // Enforce HTTPS on all URLs before returning
   return {
     success: true,
@@ -1298,6 +1408,8 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     checkoutSource,
     productUrl: enforceHttps(productUrl) || null,
     productSource: productSource || 'none',
+    hasDirectProductMatch,
+    similarProducts,
     urlSource,
     brand: promoDetails.brand,
     domain: promoDetails.domain,
