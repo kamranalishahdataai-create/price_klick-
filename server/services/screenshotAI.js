@@ -654,9 +654,40 @@ function pushSimilarProduct(similarProducts, seenLinks, item) {
     url: link,
     price: item.price || null,
     source: item.source || null,
+    thumbnail: item.thumbnail || null,
+    rating: item.rating || null,
     snippet: item.snippet || null
   });
   seenLinks.add(link);
+}
+
+/**
+ * Fetch a product thumbnail + price from SERP Google Shopping for the detected product.
+ * Used to enrich the "main product" card with an image users can recognize.
+ */
+async function findMainProductImage(promoDetails) {
+  const serpKey = process.env.SERP_API_KEY || process.env.SERPAPI_KEY;
+  const searchQuery = promoDetails.productSearchQuery || promoDetails.products?.[0] || null;
+  if (!serpKey || !searchQuery) return null;
+
+  try {
+    const brand = promoDetails.brand || '';
+    const query = `${searchQuery}${brand ? ` ${brand}` : ''}`.trim();
+    const url = `https://serpapi.com/search.json?q=${encodeURIComponent(query)}&api_key=${serpKey}&tbm=shop&num=3`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const first = (data.shopping_results || []).find(r => r.thumbnail);
+    if (!first) return null;
+    return {
+      thumbnail: first.thumbnail,
+      price: first.price || null,
+      merchant: first.source || getHostname(first.link) || null
+    };
+  } catch (e) {
+    console.log('  Main product image lookup failed:', e.message);
+    return null;
+  }
 }
 
 async function findSimilarProducts(promoDetails, excludeUrl = null) {
@@ -688,9 +719,11 @@ async function findSimilarProducts(promoDetails, excludeUrl = null) {
           link: item.link,
           price: item.price,
           source: merchant,
+          thumbnail: item.thumbnail || null,
+          rating: item.rating || null,
           snippet: item.snippet || 'Similar product found from shopping results'
         });
-        if (similarProducts.length >= 4) return similarProducts;
+        if (similarProducts.length >= 6) return similarProducts;
       }
     }
   } catch (e) {
@@ -712,9 +745,10 @@ async function findSimilarProducts(promoDetails, excludeUrl = null) {
           title: item.title,
           link: item.link,
           source: getHostname(item.link) || 'Retailer',
+          thumbnail: item.thumbnail || null,
           snippet: item.snippet || 'Similar product found from search results'
         });
-        if (similarProducts.length >= 4) return similarProducts;
+        if (similarProducts.length >= 6) return similarProducts;
       }
     }
   } catch (e) {
@@ -1392,6 +1426,11 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
 
   const hasDirectProductMatch = isDirectProductMatch(productUrl, productSource);
   let similarProducts = [];
+  // Always try to enrich with a product image from Google Shopping
+  const mainProductImage = await findMainProductImage(promoDetails);
+  if (mainProductImage) {
+    console.log(`  🖼️ Main product image: ${mainProductImage.thumbnail}`);
+  }
   if (!hasDirectProductMatch) {
     console.log('  → No direct product match, finding similar products...');
     similarProducts = await findSimilarProducts(promoDetails, productUrl || redirectUrl || null);
@@ -1410,6 +1449,7 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     productSource: productSource || 'none',
     hasDirectProductMatch,
     similarProducts,
+    mainProductImage,
     urlSource,
     brand: promoDetails.brand,
     domain: promoDetails.domain,

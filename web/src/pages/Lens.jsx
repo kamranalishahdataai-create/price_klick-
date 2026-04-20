@@ -259,13 +259,46 @@ export default function Lens() {
                 <button onClick={cancelRedirect} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
               </div>
             )}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-              {preview && <img src={preview} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 12 }} />}
-              <div>
+            <div style={{
+              background: hasDirectProductMatch
+                ? 'linear-gradient(135deg,#d1fae5,#ecfdf5)'
+                : 'linear-gradient(135deg,#fef3c7,#fffbeb)',
+              border: `1px solid ${hasDirectProductMatch ? '#10b981' : '#f59e0b'}`,
+              borderRadius: 12, padding: '10px 16px', marginBottom: 16,
+              fontSize: 14, fontWeight: 600,
+              color: hasDirectProductMatch ? '#065f46' : '#92400e'
+            }}>
+              {hasDirectProductMatch
+                ? '✅ Exact product found — ready to buy'
+                : '🔍 Exact product not found — showing similar items you can buy'}
+            </div>
+
+            <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              {preview && (
+                <div style={{ textAlign: 'center' }}>
+                  <img src={preview} alt="Your upload" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: '2px solid #e2e8f0' }} />
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontWeight: 600 }}>Your upload</div>
+                </div>
+              )}
+              {result.mainProductImage?.thumbnail && (
+                <div style={{ textAlign: 'center' }}>
+                  <img src={result.mainProductImage.thumbnail} alt={result.products?.[0] || 'Product'} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: `2px solid ${hasDirectProductMatch ? '#10b981' : '#cbd5e1'}` }} />
+                  <div style={{ fontSize: 11, color: hasDirectProductMatch ? '#10b981' : '#64748b', marginTop: 4, fontWeight: 700 }}>
+                    {hasDirectProductMatch ? '✓ Matched product' : 'Detected product'}
+                  </div>
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 200 }}>
                 {result.brand && <div style={{ fontSize: 13, color: '#6D4AFF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{result.brand}</div>}
                 <h3 style={{ fontSize: '1.3rem', margin: '4px 0' }}>{result.products?.[0] || result.promotionTitle || 'Product Identified'}</h3>
                 {result.productCategory && <span style={tag}>{result.productCategory}</span>}
                 {result.discountAmount && <span style={{ ...tag, background: '#dcfce7', color: '#16a34a' }}>{result.discountAmount} OFF</span>}
+                {result.mainProductImage?.price && (
+                  <div style={{ marginTop: 8, fontSize: '1.3rem', fontWeight: 800, color: '#16a34a' }}>
+                    {result.mainProductImage.price}
+                    {result.mainProductImage.merchant && <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginLeft: 8 }}>at {result.mainProductImage.merchant}</span>}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -274,27 +307,41 @@ export default function Lens() {
             )}
 
             {!hasDirectProductMatch && result.similarProducts?.length > 0 && (
-              <div style={{ marginBottom: 20, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 16 }}>
-                <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6 }}>Similar products you can buy now</div>
-                <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>
-                  We could not find the exact product page for this upload, so here are similar items from online stores.
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🛍️</span> Similar products you can buy now
+                </div>
+                <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>
+                  Pick any option below — all links go directly to a retailer product page.
                 </p>
-                <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
                   {result.similarProducts.map((item, index) => (
-                    <div key={`${item.url}-${index}`} style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14, background: '#fff' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 4 }}>{item.title}</div>
-                          <div style={{ fontSize: 12, color: '#64748b', marginBottom: item.snippet ? 6 : 0 }}>
-                            {[item.source, item.price].filter(Boolean).join(' • ')}
-                          </div>
-                          {item.snippet && <div style={{ fontSize: 13, color: '#475569' }}>{item.snippet}</div>}
-                        </div>
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, padding: '10px 16px', fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                          View Similar
-                        </a>
+                    <a
+                      key={`${item.url}-${index}`}
+                      href={item.url} target="_blank" rel="noopener noreferrer"
+                      style={{
+                        border: '1px solid #e2e8f0', borderRadius: 14, padding: 12, background: '#fff',
+                        textDecoration: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', gap: 8,
+                        transition: 'all 0.2s', cursor: 'pointer'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#6D4AFF'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(109,74,255,0.12)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none' }}
+                    >
+                      {item.thumbnail ? (
+                        <img src={item.thumbnail} alt={item.title} style={{ width: '100%', height: 140, objectFit: 'contain', borderRadius: 10, background: '#fafafe' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: 140, borderRadius: 10, background: '#fafafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🛍️</div>
+                      )}
+                      <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                        {item.price ? (
+                          <span style={{ fontSize: 15, fontWeight: 800, color: '#16a34a' }}>{item.price}</span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#64748b' }}>View price</span>
+                        )}
+                        <span style={{ fontSize: 11, color: '#6D4AFF', fontWeight: 600 }}>{item.source || 'Shop'} →</span>
                       </div>
-                    </div>
+                    </a>
                   ))}
                 </div>
               </div>

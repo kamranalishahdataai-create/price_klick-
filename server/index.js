@@ -1065,6 +1065,7 @@ app.post('/api/promo/find-url', async (req, res) => {
       productSource: result.productSource || null,
       hasDirectProductMatch: result.hasDirectProductMatch || false,
       similarProducts: result.similarProducts || [],
+      mainProductImage: result.mainProductImage || null,
       productPrice: result.productPrice || null,
       productCategory: result.productCategory || null,
       productSearchQuery: result.productSearchQuery || null,
