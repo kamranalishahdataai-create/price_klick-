@@ -644,6 +644,66 @@ function isDirectProductMatch(productUrl, productSource) {
   return isDirectProductPage(productUrl) || DIRECT_PRODUCT_SOURCES.has(productSource);
 }
 
+const STOP_WORDS = new Set([
+  'the','a','an','and','or','for','with','of','to','in','on','at','by','from',
+  'buy','shop','new','best','sale','deal','deals','official','online','store',
+  'product','products','free','shipping','price','prices','cheap','amazon','walmart',
+  'ebay','target','bestbuy','review','reviews','com','www','ca','uk'
+]);
+
+function tokenize(text) {
+  if (!text) return [];
+  return String(text).toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 1 && !STOP_WORDS.has(t));
+}
+
+/**
+ * Score how well a SERP result title matches the detected product query.
+ * Returns 0..1 — fraction of query tokens found in the title.
+ * Model numbers / SKUs (alphanumeric tokens with digits) weigh double because
+ * they uniquely identify a product version.
+ */
+function scoreTitleMatch(title, query, brand) {
+  const queryTokens = tokenize(query);
+  const brandTokens = tokenize(brand);
+  const titleTokens = new Set(tokenize(title));
+  if (queryTokens.length === 0 || titleTokens.size === 0) return 0;
+
+  let matched = 0;
+  let total = 0;
+  for (const t of queryTokens) {
+    const weight = /\d/.test(t) ? 2 : 1; // model numbers weigh double
+    total += weight;
+    if (titleTokens.has(t)) matched += weight;
+  }
+  let score = matched / total;
+
+  // Small brand bonus: if title includes brand, nudge score up
+  if (brandTokens.length > 0 && brandTokens.every(b => titleTokens.has(b))) {
+    score = Math.min(1, score + 0.1);
+  }
+  return score;
+}
+
+/**
+ * From a list of SERP results, pick the one whose title best matches the query.
+ * Returns { result, score } for the best candidate that passes the predicate,
+ * or null if nothing scores above `minScore`.
+ */
+function pickBestMatch(results, query, brand, predicate, minScore = 0.5) {
+  let best = null;
+  for (const r of results || []) {
+    if (!r?.link || !predicate(r)) continue;
+    const score = scoreTitleMatch(r.title, query, brand);
+    if (score >= minScore && (!best || score > best.score)) {
+      best = { result: r, score };
+    }
+  }
+  return best;
+}
+
 function pushSimilarProduct(similarProducts, seenLinks, item) {
   if (!item?.link) return;
   const link = enforceHttps(item.link);
@@ -834,6 +894,15 @@ async function buildProductCheckoutUrl(promoDetails) {
 
   // 1. Deep SERP search FIRST — look for the REAL product page (most reliable)
   const serpKey = process.env.SERP_API_KEY || process.env.SERPAPI_KEY;
+  // Weakest fallback — tracks a URL we can use but should NOT auto-redirect to.
+  let weakFallback = null;
+  const recordWeak = (url, source, score = 0) => {
+    if (!url) return;
+    if (!weakFallback || score > weakFallback.score) {
+      weakFallback = { productUrl: url, source, score };
+    }
+  };
+
   if (serpKey && searchQuery && domain) {
     try {
       // 1a. Exact phrase match on store's domain
@@ -845,23 +914,19 @@ async function buildProductCheckoutUrl(promoDetails) {
         const serpData = await serpRes.json();
         const results = serpData.organic_results || [];
 
-        // First pass: find a direct product page URL (must be buyable)
-        for (const r of results) {
-          if (!r.link) continue;
-          if (isDirectProductPage(r.link) && isBuyablePage(r.link)) {
-            console.log(`  🎯 SERP found exact product page: ${r.link}`);
-            return { productUrl: r.link, source: 'serp_exact_product' };
-          }
+        // Best-scoring direct product page (must pass 0.6 match threshold)
+        const best = pickBestMatch(results, searchQuery, brand,
+          r => isDirectProductPage(r.link) && isBuyablePage(r.link), 0.6);
+        if (best) {
+          console.log(`  🎯 SERP exact product page (score ${best.score.toFixed(2)}): ${best.result.link}`);
+          return { productUrl: best.result.link, source: 'serp_exact_product' };
         }
 
-        // Second pass: find any buyable result from the store (but NOT a search results page)
-        for (const r of results) {
-          if (!r.link) continue;
-          if (r.link.includes(cleanDomain) && isBuyablePage(r.link) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p))) {
-            console.log(`  🛒 SERP found store page: ${r.link}`);
-            return { productUrl: r.link, source: 'serp_store_product' };
-          }
-        }
+        // Weaker: any buyable store page, lower threshold — kept as weak fallback only
+        const fallback = pickBestMatch(results, searchQuery, brand,
+          r => r.link.includes(cleanDomain) && isBuyablePage(r.link) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p)),
+          0.3);
+        if (fallback) recordWeak(fallback.result.link, 'serp_store_product', fallback.score);
       }
     } catch (e) {
       console.log('  SERP exact search failed:', e.message);
@@ -877,22 +942,17 @@ async function buildProductCheckoutUrl(promoDetails) {
         const serpData2 = await serpRes2.json();
         const results2 = serpData2.organic_results || [];
 
-        for (const r of results2) {
-          if (!r.link) continue;
-          if (isDirectProductPage(r.link)) {
-            console.log(`  🎯 SERP loose found product page: ${r.link}`);
-            return { productUrl: r.link, source: 'serp_loose_product' };
-          }
+        const best = pickBestMatch(results2, searchQuery, brand,
+          r => isDirectProductPage(r.link), 0.6);
+        if (best) {
+          console.log(`  🎯 SERP loose product page (score ${best.score.toFixed(2)}): ${best.result.link}`);
+          return { productUrl: best.result.link, source: 'serp_loose_product' };
         }
 
-        // Accept any non-search page from the store
-        for (const r of results2) {
-          if (!r.link) continue;
-          if (r.link.includes(cleanDomain) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p))) {
-            console.log(`  🛒 SERP loose found store page: ${r.link}`);
-            return { productUrl: r.link, source: 'serp_loose_store' };
-          }
-        }
+        const fallback = pickBestMatch(results2, searchQuery, brand,
+          r => r.link.includes(cleanDomain) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p)),
+          0.3);
+        if (fallback) recordWeak(fallback.result.link, 'serp_loose_store', fallback.score);
       }
     } catch (e) {
       console.log('  SERP loose search failed:', e.message);
@@ -911,31 +971,31 @@ async function buildProductCheckoutUrl(promoDetails) {
         const serpData = await serpRes.json();
         const results = serpData.organic_results || [];
 
-        // Prefer product pages on the detected store's domain
+        // Prefer best-scoring product page on the detected store's domain
         if (domain) {
-          for (const r of results) {
-            if (!r.link) continue;
-            if (r.link.includes(cleanDomain) && isDirectProductPage(r.link)) {
-              console.log(`  🎯 SERP broad found exact product on store: ${r.link}`);
-              return { productUrl: r.link, source: 'serp_broad_exact' };
-            }
+          const best = pickBestMatch(results, searchQuery, brand,
+            r => r.link.includes(cleanDomain) && isDirectProductPage(r.link), 0.6);
+          if (best) {
+            console.log(`  🎯 SERP broad exact on store (score ${best.score.toFixed(2)}): ${best.result.link}`);
+            return { productUrl: best.result.link, source: 'serp_broad_exact' };
           }
-          // Accept any non-search result from the store
-          const storeResult = results.find(r => r.link && r.link.includes(cleanDomain) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p)));
-          if (storeResult) {
-            console.log(`  🛒 SERP broad found store result: ${storeResult.link}`);
-            return { productUrl: storeResult.link, source: 'serp_broad_store' };
-          }
+          const storeFallback = pickBestMatch(results, searchQuery, brand,
+            r => r.link.includes(cleanDomain) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p)),
+            0.3);
+          if (storeFallback) recordWeak(storeFallback.result.link, 'serp_broad_store', storeFallback.score);
         }
 
-        // Accept any product page from any retailer
-        for (const r of results) {
-          if (!r.link) continue;
-          if (isDirectProductPage(r.link)) {
-            console.log(`  🛒 SERP broad found product page: ${r.link}`);
-            return { productUrl: r.link, source: 'serp_broad_product' };
-          }
+        // Any retailer product page — must score well to be used as a direct match
+        const anyBest = pickBestMatch(results, searchQuery, brand,
+          r => isDirectProductPage(r.link) && isBuyablePage(r.link), 0.65);
+        if (anyBest) {
+          console.log(`  🛒 SERP broad product page (score ${anyBest.score.toFixed(2)}): ${anyBest.result.link}`);
+          return { productUrl: anyBest.result.link, source: 'serp_broad_product' };
         }
+        // Otherwise keep a weak fallback with a lower bar
+        const anyWeak = pickBestMatch(results, searchQuery, brand,
+          r => isDirectProductPage(r.link) && isBuyablePage(r.link), 0.3);
+        if (anyWeak) recordWeak(anyWeak.result.link, 'serp_broad_product', anyWeak.score);
       }
     } catch (e) {
       console.log('  SERP broad search failed:', e.message);
@@ -950,19 +1010,23 @@ async function buildProductCheckoutUrl(promoDetails) {
       if (shopRes.ok) {
         const shopData = await shopRes.json();
         const shopResults = shopData.shopping_results || [];
-        // Find shopping result from the same store
-        for (const r of shopResults) {
-          if (!r.link) continue;
-          if (domain && r.link.includes(cleanDomain)) {
-            console.log(`  🎯 Google Shopping found product on store: ${r.link}`);
-            return { productUrl: r.link, source: 'google_shopping_exact' };
+
+        if (domain) {
+          const onStore = pickBestMatch(shopResults, searchQuery, brand,
+            r => r.link && r.link.includes(cleanDomain), 0.5);
+          if (onStore) {
+            console.log(`  🎯 Google Shopping on store (score ${onStore.score.toFixed(2)}): ${onStore.result.link}`);
+            return { productUrl: onStore.result.link, source: 'google_shopping_exact' };
           }
         }
-        // Take first shopping result with a link
-        if (shopResults.length > 0 && shopResults[0].link) {
-          console.log(`  🛍️ Google Shopping result: ${shopResults[0].link}`);
-          return { productUrl: shopResults[0].link, source: 'google_shopping' };
+        // Best-scoring shopping result overall — require high confidence
+        const best = pickBestMatch(shopResults, searchQuery, brand, r => !!r.link, 0.65);
+        if (best) {
+          console.log(`  🛍️ Google Shopping (score ${best.score.toFixed(2)}): ${best.result.link}`);
+          return { productUrl: best.result.link, source: 'google_shopping' };
         }
+        const weak = pickBestMatch(shopResults, searchQuery, brand, r => !!r.link, 0.3);
+        if (weak) recordWeak(weak.result.link, 'google_shopping', weak.score);
       }
     } catch (e) {
       console.log('  Google Shopping search failed:', e.message);
@@ -978,31 +1042,31 @@ async function buildProductCheckoutUrl(promoDetails) {
         if (retailerRes.ok) {
           const retailerData = await retailerRes.json();
           const retailerResults = retailerData.organic_results || [];
-          // Find a direct product page on a major retailer
-          for (const r of retailerResults) {
-            if (!r.link) continue;
-            const link = r.link.toLowerCase();
-            const isRetailer = RETAILER_DOMAINS.some(d => link.includes(d));
-            if (isRetailer && isDirectProductPage(r.link) && isBuyablePage(r.link)) {
-              console.log(`  🎯 Retailer product page found: ${r.link}`);
-              return { productUrl: r.link, source: 'retailer_product' };
-            }
+
+          const isRetailer = r => RETAILER_DOMAINS.some(d => r.link.toLowerCase().includes(d));
+          const best = pickBestMatch(retailerResults, searchQuery, brand,
+            r => isRetailer(r) && isDirectProductPage(r.link) && isBuyablePage(r.link), 0.65);
+          if (best) {
+            console.log(`  🎯 Retailer product page (score ${best.score.toFixed(2)}): ${best.result.link}`);
+            return { productUrl: best.result.link, source: 'retailer_product' };
           }
-          // Accept any retailer page that's not a search page
-          for (const r of retailerResults) {
-            if (!r.link) continue;
-            const link = r.link.toLowerCase();
-            const isRetailer = RETAILER_DOMAINS.some(d => link.includes(d));
-            if (isRetailer && isBuyablePage(r.link) && !SEARCH_PAGE_INDICATORS.some(p => link.includes(p))) {
-              console.log(`  🏪 Retailer page found: ${r.link}`);
-              return { productUrl: r.link, source: 'retailer_page' };
-            }
-          }
+          const weak = pickBestMatch(retailerResults, searchQuery, brand,
+            r => isRetailer(r) && isBuyablePage(r.link) && !SEARCH_PAGE_INDICATORS.some(p => r.link.toLowerCase().includes(p)),
+            0.3);
+          if (weak) recordWeak(weak.result.link, 'retailer_page', weak.score);
         }
       } catch (e) {
         console.log('  Retailer SERP search failed:', e.message);
       }
     }
+  }
+
+  // If no strong match was found but we have a weak candidate, return it as a non-direct match.
+  // The response will have productUrl set but hasDirectProductMatch=false, so the UI shows
+  // similar products and does NOT auto-redirect.
+  if (weakFallback) {
+    console.log(`  ⚠️ No strong match — using weak fallback (score ${weakFallback.score.toFixed(2)}): ${weakFallback.productUrl}`);
+    return { productUrl: weakFallback.productUrl, source: `${weakFallback.source}_weak` };
   }
 
   // 3. AI-fabricated exact product URLs are UNRELIABLE — skip
