@@ -35,6 +35,7 @@ export default function Lens() {
   const demoRef = useRef(null)
   const fileRef = useRef()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [showSimilar, setShowSimilar] = useState(false)
 
   const hasDirectProductMatch = result?.hasDirectProductMatch !== false
 
@@ -70,6 +71,7 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
+      setShowSimilar(false)
       // Auto-redirect only when we found a direct product match.
       const url = data.hasDirectProductMatch ? (data.productUrl || data.checkoutUrl || data.redirectUrl) : null
       if (autoRedirect && url) {
@@ -306,10 +308,10 @@ export default function Lens() {
               <p style={{ color: '#555', fontSize: 14, marginBottom: 16 }}>{result.promotionDescription}</p>
             )}
 
-            {!hasDirectProductMatch && result.similarProducts?.length > 0 && (
+            {(!hasDirectProductMatch || showSimilar) && result.similarProducts?.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>🛍️</span> Similar products you can buy now
+                  <span>🛍️</span> {hasDirectProductMatch ? 'Other matches from Google Lens' : 'Similar products you can buy now'}
                 </div>
                 <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>
                   Pick any option below — all links go directly to a retailer product page.
@@ -384,6 +386,15 @@ export default function Lens() {
               )}
               <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? '🔍 Try It For Real' : '🔄 Try Another'}</button>
             </div>
+
+            {hasDirectProductMatch && result.similarProducts?.length > 0 && !showSimilar && (
+              <button
+                onClick={() => setShowSimilar(true)}
+                style={{ marginTop: 12, background: 'none', border: 'none', color: '#6D4AFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+              >
+                Not the right product? Show {result.similarProducts.length} visually similar options
+              </button>
+            )}
 
             <div style={{ marginTop: 16, fontSize: 12, color: '#aaa' }}>
               Source: {result.urlSource} • Confidence: {result.confidence}

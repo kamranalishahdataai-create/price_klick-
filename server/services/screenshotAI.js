@@ -606,11 +606,85 @@ const RETAILER_DOMAINS = [
   'amazon.ca', 'canadiantire.ca', 'costco.com', 'homedepot.com', 'newegg.com'
 ];
 
+/**
+ * Google Lens reverse image search via SerpAPI.
+ * Sends the actual image (or a hosted URL) to Google Lens and returns visual matches.
+ * This is the most accurate way to identify a product — matches pixels, not descriptions.
+ * Returns up to N visual matches with title, link, thumbnail, source.
+ */
+async function lensReverseSearch(base64Image) {
+  const serpKey = process.env.SERP_API_KEY || process.env.SERPAPI_KEY;
+  if (!serpKey || !base64Image) return [];
+
+  try {
+    // SerpAPI Google Lens requires a publicly accessible image URL. Upload to tmpfiles.org
+    // (free, no auth, 60-min retention) to get a public URL for the Lens query.
+    const buffer = Buffer.from(base64Image, 'base64');
+    const form = new FormData();
+    form.append('file', new Blob([buffer], { type: 'image/png' }), 'image.png');
+    const uploadRes = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: form });
+    if (!uploadRes.ok) {
+      console.log(`  Lens upload failed: ${uploadRes.status}`);
+      return [];
+    }
+    const uploadData = await uploadRes.json();
+    const tmpUrl = uploadData?.data?.url;
+    if (!tmpUrl) return [];
+    // tmpfiles returns a viewer URL; convert to direct download URL
+    const directUrl = tmpUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+
+    const lensUrl = `https://serpapi.com/search.json?engine=google_lens&url=${encodeURIComponent(directUrl)}&api_key=${serpKey}`;
+    console.log(`  👁️ Google Lens reverse image search...`);
+    const lensRes = await fetch(lensUrl);
+    if (!lensRes.ok) {
+      console.log(`  Lens API failed: ${lensRes.status}`);
+      return [];
+    }
+    const lensData = await lensRes.json();
+    const visualMatches = lensData.visual_matches || [];
+    const matches = visualMatches.slice(0, 8).map(m => ({
+      title: m.title || '',
+      link: m.link || '',
+      thumbnail: m.thumbnail || null,
+      source: m.source || null,
+      price: m.price?.value || m.price || null
+    })).filter(m => m.link);
+    console.log(`  ✓ Google Lens returned ${matches.length} visual matches`);
+    return matches;
+  } catch (e) {
+    console.log(`  Google Lens search failed: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Extract a plausible model-number / SKU from OCR text.
+ * Model numbers are alphanumeric tokens with digits, e.g. WH-1000XM5, A2141, GA-F15.
+ * These are globally unique identifiers — if we find one, we can find the exact product.
+ */
+function extractModelNumberFromOCR(rawText) {
+  if (!rawText) return null;
+  // Match tokens like: WH-1000XM5, A2141, MXK32LL/A, GA-F15-AB123, SM-G998B
+  const modelPattern = /\b[A-Z]{1,4}[-]?[A-Z0-9]{0,4}\d{2,}[A-Z0-9/-]*\b/g;
+  const candidates = (rawText.match(modelPattern) || [])
+    .filter(m => m.length >= 4 && m.length <= 20)
+    .filter(m => /\d/.test(m) && /[A-Z]/.test(m)); // must have both letter and digit
+  if (candidates.length === 0) return null;
+  // Prefer longer candidates (more specific) with a dash (more likely a model number)
+  candidates.sort((a, b) => {
+    const aDash = a.includes('-') ? 1 : 0;
+    const bDash = b.includes('-') ? 1 : 0;
+    if (aDash !== bDash) return bDash - aDash;
+    return b.length - a.length;
+  });
+  return candidates[0];
+}
+
 const DIRECT_PRODUCT_SOURCES = new Set([
   'serp_exact_product', 'serp_store_product', 'serp_loose_product',
   'serp_loose_store', 'serp_broad_exact', 'serp_broad_store',
   'serp_broad_product', 'google_shopping_exact', 'google_shopping',
-  'retailer_product', 'retailer_page'
+  'retailer_product', 'retailer_page', 'google_lens_visual'
 ]);
 
 /**
@@ -1250,6 +1324,12 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
 
   console.log('🔎 Google Lens-like promo detection starting...');
 
+  // Kick off Google Lens reverse image search and OCR in parallel with OpenAI Vision.
+  // Lens gives us authoritative visual matches (pixels, not descriptions).
+  // OCR can pull out a model number that uniquely identifies the product.
+  const lensMatchesPromise = lensReverseSearch(base64Image);
+  const ocrPromise = googleKey ? extractWithGoogleVision(base64Image, googleKey) : Promise.resolve(null);
+
   let promoDetails = null;
 
   // Step 1: Try OpenAI Vision for full promo/product analysis
@@ -1483,7 +1563,56 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
 
   // Step 8: Build a direct-to-product URL using detected product info
   console.log('  → Building product-specific checkout URL...');
-  const { productUrl, source: productSource } = await buildProductCheckoutUrl(promoDetails);
+
+  // Collect Lens + OCR results now (they've been running in parallel)
+  const [lensMatches, ocrResult] = await Promise.all([lensMatchesPromise, ocrPromise]);
+
+  // If OCR found a model number, prepend it to the search query — model numbers
+  // are globally unique and fix almost all wrong-product matches.
+  if (ocrResult?.rawText) {
+    const modelNumber = extractModelNumberFromOCR(ocrResult.rawText);
+    if (modelNumber && promoDetails) {
+      const currentQuery = promoDetails.productSearchQuery || promoDetails.products?.[0] || '';
+      if (!currentQuery.toLowerCase().includes(modelNumber.toLowerCase())) {
+        promoDetails.productSearchQuery = `${modelNumber} ${currentQuery}`.trim();
+        console.log(`  🔑 OCR model number detected: ${modelNumber} → query: "${promoDetails.productSearchQuery}"`);
+      }
+    }
+  }
+
+  // If Google Lens returned visual matches, pick the best-matching one as the
+  // strongest product URL (beats all text-based SERP tiers).
+  let lensProductUrl = null;
+  let lensProductSource = null;
+  if (lensMatches.length > 0 && promoDetails) {
+    const brand = promoDetails.brand || '';
+    const query = promoDetails.productSearchQuery || promoDetails.products?.[0] || brand;
+    // Score Lens matches by title similarity to detected product; require 0.4
+    // since Lens is already visually verified — threshold just guards against
+    // off-brand accessory matches.
+    const scored = lensMatches
+      .filter(m => m.link && isBuyablePage(m.link))
+      .map(m => ({ ...m, score: query ? scoreTitleMatch(m.title, query, brand) : 0.5 }))
+      .sort((a, b) => b.score - a.score);
+    // Prefer one on a major retailer if available
+    const retailerMatch = scored.find(m => RETAILER_DOMAINS.some(d => m.link.toLowerCase().includes(d)));
+    const best = retailerMatch || scored[0];
+    if (best && (best.score >= 0.4 || scored.length === 1)) {
+      lensProductUrl = enforceHttps(best.link);
+      lensProductSource = 'google_lens_visual';
+      console.log(`  🎯 Google Lens visual match (score ${best.score.toFixed(2)}): ${lensProductUrl}`);
+    }
+  }
+
+  let productUrl, productSource;
+  if (lensProductUrl) {
+    productUrl = lensProductUrl;
+    productSource = lensProductSource;
+  } else {
+    const built = await buildProductCheckoutUrl(promoDetails);
+    productUrl = built.productUrl;
+    productSource = built.source;
+  }
   if (productUrl) {
     console.log(`  🛒 Product URL: ${productUrl} (${productSource})`);
   }
@@ -1491,16 +1620,52 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
   const hasDirectProductMatch = isDirectProductMatch(productUrl, productSource);
   let similarProducts = [];
   // Always try to enrich with a product image from Google Shopping
-  const mainProductImage = await findMainProductImage(promoDetails);
+  let mainProductImage = await findMainProductImage(promoDetails);
+  // Prefer a Lens visual-match thumbnail for the main product image — it's
+  // guaranteed to visually match the upload.
+  if (lensMatches.length > 0) {
+    const lensThumb = lensMatches.find(m => m.thumbnail);
+    if (lensThumb) {
+      mainProductImage = {
+        thumbnail: lensThumb.thumbnail,
+        price: lensThumb.price || mainProductImage?.price || null,
+        merchant: lensThumb.source || mainProductImage?.merchant || null
+      };
+    }
+  }
   if (mainProductImage) {
     console.log(`  🖼️ Main product image: ${mainProductImage.thumbnail}`);
   }
-  if (!hasDirectProductMatch) {
-    console.log('  → No direct product match, finding similar products...');
-    similarProducts = await findSimilarProducts(promoDetails, productUrl || redirectUrl || null);
-    if (similarProducts.length > 0) {
-      console.log(`  🧩 Found ${similarProducts.length} similar product options`);
+
+  // Build similar products from Lens visual matches first (they're visually verified)
+  // then fall back to Google Shopping. Lens matches are always included when a
+  // weak/no match was found — they're the user's safety net.
+  if (lensMatches.length > 0) {
+    const excludeUrl = productUrl ? enforceHttps(productUrl) : null;
+    for (const m of lensMatches) {
+      if (similarProducts.length >= 6) break;
+      const link = enforceHttps(m.link);
+      if (!link || link === excludeUrl || !isBuyablePage(link)) continue;
+      similarProducts.push({
+        title: m.title || 'Visually similar product',
+        url: link,
+        price: m.price || null,
+        source: m.source || getHostname(m.link) || 'Retailer',
+        thumbnail: m.thumbnail || null,
+        snippet: 'Visually matched by Google Lens'
+      });
     }
+  }
+  if (!hasDirectProductMatch && similarProducts.length < 4) {
+    console.log('  → No direct product match, finding more similar products...');
+    const extra = await findSimilarProducts(promoDetails, productUrl || redirectUrl || null);
+    for (const p of extra) {
+      if (similarProducts.length >= 6) break;
+      if (!similarProducts.find(s => s.url === p.url)) similarProducts.push(p);
+    }
+  }
+  if (similarProducts.length > 0) {
+    console.log(`  🧩 Total ${similarProducts.length} similar product options`);
   }
 
   // Enforce HTTPS on all URLs before returning
