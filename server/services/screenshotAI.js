@@ -1671,6 +1671,14 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
       if (similarProducts.length >= 6) break;
       const link = enforceHttps(m.link);
       if (!link || link === excludeUrl || !isBuyablePage(link) || !isCommerceUrl(link)) continue;
+      // Only keep matches that look like a real shoppable item: must be a direct
+      // product page, OR have a price, OR live on a known retailer domain.
+      // Without this, Lens often returns blog posts/news articles that visually
+      // matched (e.g. fitness-blog stock photos, news stories about the brand).
+      const onRetailer = RETAILER_DOMAINS.some(d => link.toLowerCase().includes(d));
+      const looksProductish = isDirectProductPage(link);
+      const hasPrice = !!m.price;
+      if (!looksProductish && !hasPrice && !onRetailer) continue;
       similarProducts.push({
         title: m.title || 'Visually similar product',
         url: link,
