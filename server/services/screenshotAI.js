@@ -600,6 +600,23 @@ const NON_BUYABLE_INDICATORS = [
   '/about/', '/careers/', 'aerospace.', '/press/', '/newsroom/'
 ];
 
+// Social/news/non-commerce domains that should never be treated as a product page,
+// even if Google Lens visual-matches them. Without this, Lens often returns
+// Instagram/LinkedIn/Pinterest posts that visually match the upload but are not buyable.
+const NON_COMMERCE_DOMAINS = [
+  'instagram.com', 'facebook.com', 'linkedin.com', 'twitter.com', 'x.com',
+  'tiktok.com', 'pinterest.com', 'pinterest.ca', 'reddit.com', 'youtube.com',
+  'youtu.be', 'tumblr.com', 'flickr.com', 'medium.com', 'quora.com',
+  'wikipedia.org', 'wikimedia.org', 'imgur.com', 'tmpfiles.org',
+  'nytimes.com', 'cnn.com', 'bbc.com', 'forbes.com', 'cnbc.com'
+];
+
+function isCommerceUrl(url) {
+  const host = getHostname(url);
+  if (!host) return false;
+  return !NON_COMMERCE_DOMAINS.some(bad => host === bad || host.endsWith('.' + bad));
+}
+
 // Major retailers to search when brand site doesn't have buyable pages
 const RETAILER_DOMAINS = [
   'amazon.com', 'walmart.com', 'bestbuy.com', 'target.com', 'ebay.com',
@@ -642,14 +659,18 @@ async function lensReverseSearch(base64Image) {
     }
     const lensData = await lensRes.json();
     const visualMatches = lensData.visual_matches || [];
-    const matches = visualMatches.slice(0, 8).map(m => ({
+    const matches = visualMatches.slice(0, 16).map(m => ({
       title: m.title || '',
       link: m.link || '',
       thumbnail: m.thumbnail || null,
       source: m.source || null,
       price: m.price?.value || m.price || null
-    })).filter(m => m.link);
-    console.log(`  ✓ Google Lens returned ${matches.length} visual matches`);
+    }))
+      .filter(m => m.link)
+      // Drop social media / news / wikipedia — they're not buyable even if they visually match
+      .filter(m => isCommerceUrl(m.link))
+      .slice(0, 8);
+    console.log(`  ✓ Google Lens returned ${matches.length} commerce visual matches (filtered from ${visualMatches.length})`);
     return matches;
   } catch (e) {
     console.log(`  Google Lens search failed: ${e.message}`);
@@ -1587,20 +1608,24 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
   if (lensMatches.length > 0 && promoDetails) {
     const brand = promoDetails.brand || '';
     const query = promoDetails.productSearchQuery || promoDetails.products?.[0] || brand;
-    // Score Lens matches by title similarity to detected product; require 0.4
-    // since Lens is already visually verified — threshold just guards against
-    // off-brand accessory matches.
+    // Score Lens matches and require BOTH: a buyable+commerce URL, AND title score >= 0.5.
+    // Without these guards, Lens can return Instagram/LinkedIn posts that visually
+    // match but are not actual product pages.
     const scored = lensMatches
-      .filter(m => m.link && isBuyablePage(m.link))
-      .map(m => ({ ...m, score: query ? scoreTitleMatch(m.title, query, brand) : 0.5 }))
+      .filter(m => m.link && isBuyablePage(m.link) && isCommerceUrl(m.link))
+      .map(m => ({ ...m, score: query ? scoreTitleMatch(m.title, query, brand) : 0 }))
       .sort((a, b) => b.score - a.score);
     // Prefer one on a major retailer if available
     const retailerMatch = scored.find(m => RETAILER_DOMAINS.some(d => m.link.toLowerCase().includes(d)));
     const best = retailerMatch || scored[0];
-    if (best && (best.score >= 0.4 || scored.length === 1)) {
+    // Strict gate: retailer match needs ≥0.4, anything else needs ≥0.55 to count as a "direct match"
+    const minScore = retailerMatch ? 0.4 : 0.55;
+    if (best && best.score >= minScore) {
       lensProductUrl = enforceHttps(best.link);
       lensProductSource = 'google_lens_visual';
       console.log(`  🎯 Google Lens visual match (score ${best.score.toFixed(2)}): ${lensProductUrl}`);
+    } else if (best) {
+      console.log(`  ⚠️ Best Lens match score ${best.score.toFixed(2)} below threshold ${minScore} — falling back to SERP`);
     }
   }
 
@@ -1645,7 +1670,7 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     for (const m of lensMatches) {
       if (similarProducts.length >= 6) break;
       const link = enforceHttps(m.link);
-      if (!link || link === excludeUrl || !isBuyablePage(link)) continue;
+      if (!link || link === excludeUrl || !isBuyablePage(link) || !isCommerceUrl(link)) continue;
       similarProducts.push({
         title: m.title || 'Visually similar product',
         url: link,
