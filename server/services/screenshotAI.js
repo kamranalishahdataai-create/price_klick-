@@ -701,6 +701,74 @@ function extractModelNumberFromOCR(rawText) {
   return candidates[0];
 }
 
+/**
+ * Grocery flyer detection.
+ * Grocery flyers (Food Basics, Loblaws, No Frills, etc.) advertise in-store-only
+ * deals — they have no online checkout, no cart, no product URL. Trying to find
+ * one through SERP/Lens just lands on misleading retailer pages.
+ *
+ * When detected, we skip product-URL resolution and instead return:
+ *  - the brand's weekly digital flyer URL
+ *  - a Google Maps "find nearest store" deep link
+ *  - a flyer-mode flag so the UI shows the right CTAs
+ */
+const GROCERY_FLYER_BRANDS = [
+  { match: /food\s*basics/i, brand: 'Food Basics', flyerUrl: 'https://www.foodbasics.ca/flyer', mapsQ: 'Food Basics near me' },
+  { match: /no\s*frills/i, brand: 'No Frills', flyerUrl: 'https://www.nofrills.ca/print-flyer', mapsQ: 'No Frills near me' },
+  { match: /loblaws/i, brand: 'Loblaws', flyerUrl: 'https://www.loblaws.ca/print-flyer', mapsQ: 'Loblaws near me' },
+  { match: /real\s*canadian\s*superstore|superstore/i, brand: 'Real Canadian Superstore', flyerUrl: 'https://www.realcanadiansuperstore.ca/print-flyer', mapsQ: 'Real Canadian Superstore near me' },
+  { match: /\bmetro\b(?!.*pcs)/i, brand: 'Metro', flyerUrl: 'https://www.metro.ca/en/flyer', mapsQ: 'Metro grocery near me' },
+  { match: /sobeys/i, brand: 'Sobeys', flyerUrl: 'https://www.sobeys.com/en/flyer/', mapsQ: 'Sobeys near me' },
+  { match: /freshco/i, brand: 'FreshCo', flyerUrl: 'https://freshco.com/flyer-deals/flyer', mapsQ: 'FreshCo near me' },
+  { match: /\bIGA\b/i, brand: 'IGA', flyerUrl: 'https://www.iga.net/en/flyer', mapsQ: 'IGA near me' },
+  { match: /giant\s*tiger/i, brand: 'Giant Tiger', flyerUrl: 'https://www.gianttiger.com/pages/flyer', mapsQ: 'Giant Tiger near me' },
+  { match: /shoppers\s*drug\s*mart/i, brand: 'Shoppers Drug Mart', flyerUrl: 'https://www.shoppersdrugmart.ca/store-locator/flyer', mapsQ: 'Shoppers Drug Mart near me' },
+  { match: /walmart.*(grocery|supercentre)|walmart\s*canada/i, brand: 'Walmart', flyerUrl: 'https://www.walmart.ca/flyer', mapsQ: 'Walmart Supercentre near me' },
+  { match: /\bsave[- ]?on[- ]?foods/i, brand: 'Save-On-Foods', flyerUrl: 'https://www.saveonfoods.com/sm/pickup/rsid/2160/store-flyer', mapsQ: 'Save-On-Foods near me' },
+  { match: /longo'?s/i, brand: "Longo's", flyerUrl: 'https://www.longos.com/flyer', mapsQ: "Longo's near me" },
+  { match: /farm\s*boy/i, brand: 'Farm Boy', flyerUrl: 'https://www.farmboy.ca/flyer/', mapsQ: 'Farm Boy near me' }
+];
+
+// Words that strongly indicate a grocery flyer (vs an online product photo)
+const FLYER_INDICATORS = [
+  /\/lb\b/i, /\/kg\b/i, /per\s*lb/i, /per\s*kg/i,
+  /weekly\s*(special|deal|flyer)/i, /this\s*week'?s/i,
+  /\bcrazy\s*\d/i, // "Crazy 8" pricing
+  /save\s*\$\s*\d/i, /\d+%\s*off/i,
+  /\bfresh\s*from\s*the\s*farm\b/i,
+  /\bhalal\s*at\s*same\s*price\b/i
+];
+
+function detectGroceryFlyer(promoDetails, ocrText) {
+  // Combine all text we can search
+  const haystack = [
+    promoDetails?.brand,
+    promoDetails?.promotionTitle,
+    promoDetails?.promotionDescription,
+    (promoDetails?.products || []).join(' '),
+    ocrText || ''
+  ].filter(Boolean).join(' ');
+
+  if (!haystack) return null;
+
+  // First try to match a known grocery brand
+  const brandMatch = GROCERY_FLYER_BRANDS.find(g => g.match.test(haystack));
+  if (!brandMatch) return null;
+
+  // Confirm it's a flyer (not, say, the brand's online ordering page) — need at
+  // least one flyer indicator like "/LB", "Weekly Special", "Save $", "Crazy 8".
+  const hasFlyerSignal = FLYER_INDICATORS.some(re => re.test(haystack));
+  if (!hasFlyerSignal) return null;
+
+  console.log(`  🛒 Grocery flyer detected: ${brandMatch.brand}`);
+  return {
+    isFlyer: true,
+    brand: brandMatch.brand,
+    flyerUrl: brandMatch.flyerUrl,
+    storeLocatorUrl: `https://www.google.com/maps/search/${encodeURIComponent(brandMatch.mapsQ)}`
+  };
+}
+
 const DIRECT_PRODUCT_SOURCES = new Set([
   'serp_exact_product', 'serp_store_product', 'serp_loose_product',
   'serp_loose_store', 'serp_broad_exact', 'serp_broad_store',
@@ -1587,6 +1655,47 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
 
   // Collect Lens + OCR results now (they've been running in parallel)
   const [lensMatches, ocrResult] = await Promise.all([lensMatchesPromise, ocrPromise]);
+
+  // Step 8a: Grocery-flyer short-circuit. If this is a Food Basics / No Frills /
+  // Loblaws etc. flyer, there is no online product page to redirect to — the
+  // discount only applies in-store. Return a flyer-mode response with a link
+  // to the digital flyer + a "find nearest store" deep-link.
+  const flyerInfo = detectGroceryFlyer(promoDetails, ocrResult?.rawText || '');
+  if (flyerInfo) {
+    return {
+      success: true,
+      isGroceryFlyer: true,
+      groceryFlyer: flyerInfo,
+      redirectUrl: enforceHttps(flyerInfo.flyerUrl),
+      checkoutUrl: null,
+      checkoutSource: 'grocery_flyer',
+      productUrl: enforceHttps(flyerInfo.flyerUrl),
+      productSource: 'grocery_flyer',
+      hasDirectProductMatch: false, // never auto-redirect for grocery flyers
+      similarProducts: [],
+      mainProductImage: null,
+      urlSource: 'grocery_flyer',
+      brand: flyerInfo.brand,
+      domain: getHostname(flyerInfo.flyerUrl),
+      websiteUrl: flyerInfo.flyerUrl,
+      storeLocatorUrl: flyerInfo.storeLocatorUrl,
+      promotionTitle: promoDetails?.promotionTitle || `${flyerInfo.brand} Weekly Deal`,
+      promotionDescription: promoDetails?.promotionDescription || 'In-store flyer deal — visit store to redeem',
+      products: promoDetails?.products || [],
+      coupons: [],
+      discountAmount: promoDetails?.discountAmount || null,
+      expiryDate: promoDetails?.expiryDate || null,
+      promoType: 'grocery_flyer',
+      imageType: 'grocery_flyer',
+      isProductPhoto: false,
+      productPrice: promoDetails?.productPrice || null,
+      productCategory: 'grocery',
+      productSearchQuery: promoDetails?.productSearchQuery || null,
+      visibleUrls: promoDetails?.visibleUrls || [],
+      confidence: 'high',
+      provider: promoDetails?.provider
+    };
+  }
 
   // If OCR found a model number, prepend it to the search query — model numbers
   // are globally unique and fix almost all wrong-product matches.

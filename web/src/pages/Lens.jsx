@@ -270,9 +270,11 @@ export default function Lens() {
               fontSize: 14, fontWeight: 600,
               color: hasDirectProductMatch ? '#065f46' : '#92400e'
             }}>
-              {hasDirectProductMatch
-                ? '✅ Exact product found — ready to buy'
-                : '🔍 Exact product not found — showing similar items you can buy'}
+              {result.isGroceryFlyer
+                ? `📍 ${result.brand || 'Grocery'} flyer detected — this is an in-store deal`
+                : hasDirectProductMatch
+                  ? '✅ Exact product found — ready to buy'
+                  : '🔍 Exact product not found — showing similar items you can buy'}
             </div>
 
             <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -369,23 +371,44 @@ export default function Lens() {
             )}
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
-              {hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
-                <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  🛒 Buy Now
-                </a>
-              )}
-              {hasDirectProductMatch && result.checkoutUrl && result.checkoutUrl !== (result.productUrl || result.redirectUrl) && (
-                <a href={result.checkoutUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  🛍️ View Cart
-                </a>
-              )}
-              {!hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
-                <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  🔎 Browse Store Results
-                </a>
+              {result.isGroceryFlyer ? (
+                <>
+                  <a href={result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    📰 View This Week's Flyer
+                  </a>
+                  {result.storeLocatorUrl && (
+                    <a href={result.storeLocatorUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      📍 Find Nearest Store
+                    </a>
+                  )}
+                </>
+              ) : (
+                <>
+                  {hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
+                    <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      🛒 Buy Now
+                    </a>
+                  )}
+                  {hasDirectProductMatch && result.checkoutUrl && result.checkoutUrl !== (result.productUrl || result.redirectUrl) && (
+                    <a href={result.checkoutUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      🛍️ View Cart
+                    </a>
+                  )}
+                  {!hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
+                    <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      🔎 Browse Store Results
+                    </a>
+                  )}
+                </>
               )}
               <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? '🔍 Try It For Real' : '🔄 Try Another'}</button>
             </div>
+
+            {result.isGroceryFlyer && (
+              <div style={{ marginTop: 14, padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 13, color: '#475569' }}>
+                💡 Grocery flyer deals are <strong>in-store only</strong>. Show the flyer at checkout — there's no online cart for these prices.
+              </div>
+            )}
 
             {hasDirectProductMatch && result.similarProducts?.length > 0 && !showSimilar && (
               <button
