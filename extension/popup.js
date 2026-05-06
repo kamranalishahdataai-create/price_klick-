@@ -1102,3 +1102,126 @@ document.getElementById('capturePageBtn').addEventListener('click', async () => 
     setScreenshotStatus("Capture failed: " + e.message);
   }
 });
+
+// --- Local Services search ---
+(function () {
+  const svcQuery = document.getElementById('svcQuery');
+  const svcRadius = document.getElementById('svcRadius');
+  const svcMaxPrice = document.getElementById('svcMaxPrice');
+  const svcSearchBtn = document.getElementById('svcSearchBtn');
+  const svcStatus = document.getElementById('svcStatus');
+  const svcResults = document.getElementById('svcResults');
+  if (!svcSearchBtn) return;
+
+  let coords = null;
+  function getLocation() {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        () => resolve(null),
+        { timeout: 6000, maximumAge: 600000 }
+      );
+    });
+  }
+
+  svcSearchBtn.addEventListener('click', async () => {
+    const q = (svcQuery.value || '').trim();
+    if (!q) { svcStatus.textContent = 'Enter a service like "plumber".'; return; }
+    svcStatus.textContent = 'Detecting location...';
+    svcResults.innerHTML = '';
+    if (!coords) coords = await getLocation();
+    svcStatus.textContent = coords ? 'Searching near you...' : 'Searching (no location)...';
+
+    const params = new URLSearchParams({ q, radiusKm: svcRadius.value || '10' });
+    if (coords) { params.set('lat', String(coords.lat)); params.set('lng', String(coords.lng)); }
+    if (svcMaxPrice.value) params.set('maxPrice', svcMaxPrice.value);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/services/search?${params.toString()}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'search_failed');
+      const list = (data.providers || []).slice(0, 10);
+      if (!list.length) { svcStatus.textContent = 'No providers found.'; return; }
+      svcStatus.textContent = list.length + ' provider' + (list.length !== 1 ? 's' : '') + ' found';
+      svcResults.innerHTML = list.map(p => {
+        const safeName = (p.name || '').replace(/</g, '&lt;');
+        const ratingTxt = p.rating ? '⭐ ' + p.rating + ' (' + (p.reviewsCount || 0) + ')' : '';
+        const distTxt = p.distanceKm != null ? ' • ' + p.distanceKm.toFixed(1) + ' km' : '';
+        const priceTxt = p.priceValue ? ' • ~$' + p.priceValue + '/hr' : (p.price ? ' • ' + p.price : '');
+        const callBtn = p.phone ? '<a href="tel:' + p.phone + '" class="btn primary" style="padding:4px 10px; font-size:11px;">📞 Call</a>' : '';
+        const siteBtn = p.website ? '<a href="' + p.website + '" target="_blank" class="btn" style="padding:4px 10px; font-size:11px;">🌐 Site</a>' : '';
+        const mapBtn = p.mapsUrl ? '<a href="' + p.mapsUrl + '" target="_blank" class="btn" style="padding:4px 10px; font-size:11px;">📍 Map</a>' : '';
+        return '<div class="result-item">' +
+          '<div class="name">' + safeName + '</div>' +
+          '<div class="location">' + ratingTxt + distTxt + priceTxt + '</div>' +
+          '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">' + callBtn + siteBtn + mapBtn + '</div>' +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      svcStatus.textContent = 'Search failed: ' + e.message;
+    }
+  });
+})();
+
+// --- Local Services search ---
+(function () {
+  const svcQuery = document.getElementById('svcQuery');
+  const svcRadius = document.getElementById('svcRadius');
+  const svcMaxPrice = document.getElementById('svcMaxPrice');
+  const svcSearchBtn = document.getElementById('svcSearchBtn');
+  const svcStatus = document.getElementById('svcStatus');
+  const svcResults = document.getElementById('svcResults');
+  if (!svcSearchBtn) return;
+
+  let coords = null;
+  function getLocation() {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        () => resolve(null),
+        { timeout: 6000, maximumAge: 600000 }
+      );
+    });
+  }
+
+  svcSearchBtn.addEventListener('click', async () => {
+    const q = (svcQuery.value || '').trim();
+    if (!q) { svcStatus.textContent = 'Enter a service like "plumber".'; return; }
+    svcStatus.textContent = 'Detecting location...';
+    svcResults.innerHTML = '';
+    if (!coords) coords = await getLocation();
+    svcStatus.textContent = coords ? `Searching near you...` : 'Searching (no location, results may be broad)...';
+
+    const params = new URLSearchParams({ q, radiusKm: svcRadius.value || '10' });
+    if (coords) { params.set('lat', String(coords.lat)); params.set('lng', String(coords.lng)); }
+    if (svcMaxPrice.value) params.set('maxPrice', svcMaxPrice.value);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/services/search?${params.toString()}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'search_failed');
+      const list = (data.providers || []).slice(0, 10);
+      if (!list.length) { svcStatus.textContent = 'No providers found.'; return; }
+      svcStatus.textContent = `${list.length} provider${list.length !== 1 ? 's' : ''} found`;
+      svcResults.innerHTML = list.map(p => `
+        <div class="result-item">
+          <div class="name">${(p.name || '').replace(/</g, '&lt;')}</div>
+          <div class="location">
+            ${p.rating ? `⭐ ${p.rating} (${p.reviewsCount || 0})` : ''}
+            ${p.distanceKm != null ? ` • ${p.distanceKm.toFixed(1)} km` : ''}
+            ${p.priceValue ? ` • ~$${p.priceValue}/hr` : (p.price ? ` • ${p.price}` : '')}
+          </div>
+          <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+            ${p.phone ? `<a href="tel:${p.phone}" class="btn primary" style="padding:4px 10px; font-size:11px;">📞 Call</a>` : ''}
+            ${p.website ? `<a href="${p.website}" target="_blank" class="btn" style="padding:4px 10px; font-size:11px;">🌐 Site</a>` : ''}
+            ${p.mapsUrl ? `<a href="${p.mapsUrl}" target="_blank" class="btn" style="padding:4px 10px; font-size:11px;">📍 Map</a>` : ''}
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      svcStatus.textContent = 'Search failed: ' + e.message;
+    }
+  });
+})();

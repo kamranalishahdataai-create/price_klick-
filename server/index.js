@@ -22,6 +22,7 @@ import {
 import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
+import servicesRoutes from './routes/services.js';
 import { authenticate } from './middleware/auth.js';
 import User from './models/User.js';
 
@@ -60,6 +61,7 @@ const PORT = process.env.PORT || 5050;
 if (mongoConnection) {
   app.use('/api/auth', authRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/services', servicesRoutes);
 
   // Bootstrap: Promote first user to admin (only if no admins exist yet)
   app.post('/api/admin/bootstrap', authenticate, async (req, res) => {

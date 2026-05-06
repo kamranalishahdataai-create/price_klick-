@@ -275,6 +275,29 @@
 
     <div class="line"></div>
 
+    <!-- Local Services Section -->
+    <div class="section-title">
+      <span>🛠️ Local Services</span>
+      <span class="ai-badge">NEW</span>
+    </div>
+    <div class="col">
+      <input id="svcQuery" class="input-full" placeholder="e.g. plumber, tutor, mechanic"/>
+      <div class="row">
+        <select id="svcRadius" class="input" style="flex:1">
+          <option value="5">5 km</option>
+          <option value="10" selected>10 km</option>
+          <option value="25">25 km</option>
+          <option value="50">50 km</option>
+        </select>
+        <input id="svcMaxPrice" class="input" type="number" placeholder="Max $/hr" style="flex:1"/>
+      </div>
+      <button id="svcSearchBtn" class="btn primary full">Find providers near me</button>
+    </div>
+    <div class="muted small" id="svcStatus"></div>
+    <div id="svcResults" class="results"></div>
+
+    <div class="line"></div>
+
     <!-- Email Section -->
     <div class="row">
       <input id="email" class="input" placeholder="Email (for alerts)"/>

@@ -16,6 +16,7 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import Contact from './pages/Contact.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Lens from './pages/Lens.jsx'
+import Services from './pages/Services.jsx'
 import AuthProvider from './context/AuthContext.jsx'
 
 export default function App(){
@@ -46,6 +47,7 @@ export default function App(){
               <Route path="/contact" element={<Contact/>} />
               <Route path="/privacy" element={<Privacy/>} />
               <Route path="/lens" element={<Lens/>} />
+              <Route path="/services" element={<Services/>} />
             </Routes>
             <Footer/>
           </>
