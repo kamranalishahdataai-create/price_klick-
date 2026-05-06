@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { get, post } from '../api/client';
+import { get, post, API_BASE } from '../api/client';
 import './Panel.css';
 
 export default function UserDashboard() {
@@ -113,13 +113,14 @@ export default function UserDashboard() {
 
         {/* Tabs */}
         <div className="panel-tabs">
-          {['overview', 'history', 'profile', 'settings'].map(tab => (
+          {['overview', 'prepay', 'history', 'profile', 'settings'].map(tab => (
             <button
               key={tab}
               className={`panel-tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
               {tab === 'overview' ? '📊 Overview' :
+               tab === 'prepay' ? '💸 PrePay' :
                tab === 'history' ? '🕐 History' :
                tab === 'profile' ? '👤 Profile' : '⚙️ Settings'}
             </button>
@@ -239,6 +240,9 @@ export default function UserDashboard() {
                 )}
               </div>
             )}
+
+            {/* ====== PREPAY TAB ====== */}
+            {activeTab === 'prepay' && <PrePayPanel />}
 
             {/* ====== PROFILE TAB ====== */}
             {activeTab === 'profile' && (
@@ -407,6 +411,120 @@ export default function UserDashboard() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// PrePay v1 panel — fetches /api/insights/weekly
+function PrePayPanel() {
+  const [state, setState] = useState({ loading: true, data: null, error: null });
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const r = await fetch(`${API_BASE}/api/insights/weekly`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        const data = await r.json();
+        if (alive) setState({ loading: false, data, error: null });
+      } catch (e) {
+        if (alive) setState({ loading: false, data: null, error: e.message });
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  if (state.loading) return <div className="panel-loading">🤖 PrePay is analysing your activity...</div>;
+  if (state.error) return <div className="panel-card"><div className="panel-card-title">PrePay</div><div style={{ color: '#dc2626' }}>Error: {state.error}</div></div>;
+
+  const d = state.data || {};
+  if (!d.ok && d.minRequired) {
+    return (
+      <div className="panel-card">
+        <div className="panel-card-title">💸 PrePay — Spending Coach</div>
+        <p style={{ color: '#64748b' }}>
+          PrePay needs at least <strong>{d.minRequired}</strong> tracked activities to generate insights.
+          You currently have <strong>{d.count || 0}</strong>. Use Lens, search services, or click coupons —
+          PrePay will start surfacing patterns and savings here.
+        </p>
+      </div>
+    );
+  }
+  if (!d.ok) {
+    return <div className="panel-card"><div className="panel-card-title">PrePay</div><div style={{ color: '#dc2626' }}>{d.error || 'Insights unavailable.'}</div></div>;
+  }
+
+  const ins = d.insights || {};
+  const dig = d.digest || {};
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div className="panel-card">
+        <div className="panel-card-title">💸 PrePay — Your Weekly Insights</div>
+        <p style={{ fontSize: 16, lineHeight: 1.5, marginBottom: 12 }}>{ins.summary || '—'}</p>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: '#475569' }}>
+          <span>📊 {dig.count} activities (last {dig.windowDays}d)</span>
+          {typeof dig.totalSpend === 'number' && dig.totalSpend > 0 && <span>💰 ~${dig.totalSpend.toFixed(2)} CAD tracked</span>}
+          {typeof ins.predictedNextWeekSpend === 'number' && <span>📈 Predicted next week: ${ins.predictedNextWeekSpend} CAD</span>}
+        </div>
+      </div>
+
+      {Array.isArray(ins.patterns) && ins.patterns.length > 0 && (
+        <div className="panel-card">
+          <div className="panel-card-title">🔁 Patterns</div>
+          <ul style={{ paddingLeft: 20, margin: 0 }}>
+            {ins.patterns.map((p, i) => <li key={i} style={{ marginBottom: 6 }}>{p}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {Array.isArray(ins.suggestions) && ins.suggestions.length > 0 && (
+        <div className="panel-card">
+          <div className="panel-card-title">💡 Suggestions</div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {ins.suggestions.map((s, i) => (
+              <div key={i} style={{ padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: 700 }}>{s.title}</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{s.rationale}</div>
+                {typeof s.potentialSavings === 'number' && (
+                  <div style={{ fontSize: 13, color: '#16a34a', fontWeight: 700, marginTop: 4 }}>
+                    Potential savings: ${s.potentialSavings} CAD
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {Array.isArray(ins.cheaperAlternatives) && ins.cheaperAlternatives.length > 0 && (
+        <div className="panel-card">
+          <div className="panel-card-title">🔀 Cheaper Alternatives</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {ins.cheaperAlternatives.map((a, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: 10, borderRadius: 8, background: '#f0fdf4' }}>
+                <span><strong>{a.from}</strong> → <strong>{a.to}</strong></span>
+                <span style={{ color: '#16a34a', fontWeight: 700 }}>{a.estSavings}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {dig.topCategoriesText || (dig.byCategory && Object.keys(dig.byCategory).length > 0) ? (
+        <div className="panel-card">
+          <div className="panel-card-title">🗂️ Top categories</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {Object.entries(dig.byCategory || {}).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([c, n]) => (
+              <span key={c} style={{ padding: '4px 10px', borderRadius: 999, background: '#eef2ff', fontSize: 12, fontWeight: 600 }}>
+                {c} · {n}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

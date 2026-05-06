@@ -23,6 +23,8 @@ import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import servicesRoutes from './routes/services.js';
+import insightsRoutes from './routes/insights.js';
+import { runDealScraperOnce } from './services/dealScraper.js';
 import { authenticate } from './middleware/auth.js';
 import User from './models/User.js';
 
@@ -62,6 +64,7 @@ if (mongoConnection) {
   app.use('/api/auth', authRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/services', servicesRoutes);
+  app.use('/api/insights', insightsRoutes);
 
   // Bootstrap: Promote first user to admin (only if no admins exist yet)
   app.post('/api/admin/bootstrap', authenticate, async (req, res) => {
@@ -764,6 +767,21 @@ try {
   });
 } catch (e) {
   console.warn('Brand alert cron failed:', e?.message);
+}
+
+// --- Deal Scraper Cron (every 6 hours) ---
+try {
+  cron.schedule(process.env.DEAL_SCRAPER_CRON || '0 */6 * * *', async () => {
+    console.log('[deal-scraper] Running scheduled scrape...');
+    try {
+      const stats = await runDealScraperOnce();
+      console.log('[deal-scraper] done', stats);
+    } catch (e) {
+      console.error('[deal-scraper] run failed', e?.message);
+    }
+  });
+} catch (e) {
+  console.warn('Deal scraper cron failed:', e?.message);
 }
 
 // ========================================================
