@@ -5,7 +5,6 @@
 import fetch from 'node-fetch';
 import UserActivity from '../models/UserActivity.js';
 
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const MIN_ACTIVITIES = 5;
 
 export async function buildActivityDigest(userId) {
@@ -69,6 +68,7 @@ Be specific. No fluff. CAD currency. Output JSON only.`;
 export async function generateInsights(userId) {
   const digest = await buildActivityDigest(userId);
   if (!digest.ready) return { ok: false, ...digest };
+  const OPENAI_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_KEY) return { ok: false, error: 'openai_key_missing', digest };
 
   try {

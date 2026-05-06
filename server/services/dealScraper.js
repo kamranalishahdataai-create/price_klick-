@@ -3,8 +3,6 @@
 import fetch from 'node-fetch';
 import Deal from '../models/Deal.js';
 
-const SERPAPI = process.env.SERPAPI_KEY;
-
 // Categories we proactively scan for deep discounts
 const DEAL_CATEGORIES = [
   { category: 'electronics', query: 'electronics deals on sale' },
@@ -24,6 +22,7 @@ function parsePrice(s) {
 }
 
 async function fetchShoppingResults(query) {
+  const SERPAPI = process.env.SERPAPI_KEY;
   if (!SERPAPI) throw new Error('SERPAPI_KEY missing');
   const url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&gl=ca&hl=en&api_key=${SERPAPI}`;
   const r = await fetch(url, { timeout: 20000 });

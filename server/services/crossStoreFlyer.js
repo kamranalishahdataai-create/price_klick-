@@ -4,8 +4,6 @@
 // prices grouped by store.
 import fetch from 'node-fetch';
 
-const SERPAPI = process.env.SERPAPI_KEY;
-
 const GROCERY_DOMAINS = {
   'No Frills': 'nofrills.ca',
   'Loblaws': 'loblaws.ca',
@@ -28,6 +26,7 @@ function parsePrice(s) {
 
 /** Compare a single product across grocery stores. */
 export async function comparePriceAcrossStores(productName, { limit = 8 } = {}) {
+  const SERPAPI = process.env.SERPAPI_KEY;
   if (!SERPAPI) throw new Error('SERPAPI_KEY missing');
   if (!productName) throw new Error('productName required');
 
