@@ -21,7 +21,18 @@ const serviceProviderSchema = new mongoose.Schema({
   description: String,
   source: { type: String, default: 'serpapi_google_maps' },
   rawSnippet: mongoose.Schema.Types.Mixed,
-  cachedAt: { type: Date, default: Date.now, index: true }
+  cachedAt: { type: Date, default: Date.now, index: true },
+
+  // --- Apify Google Maps enrichment ---
+  enrichedAt: { type: Date, index: true },
+  enrichedSource: String, // 'apify_google_maps'
+  reviewsText: [{ name: String, text: String, stars: Number, publishedAt: String }],
+  photos: [String],
+  openingHours: mongoose.Schema.Types.Mixed,
+  popularTimes: mongoose.Schema.Types.Mixed,
+  email: String,
+  socials: mongoose.Schema.Types.Mixed,
+  aiReviewSummary: { pros: [String], cons: [String], summary: String, generatedAt: Date }
 }, { timestamps: true });
 
 serviceProviderSchema.index({ category: 1, lat: 1, lng: 1 });

@@ -35,6 +35,8 @@ export default function Services() {
   const [meta, setMeta] = useState(null)
   const [compareIds, setCompareIds] = useState([])
   const [favorites, setFavorites] = useState({})
+  const [enriched, setEnriched] = useState({}) // placeId -> provider doc
+  const [enriching, setEnriching] = useState({}) // placeId -> bool
   const token = (typeof window !== 'undefined') ? localStorage.getItem('accessToken') : null
 
   const compareList = useMemo(
@@ -114,6 +116,26 @@ export default function Services() {
   const toggleCompare = (p) => {
     const id = p.placeId || p.name
     setCompareIds(c => c.includes(id) ? c.filter(x => x !== id) : (c.length >= 4 ? c : [...c, id]))
+  }
+
+  const loadDetails = async (p) => {
+    const key = p.placeId || p.name
+    if (enriched[key] || enriching[key]) return
+    setEnriching(s => ({ ...s, [key]: true }))
+    try {
+      const res = await fetch(`${API_BASE}/api/services/enrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ placeId: p.placeId, name: p.name, address: p.address })
+      })
+      const d = await res.json()
+      if (d.ok && d.provider) setEnriched(s => ({ ...s, [key]: d.provider }))
+      else setEnriched(s => ({ ...s, [key]: { error: d.error || 'failed' } }))
+    } catch (e) {
+      setEnriched(s => ({ ...s, [key]: { error: e.message } }))
+    } finally {
+      setEnriching(s => ({ ...s, [key]: false }))
+    }
   }
 
   return (
@@ -233,6 +255,16 @@ export default function Services() {
               <button onClick={() => toggleCompare(p)} style={{ marginTop: 4, background: inCompare ? '#6D4AFF' : '#fff', color: inCompare ? '#fff' : '#6D4AFF', border: '1px solid #6D4AFF', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
                 {inCompare ? '✓ Added to compare' : '+ Compare'}
               </button>
+              {!enriched[id] && (
+                <button onClick={() => loadDetails(p)} disabled={enriching[id]}
+                  style={{ marginTop: 4, background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
+                  {enriching[id] ? '⏳ Loading reviews & photos…' : '🔎 Load full details (reviews · photos · hours)'}
+                </button>
+              )}
+              {enriched[id] && enriched[id].error && (
+                <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>Couldn't enrich: {enriched[id].error}</div>
+              )}
+              {enriched[id] && !enriched[id].error && <EnrichedDetails p={enriched[id]} />}
             </div>
           )
         })}
@@ -241,6 +273,58 @@ export default function Services() {
       {!loading && !error && results.length === 0 && meta && (
         <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>
           No providers found for "{meta.query}". Try widening the radius or removing filters.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EnrichedDetails({ p }) {
+  const ai = p.aiReviewSummary
+  const photos = (p.photos || []).slice(0, 6)
+  const reviews = (p.reviewsText || []).slice(0, 4)
+  const hoursEntries = p.openingHours && Array.isArray(p.openingHours) ? p.openingHours
+    : (p.openingHours && typeof p.openingHours === 'object' ? Object.entries(p.openingHours).map(([day, hours]) => ({ day, hours })) : [])
+  return (
+    <div style={{ marginTop: 6, padding: 10, background: '#fafafa', borderRadius: 10, border: '1px dashed #e2e8f0', display: 'grid', gap: 10 }}>
+      {photos.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+          {photos.map((u, i) => <img key={i} src={u} alt="" style={{ width: 100, height: 80, objectFit: 'cover', borderRadius: 8, flex: '0 0 auto' }} />)}
+        </div>
+      )}
+      {ai && (ai.summary || (ai.pros || []).length || (ai.cons || []).length) && (
+        <div style={{ background: '#fff', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6D4AFF', marginBottom: 4 }}>🤖 AI REVIEW SUMMARY</div>
+          {ai.summary && <div style={{ fontSize: 13, marginBottom: 6 }}>{ai.summary}</div>}
+          {(ai.pros || []).length > 0 && <div style={{ fontSize: 12, color: '#16a34a' }}>👍 {ai.pros.join(' · ')}</div>}
+          {(ai.cons || []).length > 0 && <div style={{ fontSize: 12, color: '#dc2626' }}>👎 {ai.cons.join(' · ')}</div>}
+        </div>
+      )}
+      {hoursEntries.length > 0 && (
+        <div style={{ fontSize: 12 }}>
+          <strong>🕐 Hours:</strong>{' '}
+          {hoursEntries.slice(0, 7).map((h, i) => (
+            <span key={i} style={{ marginRight: 8 }}>{h.day}: {Array.isArray(h.hours) ? h.hours.join(', ') : h.hours}</span>
+          ))}
+        </div>
+      )}
+      {p.email && <div style={{ fontSize: 12 }}>📧 <a href={`mailto:${p.email}`}>{p.email}</a></div>}
+      {p.socials && (p.socials.facebook || p.socials.instagram) && (
+        <div style={{ fontSize: 12, display: 'flex', gap: 10 }}>
+          {p.socials.facebook && <a href={p.socials.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>}
+          {p.socials.instagram && <a href={p.socials.instagram} target="_blank" rel="noopener noreferrer">Instagram</a>}
+          {p.socials.linkedin && <a href={p.socials.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>}
+        </div>
+      )}
+      {reviews.length > 0 && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>RECENT REVIEWS</div>
+          {reviews.map((r, i) => (
+            <div key={i} style={{ background: '#fff', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }}>
+              <div style={{ fontWeight: 600 }}>{r.name || 'Anonymous'} {r.stars ? `· ${'⭐'.repeat(Math.round(r.stars))}` : ''}</div>
+              <div style={{ color: '#475569', lineHeight: 1.4 }}>{(r.text || '').slice(0, 280)}{(r.text || '').length > 280 ? '…' : ''}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>

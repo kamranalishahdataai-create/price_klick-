@@ -1,5 +1,6 @@
 import express from 'express';
 import { searchServiceProviders } from '../services/serviceSearch.js';
+import { enrichProvider } from '../services/apifyEnrichment.js';
 import ServiceProvider from '../models/ServiceProvider.js';
 import Favorite from '../models/Favorite.js';
 import UserActivity from '../models/UserActivity.js';
@@ -127,6 +128,21 @@ router.get('/favorites', authenticate, async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: 'server_error', message: e.message });
+  }
+});
+
+// Enrich a provider via Apify Google Maps scraper (cached 7 days)
+router.post('/enrich', optionalAuth, async (req, res) => {
+  try {
+    const { placeId, name, address, force } = req.body || {};
+    if (!placeId && !name) {
+      return res.status(400).json({ ok: false, error: 'placeId_or_name_required' });
+    }
+    const result = await enrichProvider({ placeId, name, address, force: !!force });
+    res.json(result);
+  } catch (e) {
+    console.error('services/enrich', e);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
