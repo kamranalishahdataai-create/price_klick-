@@ -3,7 +3,7 @@
 }
 
 .section.subhero {
-  background: linear-gradient(180deg, #f5f1ff, transparent);
+  background: linear-gradient(180deg, oklch(22% .04 280 / .5), transparent);
 }
 
 .section-title {

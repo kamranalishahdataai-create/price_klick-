@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+﻿import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 const API = import.meta.env.VITE_API_URL || ''
 
 const DEMO_RESULT = {
   ok: true,
   brand: 'Nike',
-  products: ['Nike Air Max 270 React — Black/White'],
+  products: ['Nike Air Max 270 React â€” Black/White'],
   promotionTitle: 'Nike Air Max 270 React',
   productCategory: 'Shoes',
   discountAmount: '25%',
@@ -131,17 +131,17 @@ export default function Lens() {
     <section style={{ minHeight: '80vh', padding: '80px 20px 60px' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <span style={{ fontSize: 36 }}>🔍</span>
+          <span style={{ fontSize: 36 }}>ðŸ”</span>
           <h1 style={{ fontSize: '2.4rem', fontWeight: 800, margin: 0 }}>Promo Lens</h1>
           <span style={{ background: 'linear-gradient(135deg,#4285F4,#EA4335,#FBBC05,#34A853)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>AI</span>
         </div>
         <p style={{ color: '#6a6880', fontSize: 16, marginBottom: 16 }}>
-          Upload any product image or promotional screenshot — our AI identifies the product and finds where to buy it online.
+          Upload any product image or promotional screenshot â€” our AI identifies the product and finds where to buy it online.
         </p>
 
         {!demo && !result && (
           <button onClick={runDemo} style={{ ...btnSecondary, marginBottom: 28, gap: 6, display: 'inline-flex', alignItems: 'center' }}>
-            ▶️ View Demo
+            â–¶ï¸ View Demo
           </button>
         )}
 
@@ -150,7 +150,7 @@ export default function Lens() {
           <div style={{ marginBottom: 24 }}>
             {/* Demo banner */}
             <div style={{ background: 'linear-gradient(135deg,#FFA726,#FF7043)', color: '#fff', borderRadius: 12, padding: '10px 20px', marginBottom: 20, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>🎬 Demo Mode — Simulated walkthrough</span>
+              <span>ðŸŽ¬ Demo Mode â€” Simulated walkthrough</span>
               <button onClick={exitDemo} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Exit Demo</button>
             </div>
 
@@ -158,10 +158,10 @@ export default function Lens() {
             {demoStep >= 1 && (
               <div style={{
                 border: '2.5px dashed #34A853', borderRadius: 20, padding: 16,
-                background: '#fafafe', marginBottom: 20, animation: 'fadeIn 0.5s ease'
+                background: 'rgba(255,255,255,0.04)', marginBottom: 20, animation: 'fadeIn 0.5s ease'
               }}>
-                <div style={{ fontSize: 56, marginBottom: 4 }}>👟</div>
-                <div style={{ fontSize: 14, color: '#34A853', fontWeight: 700 }}>✓ Image uploaded — Nike shoe detected</div>
+                <div style={{ fontSize: 56, marginBottom: 4 }}>ðŸ‘Ÿ</div>
+                <div style={{ fontSize: 14, color: '#34A853', fontWeight: 700 }}>âœ“ Image uploaded â€” Nike shoe detected</div>
               </div>
             )}
 
@@ -171,7 +171,7 @@ export default function Lens() {
                 <div style={{ width: '100%', height: 6, background: '#e8e6f0', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ width: '80%', height: '100%', background: 'linear-gradient(90deg,#6D4AFF,#4285F4)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
                 </div>
-                <p style={{ color: '#6a6880', marginTop: 12, fontSize: 14 }}>🤖 AI is analyzing... identifying brand, model, finding best prices and coupons.</p>
+                <p style={{ color: '#6a6880', marginTop: 12, fontSize: 14 }}>ðŸ¤– AI is analyzing... identifying brand, model, finding best prices and coupons.</p>
               </div>
             )}
           </div>
@@ -186,7 +186,7 @@ export default function Lens() {
             }}>
               <span style={{
                 position: 'absolute', top: 2, left: autoRedirect ? 20 : 2,
-                width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px #0003'
+                width: 18, height: 18, borderRadius: '50%', background: 'rgba(40,28,70,0.6)', transition: 'left 0.2s', boxShadow: '0 1px 3px #0003'
               }} />
             </span>
             Auto-redirect to checkout page
@@ -211,9 +211,9 @@ export default function Lens() {
                 <img src={preview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 340, borderRadius: 12 }} />
               ) : (
                 <>
-                  <div style={{ fontSize: 48, marginBottom: 8 }}>📸</div>
+                  <div style={{ fontSize: 48, marginBottom: 8 }}>ðŸ“¸</div>
                   <div style={{ fontSize: 15, color: '#6a6880' }}>
-                    <strong style={{ color: '#6D4AFF' }}>Click to upload</strong> or drag & drop
+                    <strong style={{ color: 'oklch(82% .18 295)' }}>Click to upload</strong> or drag & drop
                   </div>
                   <div style={{ fontSize: 13, color: '#aaa', marginTop: 4 }}>Product photo, promo flyer, store ad, or screenshot</div>
                 </>
@@ -224,9 +224,9 @@ export default function Lens() {
             {preview && (
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
                 <button onClick={analyze} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}>
-                  {loading ? '🔄 Analyzing...' : '🔍 Find This Product'}
+                  {loading ? 'ðŸ”„ Analyzing...' : 'ðŸ” Find This Product'}
                 </button>
-                <button onClick={reset} style={btnSecondary}>✕ Clear</button>
+                <button onClick={reset} style={btnSecondary}>âœ• Clear</button>
               </div>
             )}
 
@@ -248,16 +248,16 @@ export default function Lens() {
         )}
 
         {result && (
-          <div style={{ textAlign: 'left', background: '#fff', border: '1px solid #e8e6f0', borderRadius: 20, padding: 28, marginTop: 8, animation: 'fadeIn 0.5s ease' }}>
+          <div style={{ textAlign: 'left', background: 'rgba(40,28,70,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 28, marginTop: 8, animation: 'fadeIn 0.5s ease' }}>
             {demo && (
               <div style={{ background: 'linear-gradient(135deg,#FFA726,#FF7043)', color: '#fff', borderRadius: 12, padding: '10px 20px', marginBottom: 16, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>🎬 Demo Result — This is what Lens returns for a real product image</span>
+                <span>ðŸŽ¬ Demo Result â€” This is what Lens returns for a real product image</span>
                 <button onClick={exitDemo} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Exit Demo</button>
               </div>
             )}
             {!demo && countdown !== null && countdown > 0 && (
               <div style={{ background: 'linear-gradient(135deg,#6D4AFF,#4285F4)', color: '#fff', borderRadius: 12, padding: '12px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>🚀 Taking you to checkout in {countdown}s...</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>ðŸš€ Taking you to checkout in {countdown}s...</span>
                 <button onClick={cancelRedirect} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
               </div>
             )}
@@ -271,10 +271,10 @@ export default function Lens() {
               color: hasDirectProductMatch ? '#065f46' : '#92400e'
             }}>
               {result.isGroceryFlyer
-                ? `📍 ${result.brand || 'Grocery'} flyer detected — this is an in-store deal`
+                ? `ðŸ“ ${result.brand || 'Grocery'} flyer detected â€” this is an in-store deal`
                 : hasDirectProductMatch
-                  ? '✅ Exact product found — ready to buy'
-                  : '🔍 Exact product not found — showing similar items you can buy'}
+                  ? 'âœ… Exact product found â€” ready to buy'
+                  : 'ðŸ” Exact product not found â€” showing similar items you can buy'}
             </div>
 
             <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -288,12 +288,12 @@ export default function Lens() {
                 <div style={{ textAlign: 'center' }}>
                   <img src={result.mainProductImage.thumbnail} alt={result.products?.[0] || 'Product'} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: `2px solid ${hasDirectProductMatch ? '#10b981' : '#cbd5e1'}` }} />
                   <div style={{ fontSize: 11, color: hasDirectProductMatch ? '#10b981' : '#64748b', marginTop: 4, fontWeight: 700 }}>
-                    {hasDirectProductMatch ? '✓ Matched product' : 'Detected product'}
+                    {hasDirectProductMatch ? 'âœ“ Matched product' : 'Detected product'}
                   </div>
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 200 }}>
-                {result.brand && <div style={{ fontSize: 13, color: '#6D4AFF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{result.brand}</div>}
+                {result.brand && <div style={{ fontSize: 13, color: 'oklch(82% .18 295)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{result.brand}</div>}
                 <h3 style={{ fontSize: '1.3rem', margin: '4px 0' }}>{result.products?.[0] || result.promotionTitle || 'Product Identified'}</h3>
                 {result.productCategory && <span style={tag}>{result.productCategory}</span>}
                 {result.discountAmount && <span style={{ ...tag, background: '#dcfce7', color: '#16a34a' }}>{result.discountAmount} OFF</span>}
@@ -313,10 +313,10 @@ export default function Lens() {
             {(!hasDirectProductMatch || showSimilar) && result.similarProducts?.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>🛍️</span> {hasDirectProductMatch ? 'Other matches from Google Lens' : 'Similar products you can buy now'}
+                  <span>ðŸ›ï¸</span> {hasDirectProductMatch ? 'Other matches from Google Lens' : 'Similar products you can buy now'}
                 </div>
                 <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>
-                  Pick any option below — all links go directly to a retailer product page.
+                  Pick any option below â€” all links go directly to a retailer product page.
                 </p>
                 <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
                   {result.similarProducts.map((item, index) => (
@@ -324,7 +324,7 @@ export default function Lens() {
                       key={`${item.url}-${index}`}
                       href={item.url} target="_blank" rel="noopener noreferrer"
                       style={{
-                        border: '1px solid #e2e8f0', borderRadius: 14, padding: 12, background: '#fff',
+                        border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 12, background: 'rgba(40,28,70,0.6)',
                         textDecoration: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', gap: 8,
                         transition: 'all 0.2s', cursor: 'pointer'
                       }}
@@ -332,9 +332,9 @@ export default function Lens() {
                       onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none' }}
                     >
                       {item.thumbnail ? (
-                        <img src={item.thumbnail} alt={item.title} style={{ width: '100%', height: 140, objectFit: 'contain', borderRadius: 10, background: '#fafafe' }} />
+                        <img src={item.thumbnail} alt={item.title} style={{ width: '100%', height: 140, objectFit: 'contain', borderRadius: 10, background: 'rgba(255,255,255,0.04)' }} />
                       ) : (
-                        <div style={{ width: '100%', height: 140, borderRadius: 10, background: '#fafafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🛍️</div>
+                        <div style={{ width: '100%', height: 140, borderRadius: 10, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>ðŸ›ï¸</div>
                       )}
                       <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
@@ -343,7 +343,7 @@ export default function Lens() {
                         ) : (
                           <span style={{ fontSize: 12, color: '#64748b' }}>View price</span>
                         )}
-                        <span style={{ fontSize: 11, color: '#6D4AFF', fontWeight: 600 }}>{item.source || 'Shop'} →</span>
+                        <span style={{ fontSize: 11, color: 'oklch(82% .18 295)', fontWeight: 600 }}>{item.source || 'Shop'} â†’</span>
                       </div>
                     </a>
                   ))}
@@ -355,8 +355,8 @@ export default function Lens() {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Coupon Codes:</div>
                 {result.coupons.map((c, i) => (
-                  <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#f3f0ff', borderRadius: 8, padding: '6px 14px', marginRight: 8, marginBottom: 6 }}>
-                    <code style={{ fontWeight: 700, color: '#6D4AFF' }}>{c.code}</code>
+                  <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'oklch(68% .22 295 / .15)', borderRadius: 8, padding: '6px 14px', marginRight: 8, marginBottom: 6 }}>
+                    <code style={{ fontWeight: 700, color: 'oklch(82% .18 295)' }}>{c.code}</code>
                     {c.description && <span style={{ fontSize: 12, color: '#888' }}>{c.description}</span>}
                   </div>
                 ))}
@@ -374,11 +374,11 @@ export default function Lens() {
               {result.isGroceryFlyer ? (
                 <>
                   <a href={result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    📰 View This Week's Flyer
+                    ðŸ“° View This Week's Flyer
                   </a>
                   {result.storeLocatorUrl && (
                     <a href={result.storeLocatorUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      📍 Find Nearest Store
+                      ðŸ“ Find Nearest Store
                     </a>
                   )}
                 </>
@@ -386,41 +386,41 @@ export default function Lens() {
                 <>
                   {hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
                     <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      🛒 Buy Now
+                      ðŸ›’ Buy Now
                     </a>
                   )}
                   {hasDirectProductMatch && result.checkoutUrl && result.checkoutUrl !== (result.productUrl || result.redirectUrl) && (
                     <a href={result.checkoutUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      🛍️ View Cart
+                      ðŸ›ï¸ View Cart
                     </a>
                   )}
                   {!hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
                     <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      🔎 Browse Store Results
+                      ðŸ”Ž Browse Store Results
                     </a>
                   )}
                 </>
               )}
-              <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? '🔍 Try It For Real' : '🔄 Try Another'}</button>
+              <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? 'ðŸ” Try It For Real' : 'ðŸ”„ Try Another'}</button>
             </div>
 
             {result.isGroceryFlyer && (
-              <div style={{ marginTop: 14, padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 13, color: '#475569' }}>
-                💡 Grocery flyer deals are <strong>in-store only</strong>. Show the flyer at checkout — there's no online cart for these prices.
+              <div style={{ marginTop: 14, padding: '10px 14px', background: '#f8fafc', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, fontSize: 13, color: '#475569' }}>
+                ðŸ’¡ Grocery flyer deals are <strong>in-store only</strong>. Show the flyer at checkout â€” there's no online cart for these prices.
               </div>
             )}
 
             {hasDirectProductMatch && result.similarProducts?.length > 0 && !showSimilar && (
               <button
                 onClick={() => setShowSimilar(true)}
-                style={{ marginTop: 12, background: 'none', border: 'none', color: '#6D4AFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                style={{ marginTop: 12, background: 'none', border: 'none', color: 'oklch(82% .18 295)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
               >
                 Not the right product? Show {result.similarProducts.length} visually similar options
               </button>
             )}
 
             <div style={{ marginTop: 16, fontSize: 12, color: '#aaa' }}>
-              Source: {result.urlSource} • Confidence: {result.confidence}
+              Source: {result.urlSource} â€¢ Confidence: {result.confidence}
             </div>
           </div>
         )}
@@ -432,5 +432,5 @@ export default function Lens() {
 }
 
 const btnPrimary = { padding: '12px 28px', borderRadius: 12, border: 'none', background: '#6D4AFF', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }
-const btnSecondary = { padding: '12px 28px', borderRadius: 12, border: '1.5px solid #e2e0f0', background: '#fff', color: '#333', fontSize: 15, fontWeight: 600, cursor: 'pointer' }
-const tag = { display: 'inline-block', background: '#f3f0ff', color: '#6D4AFF', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, marginRight: 6 }
+const btnSecondary = { padding: '12px 28px', borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.12)', background: 'rgba(40,28,70,0.6)', color: 'var(--foreground)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }
+const tag = { display: 'inline-block', background: 'oklch(68% .22 295 / .15)', color: 'oklch(82% .18 295)', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, marginRight: 6 }

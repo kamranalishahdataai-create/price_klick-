@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' })
@@ -19,8 +19,8 @@ export default function Contact() {
       </p>
 
       {submitted ? (
-        <div style={{ textAlign: 'center', padding: 40, background: '#f0fdf4', borderRadius: 16, border: '1px solid #bbf7d0' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+        <div style={{ textAlign: 'center', padding: 40, background: 'oklch(74% .18 155 / .15)', borderRadius: 16, border: '1px solid oklch(74% .18 155 / .35)' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>âœ…</div>
           <h2 style={{ color: '#16a34a', marginBottom: 8 }}>Message Sent!</h2>
           <p style={{ color: '#6a6880' }}>We'll get back to you within 24 hours.</p>
         </div>
@@ -66,7 +66,7 @@ export default function Contact() {
 
       <div style={{ marginTop: 48, textAlign: 'center', color: '#6a6880', fontSize: 14 }}>
         <p style={{ marginBottom: 8 }}><strong>Email:</strong> support@priceklick.com</p>
-        <p><strong>Website:</strong> <a href="https://priceklick.com" style={{ color: '#6D4AFF' }}>priceklick.com</a></p>
+        <p><strong>Website:</strong> <a href="https://priceklick.com" style={{ color: 'oklch(78% .18 295)' }}>priceklick.com</a></p>
       </div>
     </section>
   )

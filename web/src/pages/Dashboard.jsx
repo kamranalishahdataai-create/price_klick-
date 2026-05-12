@@ -1,4 +1,4 @@
-// web/src/pages/Dashboard.jsx
+﻿// web/src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useConsent, useWishlist, useCompare, useCoupons, useTrends } from "../hooks/useBackendExamples";
 import RunAgentButton from "../components/RunAgentButton";
@@ -45,7 +45,7 @@ export default function Dashboard() {
     e.preventDefault();
     await add({ title, target_price: Number(target), currency: "USD" });
     setWishlist(await list());
-    addToast(`“${title}” saved to wishlist.`, "success");
+    addToast(`â€œ${title}â€ saved to wishlist.`, "success");
     setTitle("");
   }
 
@@ -80,7 +80,7 @@ export default function Dashboard() {
     ) : null;
 
   return (
-    <section style={{ background: "#F7F5FF", padding: "64px 0" }}>
+    <section style={{ background: "rgba(255,255,255,0.04)", padding: "64px 0" }}>
       <div className="container" style={{ maxWidth: 1000, margin: "0 auto", padding: "0 16px" }}>
         <h1 style={{ fontSize: 44, fontWeight: 800, marginBottom: 12 }}>
           Your Savings Hub <HeaderBadge />
@@ -104,7 +104,7 @@ export default function Dashboard() {
             display: "grid",
             gridTemplateColumns: "1fr 160px",
             gap: 12,
-            background: "#ffffff",
+            background: "rgba(40,28,70,0.6)",
             padding: 16,
             borderRadius: 12,
             boxShadow: "0 8px 30px rgba(50, 0, 150, 0.06)",
@@ -134,7 +134,7 @@ export default function Dashboard() {
               opacity: consenting ? 0.7 : 1,
             }}
           >
-            {consenting ? "Saving…" : "Save email"}
+            {consenting ? "Savingâ€¦" : "Save email"}
           </button>
         </div>
 
@@ -145,7 +145,7 @@ export default function Dashboard() {
             display: "grid",
             gridTemplateColumns: "1fr 140px 160px",
             gap: 12,
-            background: "#ffffff",
+            background: "rgba(40,28,70,0.6)",
             padding: 16,
             borderRadius: 12,
             boxShadow: "0 8px 30px rgba(50, 0, 150, 0.08)",
@@ -185,7 +185,7 @@ export default function Dashboard() {
         </form>
 
         {loading ? (
-          <div>Loading…</div>
+          <div>Loadingâ€¦</div>
         ) : wishlist.length === 0 ? (
           <p style={{ color: "#5b5b76" }}>No items yet. Use the form above to add one.</p>
         ) : (
@@ -194,7 +194,7 @@ export default function Dashboard() {
               <div
                 key={it.id}
                 style={{
-                  background: "#fff",
+                  background: "rgba(40,28,70,0.6)",
                   borderRadius: 14,
                   padding: 16,
                   boxShadow: "0 8px 30px rgba(50, 0, 150, 0.06)",
@@ -204,8 +204,8 @@ export default function Dashboard() {
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 18 }}>{it.title}</div>
                     <div style={{ color: "#6a6880", fontSize: 14, marginTop: 4 }}>
-                      Target: {it.target_price ?? "—"} {it.currency} &nbsp;•&nbsp; Last:{" "}
-                      {it.last_price ?? "—"} {it.currency}
+                      Target: {it.target_price ?? "â€”"} {it.currency} &nbsp;â€¢&nbsp; Last:{" "}
+                      {it.last_price ?? "â€”"} {it.currency}
                     </div>
                   </div>
 
@@ -287,7 +287,7 @@ export default function Dashboard() {
                       onClick={async () => {
                         await remove(it.id);
                         setWishlist(await list());
-                        addToast(`“${it.title}” removed.`, "warning");
+                        addToast(`â€œ${it.title}â€ removed.`, "warning");
                       }}
                     >
                       Remove

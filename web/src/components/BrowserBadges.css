@@ -33,18 +33,19 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border: 1px dashed #e7e2ff;
+  border: 1px solid var(--border-color);
   border-radius: 14px;
-  background: #faf8ff;
+  background: var(--card-bg);
   transition: all var(--transition-normal);
   cursor: pointer;
+  backdrop-filter: blur(12px);
 }
 
 .badge:hover {
   transform: translateY(-4px);
-  border-color: var(--bg);
-  background: #f5f0ff;
-  box-shadow: 0 8px 25px rgba(111, 65, 232, 0.15);
+  border-color: var(--primary);
+  background: rgba(255,255,255,0.08);
+  box-shadow: var(--shadow-glow);
 }
 
 .badge-content {
@@ -66,8 +67,9 @@
 }
 
 .tag {
-  background: #e9f7f0;
-  color: #1b8b55;
+  background: oklch(74% .18 155 / .18);
+  color: oklch(82% .18 155);
+  border: 1px solid oklch(74% .18 155 / .35);
   border-radius: 999px;
   padding: 6px 10px;
   font-weight: 600;

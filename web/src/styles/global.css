@@ -1,18 +1,63 @@
+/* =========================================================================
+   PriceKlick — Lovable Dark Glassmorphic Theme
+   Mirrored from https://find-bright-deals.lovable.app/
+   ========================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
 :root {
-  --bg: #6f41e8;
-  --bg2: #9a58ff;
-  --card: #ffffff;
-  --text: #0f0f13;
-  --muted: #6b6b7c;
-  --accent: #ffd84d;
-  
+  /* === Lovable design tokens (OKLCH) === */
+  --radius: 0.875rem;
+  --background: oklch(16% .03 280);
+  --foreground: oklch(98% .01 280);
+  --card-bg: oklch(22% .04 280 / .6);
+  --card-foreground: oklch(98% .01 280);
+  --popover: oklch(22% .04 280);
+  --popover-foreground: oklch(98% .01 280);
+  --primary: oklch(68% .22 295);
+  --primary-foreground: oklch(99% .01 280);
+  --primary-glow: oklch(78% .18 300);
+  --accent: oklch(82% .16 200);
+  --accent-foreground: oklch(18% .04 280);
+  --secondary: oklch(28% .05 280);
+  --secondary-foreground: oklch(98% .01 280);
+  --muted-bg: oklch(26% .04 280);
+  --muted-foreground: oklch(72% .03 280);
+  --destructive: oklch(65% .22 25);
+  --destructive-foreground: oklch(99% .01 280);
+  --success: oklch(74% .18 155);
+  --success-foreground: oklch(16% .03 280);
+  --border-color: oklch(100% 0 0 / .08);
+  --input-bg: oklch(100% 0 0 / .1);
+  --ring: oklch(68% .22 295);
+
+  --gradient-brand: linear-gradient(135deg, oklch(68% .22 295), oklch(78% .18 320), oklch(82% .16 200));
+  --gradient-soft: linear-gradient(135deg, oklch(68% .22 295 / .18), oklch(82% .16 200 / .12));
+  --gradient-radial: radial-gradient(60% 60% at 50% 0%, oklch(68% .22 295 / .35), transparent 70%);
+  --gradient-mesh:
+    radial-gradient(at 12% 8%, oklch(68% .22 295 / .35) 0, transparent 50%),
+    radial-gradient(at 88% 12%, oklch(82% .16 200 / .28) 0, transparent 55%),
+    radial-gradient(at 50% 100%, oklch(78% .18 320 / .25) 0, transparent 55%);
+
+  --shadow-glow: 0 20px 60px -20px oklch(68% .22 295 / .55);
+  --shadow-soft: 0 10px 30px -12px oklch(0% 0 0 / .5);
+  --shadow-elevated: 0 30px 80px -30px oklch(0% 0 0 / .6);
+  --transition-smooth: cubic-bezier(.2, .7, .2, 1);
+
+  /* === Legacy aliases (preserve backwards compatibility) === */
+  --bg: var(--primary);
+  --bg2: var(--primary-glow);
+  --card: var(--card-bg);
+  --text: var(--foreground);
+  --muted: var(--muted-foreground);
+
   /* Animation variables */
-  --transition-fast: 0.2s ease-out;
-  --transition-normal: 0.3s ease-out;
-  --transition-slow: 0.5s ease-out;
+  --transition-fast: 0.2s var(--transition-smooth);
+  --transition-normal: 0.3s var(--transition-smooth);
+  --transition-slow: 0.5s var(--transition-smooth);
   --transition-bounce: 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.1);
-  --shadow-active: 0 8px 16px rgba(0, 0, 0, 0.15);
+  --shadow-hover: var(--shadow-glow);
+  --shadow-active: var(--shadow-soft);
 }
 
 * {
@@ -25,10 +70,45 @@ html, body, #root {
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-  background: #f7f6fb;
-  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--background);
+  background-image: var(--gradient-mesh);
+  background-attachment: fixed;
+  color: var(--foreground);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+p, span, li, label, div { color: inherit; }
+
+::selection { background: oklch(68% .22 295 / .35); color: var(--foreground); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* HSL fallback for browsers without OKLCH support */
+@supports not (color: oklch(0% 0 0)) {
+  :root {
+    --background: #0e0a1f;
+    --foreground: #f7f5ff;
+    --card-bg: rgba(40, 28, 70, 0.6);
+    --primary: #8a5cff;
+    --primary-glow: #b69aff;
+    --accent: #5dd6e6;
+    --muted-foreground: #a9a3c4;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --input-bg: rgba(255, 255, 255, 0.10);
+  }
 }
 
 /* Page load animation */
@@ -225,4 +305,326 @@ a {
   .container {
     padding: 12px;
   }
+}
+
+/* =========================================================================
+   GLOBAL DARK-THEME OVERRIDES — re-skin legacy component CSS
+   ========================================================================= */
+
+/* ---------- Navbar ---------- */
+.nav {
+  background: linear-gradient(180deg, rgba(14,10,31,0.85), rgba(14,10,31,0.65)) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-bottom: 1px solid var(--border-color) !important;
+}
+.nav.scrolled {
+  background: linear-gradient(180deg, rgba(14,10,31,0.95), rgba(14,10,31,0.85)) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.brand { color: var(--foreground); font-family: 'Space Grotesk', sans-serif; }
+.brand-badge {
+  background: var(--gradient-brand) !important;
+  box-shadow: 0 6px 20px oklch(68% .22 295 / .4);
+}
+.search {
+  background: var(--input-bg) !important;
+  border: 1px solid var(--border-color);
+  color: var(--foreground);
+}
+.search:focus-within {
+  background: rgba(255,255,255,0.14) !important;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px oklch(68% .22 295 / .25);
+}
+.search input { color: var(--foreground); }
+.search input::placeholder { color: var(--muted-foreground); }
+.nav-links a {
+  color: var(--muted-foreground);
+  font-weight: 500;
+  position: relative;
+  padding: 6px 2px;
+}
+.nav-links a:hover { color: var(--foreground); }
+.nav-links a.active,
+.nav-links a[aria-current="page"] {
+  color: var(--foreground);
+}
+.nav-links a.active::after,
+.nav-links a[aria-current="page"]::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -4px;
+  height: 2px;
+  background: var(--gradient-brand);
+  border-radius: 2px;
+}
+.user-greeting { color: var(--muted-foreground); }
+.user-greeting span { color: var(--primary-glow); }
+
+/* ---------- Buttons ---------- */
+.btn {
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+.btn.primary {
+  background: var(--gradient-brand) !important;
+  color: white !important;
+  border: none;
+  box-shadow: var(--shadow-glow);
+}
+.btn.primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 24px 70px -20px oklch(68% .22 295 / .7);
+}
+.btn.ghost {
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+}
+.btn.ghost:hover {
+  background: rgba(255,255,255,0.12) !important;
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
+.btn.login, .btn.signup {
+  /* legacy aliases */
+}
+.btn.signup, .btn.primary { color: white; }
+.btn.logout {
+  background: rgba(255,107,107,0.12) !important;
+  color: #ff8080 !important;
+  border: 1px solid rgba(255,107,107,0.25) !important;
+}
+.btn.logout:hover {
+  background: rgba(255,107,107,0.25) !important;
+  color: #ffb0b0 !important;
+}
+.admin-link {
+  background: linear-gradient(135deg, oklch(65% .22 25), oklch(70% .2 35)) !important;
+  box-shadow: 0 4px 18px oklch(65% .22 25 / .4) !important;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  background:
+    radial-gradient(80% 120% at 50% -10%, oklch(78% .18 320 / .35), transparent),
+    var(--gradient-mesh),
+    var(--background) !important;
+  color: var(--foreground) !important;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%) !important;
+}
+.hero h1 {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.hero p { color: var(--muted-foreground) !important; }
+.kicker {
+  color: var(--accent) !important;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+}
+.pill {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--foreground) !important;
+  backdrop-filter: blur(8px);
+}
+.pill:hover {
+  background: rgba(255,255,255,0.12) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+}
+
+/* ---------- Sections ---------- */
+.section.subhero {
+  background: linear-gradient(180deg, oklch(22% .04 280 / .4), transparent) !important;
+}
+.section-title h2 {
+  background: linear-gradient(135deg, var(--foreground), var(--muted-foreground));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-weight: 700;
+}
+.muted { color: var(--muted-foreground) !important; }
+
+/* ---------- Cards (feature / step / store) ---------- */
+.feature-card,
+.step-card,
+.store-card {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius) !important;
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: var(--shadow-soft) !important;
+  color: var(--foreground);
+  transition: all 0.3s var(--transition-smooth);
+}
+.feature-card:hover,
+.step-card:hover,
+.store-card:hover {
+  transform: translateY(-6px);
+  border-color: oklch(68% .22 295 / .5) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+.feature-card::before {
+  background: var(--gradient-brand) !important;
+}
+.feature-card h3,
+.step-card h3,
+.store-card strong { color: var(--foreground); }
+.step-number {
+  color: var(--accent) !important;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  background: rgba(14,10,31,0.6) !important;
+  border-top: 1px solid var(--border-color) !important;
+  color: var(--muted-foreground);
+  backdrop-filter: blur(12px);
+}
+.footer .brand-badge { background: var(--gradient-brand) !important; }
+
+/* ---------- Browser Badges ---------- */
+.badge {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--foreground) !important;
+  backdrop-filter: blur(12px);
+}
+.badge:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: oklch(68% .22 295 / .5) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+.badge .tag,
+.tag {
+  background: oklch(74% .18 155 / .15) !important;
+  color: oklch(80% .18 155) !important;
+  border: 1px solid oklch(74% .18 155 / .3);
+}
+
+/* ---------- Mini Widget (browser mockup) ---------- */
+.mw-wrap { padding: 32px 24px; }
+.mw-card {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-elevated) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  color: var(--foreground);
+}
+.mw-name, .mw-amount { color: var(--foreground) !important; }
+.mw-sub, .mw-row, .mw-count { color: var(--muted-foreground) !important; }
+.mw-bar { background: rgba(255,255,255,0.08) !important; }
+.mw-fill {
+  background: var(--gradient-brand) !important;
+}
+.mw-amount { color: oklch(80% .18 155) !important; }
+.mw-btn {
+  background: var(--gradient-brand) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+.mw-secure {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--muted-foreground) !important;
+  border: 1px solid var(--border-color);
+}
+.mw-badge {
+  background: linear-gradient(135deg, oklch(82% .16 200), oklch(78% .18 320)) !important;
+  color: oklch(18% .04 280) !important;
+  box-shadow: 0 6px 18px oklch(78% .18 320 / .35) !important;
+}
+
+/* ---------- Inputs / forms (generic) ---------- */
+input:not([type=checkbox]):not([type=radio]):not([type=range]),
+select, textarea {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--foreground);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: 'Inter', sans-serif;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px oklch(68% .22 295 / .25);
+}
+input::placeholder, textarea::placeholder { color: var(--muted-foreground); opacity: 0.7; }
+
+/* ---------- Loading shimmer (dark) ---------- */
+.loading-shimmer {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.04) 75%) !important;
+}
+
+/* ---------- Focus ring ---------- */
+*:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px;
+}
+*:focus { outline: none; }
+
+/* ---------- Anchor color ---------- */
+a { color: var(--accent); }
+a:hover { color: var(--primary-glow); }
+.nav-links a, .footer a, .brand { color: inherit; }
+.nav-links a:hover { color: var(--foreground); }
+
+/* ---------- Generic page wrapper utility ---------- */
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: var(--shadow-soft);
+  padding: 24px;
+}
+.gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ---------- Trending chips (services / dashboards) ---------- */
+.chip, .filter-chip {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-color);
+  color: var(--foreground);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.chip:hover, .filter-chip:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: oklch(68% .22 295 / .4);
+}
+.chip.active, .filter-chip.active {
+  background: var(--gradient-brand);
+  color: white;
+  border-color: transparent;
 }

@@ -1,4 +1,4 @@
-// web/src/components/RunAgentButton.jsx
+﻿// web/src/components/RunAgentButton.jsx
 import { useState } from "react";
 import { API_BASE } from "../api/client";
 
@@ -29,11 +29,11 @@ export default function RunAgentButton({ secret = "changeme" }) {
       setSummary({ notified, updated });
       setLastRun(new Date());
       // simple toast
-      alert(`Agent ran ✅\nUpdated: ${updated}\nNotified: ${notified}`);
+      alert(`Agent ran âœ…\nUpdated: ${updated}\nNotified: ${notified}`);
       console.log("Agent results:", data);
     } catch (e) {
       setError(e.message || String(e));
-      alert(`Agent failed ❌\n${e.message || e}`);
+      alert(`Agent failed âŒ\n${e.message || e}`);
       console.error(e);
     } finally {
       setLoading(false);
@@ -47,7 +47,7 @@ export default function RunAgentButton({ secret = "changeme" }) {
         gap: 12,
         alignItems: "center",
         justifyContent: "space-between",
-        background: "#fff",
+        background: "rgba(40,28,70,0.6)",
         padding: 16,
         borderRadius: 12,
         boxShadow: "0 8px 30px rgba(50,0,150,.06)",
@@ -61,7 +61,7 @@ export default function RunAgentButton({ secret = "changeme" }) {
         </div>
         {summary && (
           <div style={{ marginTop: 6, fontSize: 13, color: "#6a6880" }}>
-            Last run: <b>{lastRun?.toLocaleTimeString()}</b> • Updated{" "}
+            Last run: <b>{lastRun?.toLocaleTimeString()}</b> â€¢ Updated{" "}
             <b>{summary.updated}</b> items, emailed <b>{summary.notified}</b>.
           </div>
         )}
@@ -88,7 +88,7 @@ export default function RunAgentButton({ secret = "changeme" }) {
           opacity: loading ? 0.7 : 1,
         }}
       >
-        {loading ? "Running…" : "Run Agent Now"}
+        {loading ? "Runningâ€¦" : "Run Agent Now"}
       </button>
     </div>
   );

@@ -20,10 +20,13 @@
   max-width: 460px;
   width: 92%;
   padding: 22px;
-  background: #fff;
-  border: 1px solid var(--gray);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  color: var(--foreground);
   transition: all var(--transition-normal);
   animation: fadeInScale 0.6s ease-out;
 }

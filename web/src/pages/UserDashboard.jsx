@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { get, post, API_BASE } from '../api/client';
@@ -98,16 +98,16 @@ export default function UserDashboard() {
               Welcome back, {user.firstName || user.email.split('@')[0]}!
             </h1>
             <p className="panel-subtitle">
-              {user.email} · Member since {new Date(user.createdAt).toLocaleDateString()}
+              {user.email} Â· Member since {new Date(user.createdAt).toLocaleDateString()}
               {user.role === 'admin' && (
-                <Link to="/admin" style={{ marginLeft: 12, color: '#6D4AFF', fontWeight: 700, textDecoration: 'none' }}>
-                  🛡️ Admin Panel →
+                <Link to="/admin" style={{ marginLeft: 12, color: 'oklch(78% .18 295)', fontWeight: 700, textDecoration: 'none' }}>
+                  ðŸ›¡ï¸ Admin Panel â†’
                 </Link>
               )}
             </p>
           </div>
           <button className="panel-btn panel-btn-ghost" onClick={logout}>
-            🚪 Logout
+            ðŸšª Logout
           </button>
         </div>
 
@@ -119,10 +119,10 @@ export default function UserDashboard() {
               className={`panel-tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'overview' ? '📊 Overview' :
-               tab === 'prepay' ? '💸 PrePay' :
-               tab === 'history' ? '🕐 History' :
-               tab === 'profile' ? '👤 Profile' : '⚙️ Settings'}
+              {tab === 'overview' ? 'ðŸ“Š Overview' :
+               tab === 'prepay' ? 'ðŸ’¸ PrePay' :
+               tab === 'history' ? 'ðŸ• History' :
+               tab === 'profile' ? 'ðŸ‘¤ Profile' : 'âš™ï¸ Settings'}
             </button>
           ))}
         </div>
@@ -136,22 +136,22 @@ export default function UserDashboard() {
               <>
                 <div className="stat-grid">
                   <div className="stat-card">
-                    <div className="stat-icon">🔍</div>
+                    <div className="stat-icon">ðŸ”</div>
                     <div className="stat-value">{searchHistory.length}</div>
                     <div className="stat-label">Searches Tracked</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">💡</div>
+                    <div className="stat-icon">ðŸ’¡</div>
                     <div className="stat-value">{recommendations.length}</div>
                     <div className="stat-label">Recommendations</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">🔥</div>
+                    <div className="stat-icon">ðŸ”¥</div>
                     <div className="stat-value">{trending.length}</div>
                     <div className="stat-label">Trending Brands</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">⭐</div>
+                    <div className="stat-icon">â­</div>
                     <div className="stat-value">{user.preferences?.favoriteStores?.length || 0}</div>
                     <div className="stat-label">Favorite Stores</div>
                   </div>
@@ -159,10 +159,10 @@ export default function UserDashboard() {
 
                 {/* Recommendations */}
                 <div className="panel-card">
-                  <div className="panel-card-title">💡 Recommended for You</div>
+                  <div className="panel-card-title">ðŸ’¡ Recommended for You</div>
                   {recommendations.length === 0 ? (
                     <div className="empty-state">
-                      <div className="empty-icon">🤖</div>
+                      <div className="empty-icon">ðŸ¤–</div>
                       <div className="empty-text">No recommendations yet</div>
                       <div className="empty-hint">Browse more stores to get personalized suggestions</div>
                     </div>
@@ -171,7 +171,7 @@ export default function UserDashboard() {
                       {recommendations.slice(0, 5).map((r, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f0ecff' }}>
                           <span style={{ fontSize: 24 }}>
-                            {r.type === 'hot_trending' ? '🔥' : r.type === 'trending_brand' ? '⭐' : '💡'}
+                            {r.type === 'hot_trending' ? 'ðŸ”¥' : r.type === 'trending_brand' ? 'â­' : 'ðŸ’¡'}
                           </span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 700, fontSize: 15 }}>{r.brand}</div>
@@ -186,14 +186,14 @@ export default function UserDashboard() {
 
                 {/* Trending */}
                 <div className="panel-card">
-                  <div className="panel-card-title">🔥 Trending Now</div>
+                  <div className="panel-card-title">ðŸ”¥ Trending Now</div>
                   {trending.length === 0 ? (
                     <p style={{ color: '#6a6880', fontSize: 14 }}>No trending brands right now</p>
                   ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {trending.map((t, i) => (
                         <span key={i} className="badge badge-warning" style={{ fontSize: 13, padding: '6px 14px' }}>
-                          🔥 {t.brand} ({t.uniqueUsers} users)
+                          ðŸ”¥ {t.brand} ({t.uniqueUsers} users)
                         </span>
                       ))}
                     </div>
@@ -205,10 +205,10 @@ export default function UserDashboard() {
             {/* ====== HISTORY TAB ====== */}
             {activeTab === 'history' && (
               <div className="panel-card">
-                <div className="panel-card-title">🕐 Your Search History</div>
+                <div className="panel-card-title">ðŸ• Your Search History</div>
                 {searchHistory.length === 0 ? (
                   <div className="empty-state">
-                    <div className="empty-icon">📭</div>
+                    <div className="empty-icon">ðŸ“­</div>
                     <div className="empty-text">No search history yet</div>
                     <div className="empty-hint">Use the extension to browse stores and your activity will appear here</div>
                   </div>
@@ -225,13 +225,13 @@ export default function UserDashboard() {
                     <tbody>
                       {searchHistory.slice(0, 50).map((h, i) => (
                         <tr key={i}>
-                          <td><strong>{h.brand || '—'}</strong></td>
-                          <td>{h.query || '—'}</td>
+                          <td><strong>{h.brand || 'â€”'}</strong></td>
+                          <td>{h.query || 'â€”'}</td>
                           <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {h.product || '—'}
+                            {h.product || 'â€”'}
                           </td>
                           <td style={{ fontSize: 12, color: '#888' }}>
-                            {h.timestamp ? new Date(h.timestamp).toLocaleString() : '—'}
+                            {h.timestamp ? new Date(h.timestamp).toLocaleString() : 'â€”'}
                           </td>
                         </tr>
                       ))}
@@ -247,15 +247,15 @@ export default function UserDashboard() {
             {/* ====== PROFILE TAB ====== */}
             {activeTab === 'profile' && (
               <div className="panel-card">
-                <div className="panel-card-title">👤 Your Profile</div>
+                <div className="panel-card-title">ðŸ‘¤ Your Profile</div>
 
                 <div style={{ display: 'grid', gap: 16, maxWidth: 500 }}>
                   <div>
                     <label style={{ fontWeight: 600, fontSize: 13, color: '#555', display: 'block', marginBottom: 4 }}>Email</label>
-                    <div style={{ padding: '10px 14px', background: '#f7f5ff', borderRadius: 10, color: '#333' }}>
+                    <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 10, color: 'var(--foreground)' }}>
                       {user.email}
                       {user.isVerified ? (
-                        <span className="badge badge-verified" style={{ marginLeft: 8 }}>✓ Verified</span>
+                        <span className="badge badge-verified" style={{ marginLeft: 8 }}>âœ“ Verified</span>
                       ) : (
                         <span className="badge badge-unverified" style={{ marginLeft: 8 }}>Unverified</span>
                       )}
@@ -264,7 +264,7 @@ export default function UserDashboard() {
 
                   <div>
                     <label style={{ fontWeight: 600, fontSize: 13, color: '#555', display: 'block', marginBottom: 4 }}>Role</label>
-                    <div style={{ padding: '10px 14px', background: '#f7f5ff', borderRadius: 10 }}>
+                    <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
                       <span className={`badge ${user.role === 'admin' ? 'badge-admin' : 'badge-user'}`}>
                         {user.role}
                       </span>
@@ -305,7 +305,7 @@ export default function UserDashboard() {
                           ? `${user.firstName || ''} ${user.lastName || ''}`
                           : '(not set)'}
                       </div>
-                      <button className="panel-btn panel-btn-ghost" onClick={() => setEditProfile(true)}>✏️ Edit Profile</button>
+                      <button className="panel-btn panel-btn-ghost" onClick={() => setEditProfile(true)}>âœï¸ Edit Profile</button>
                     </div>
                   )}
                 </div>
@@ -316,7 +316,7 @@ export default function UserDashboard() {
             {activeTab === 'settings' && (
               <>
                 <div className="panel-card">
-                  <div className="panel-card-title">🔒 Change Password</div>
+                  <div className="panel-card-title">ðŸ”’ Change Password</div>
                   <form onSubmit={handlePasswordChange} style={{ display: 'grid', gap: 12, maxWidth: 400 }}>
                     <input
                       className="filter-input"
@@ -352,7 +352,7 @@ export default function UserDashboard() {
                 </div>
 
                 <div className="panel-card">
-                  <div className="panel-card-title">🔔 Notification Preferences</div>
+                  <div className="panel-card-title">ðŸ”” Notification Preferences</div>
                   <div style={{ display: 'grid', gap: 12 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                       <input
@@ -380,7 +380,7 @@ export default function UserDashboard() {
                 </div>
 
                 <div className="panel-card" style={{ borderColor: '#fce4ec' }}>
-                  <div className="panel-card-title" style={{ color: '#c62828' }}>⚠️ Danger Zone</div>
+                  <div className="panel-card-title" style={{ color: '#c62828' }}>âš ï¸ Danger Zone</div>
                   <p style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>
                     Once you delete your account, there is no going back. Please be certain.
                   </p>
@@ -403,7 +403,7 @@ export default function UserDashboard() {
                       }
                     }}
                   >
-                    🗑️ Delete My Account
+                    ðŸ—‘ï¸ Delete My Account
                   </button>
                 </div>
               </>
@@ -415,7 +415,7 @@ export default function UserDashboard() {
   );
 }
 
-// PrePay v1 panel — fetches /api/insights/weekly
+// PrePay v1 panel â€” fetches /api/insights/weekly
 function PrePayPanel() {
   const [state, setState] = useState({ loading: true, data: null, error: null });
 
@@ -436,17 +436,17 @@ function PrePayPanel() {
     return () => { alive = false; };
   }, []);
 
-  if (state.loading) return <div className="panel-loading">🤖 PrePay is analysing your activity...</div>;
+  if (state.loading) return <div className="panel-loading">ðŸ¤– PrePay is analysing your activity...</div>;
   if (state.error) return <div className="panel-card"><div className="panel-card-title">PrePay</div><div style={{ color: '#dc2626' }}>Error: {state.error}</div></div>;
 
   const d = state.data || {};
   if (!d.ok && d.minRequired) {
     return (
       <div className="panel-card">
-        <div className="panel-card-title">💸 PrePay — Spending Coach</div>
-        <p style={{ color: '#64748b' }}>
+        <div className="panel-card-title">ðŸ’¸ PrePay â€” Spending Coach</div>
+        <p style={{ color: 'var(--muted-foreground)' }}>
           PrePay needs at least <strong>{d.minRequired}</strong> tracked activities to generate insights.
-          You currently have <strong>{d.count || 0}</strong>. Use Lens, search services, or click coupons —
+          You currently have <strong>{d.count || 0}</strong>. Use Lens, search services, or click coupons â€”
           PrePay will start surfacing patterns and savings here.
         </p>
       </div>
@@ -462,18 +462,18 @@ function PrePayPanel() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div className="panel-card">
-        <div className="panel-card-title">💸 PrePay — Your Weekly Insights</div>
-        <p style={{ fontSize: 16, lineHeight: 1.5, marginBottom: 12 }}>{ins.summary || '—'}</p>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: '#475569' }}>
-          <span>📊 {dig.count} activities (last {dig.windowDays}d)</span>
-          {typeof dig.totalSpend === 'number' && dig.totalSpend > 0 && <span>💰 ~${dig.totalSpend.toFixed(2)} CAD tracked</span>}
-          {typeof ins.predictedNextWeekSpend === 'number' && <span>📈 Predicted next week: ${ins.predictedNextWeekSpend} CAD</span>}
+        <div className="panel-card-title">ðŸ’¸ PrePay â€” Your Weekly Insights</div>
+        <p style={{ fontSize: 16, lineHeight: 1.5, marginBottom: 12 }}>{ins.summary || 'â€”'}</p>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: 'var(--muted-foreground)' }}>
+          <span>ðŸ“Š {dig.count} activities (last {dig.windowDays}d)</span>
+          {typeof dig.totalSpend === 'number' && dig.totalSpend > 0 && <span>ðŸ’° ~${dig.totalSpend.toFixed(2)} CAD tracked</span>}
+          {typeof ins.predictedNextWeekSpend === 'number' && <span>ðŸ“ˆ Predicted next week: ${ins.predictedNextWeekSpend} CAD</span>}
         </div>
       </div>
 
       {Array.isArray(ins.patterns) && ins.patterns.length > 0 && (
         <div className="panel-card">
-          <div className="panel-card-title">🔁 Patterns</div>
+          <div className="panel-card-title">ðŸ” Patterns</div>
           <ul style={{ paddingLeft: 20, margin: 0 }}>
             {ins.patterns.map((p, i) => <li key={i} style={{ marginBottom: 6 }}>{p}</li>)}
           </ul>
@@ -482,12 +482,12 @@ function PrePayPanel() {
 
       {Array.isArray(ins.suggestions) && ins.suggestions.length > 0 && (
         <div className="panel-card">
-          <div className="panel-card-title">💡 Suggestions</div>
+          <div className="panel-card-title">ðŸ’¡ Suggestions</div>
           <div style={{ display: 'grid', gap: 10 }}>
             {ins.suggestions.map((s, i) => (
-              <div key={i} style={{ padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <div key={i} style={{ padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ fontWeight: 700 }}>{s.title}</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{s.rationale}</div>
+                <div style={{ fontSize: 13, color: 'var(--muted-foreground)', marginTop: 4 }}>{s.rationale}</div>
                 {typeof s.potentialSavings === 'number' && (
                   <div style={{ fontSize: 13, color: '#16a34a', fontWeight: 700, marginTop: 4 }}>
                     Potential savings: ${s.potentialSavings} CAD
@@ -501,11 +501,11 @@ function PrePayPanel() {
 
       {Array.isArray(ins.cheaperAlternatives) && ins.cheaperAlternatives.length > 0 && (
         <div className="panel-card">
-          <div className="panel-card-title">🔀 Cheaper Alternatives</div>
+          <div className="panel-card-title">ðŸ”€ Cheaper Alternatives</div>
           <div style={{ display: 'grid', gap: 8 }}>
             {ins.cheaperAlternatives.map((a, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: 10, borderRadius: 8, background: '#f0fdf4' }}>
-                <span><strong>{a.from}</strong> → <strong>{a.to}</strong></span>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: 10, borderRadius: 8, background: 'oklch(74% .18 155 / .15)' }}>
+                <span><strong>{a.from}</strong> â†’ <strong>{a.to}</strong></span>
                 <span style={{ color: '#16a34a', fontWeight: 700 }}>{a.estSavings}</span>
               </div>
             ))}
@@ -515,11 +515,11 @@ function PrePayPanel() {
 
       {dig.topCategoriesText || (dig.byCategory && Object.keys(dig.byCategory).length > 0) ? (
         <div className="panel-card">
-          <div className="panel-card-title">🗂️ Top categories</div>
+          <div className="panel-card-title">ðŸ—‚ï¸ Top categories</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {Object.entries(dig.byCategory || {}).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([c, n]) => (
               <span key={c} style={{ padding: '4px 10px', borderRadius: 999, background: '#eef2ff', fontSize: 12, fontWeight: 600 }}>
-                {c} · {n}
+                {c} Â· {n}
               </span>
             ))}
           </div>
