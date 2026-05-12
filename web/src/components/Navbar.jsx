@@ -20,25 +20,20 @@ export default function Navbar(){
           <span>PriceKlick</span>
         </Link>
 
-        <div className="search">
-          <span>🔎</span>
-          <input placeholder="Search products..." />
-        </div>
-
         <div className="nav-links">
           <NavLink to="/features">Features</NavLink>
-          {isAuthenticated ? (
-            <NavLink to="/user-dashboard">Dashboard</NavLink>
-          ) : (
-            <NavLink to="/dashboard">Dashboard</NavLink>
-          )}
           <NavLink to="/how-it-works">How It Works</NavLink>
-          <NavLink to="/lens">🔍 Lens</NavLink>
-          <NavLink to="/services">🛠️ Services</NavLink>
+          <NavLink to="/lens">JustKlick</NavLink>
           <NavLink to="/stores">Stores</NavLink>
-          <NavLink to="/install">Install</NavLink>
+          <NavLink to="/services">Services</NavLink>
+          {isAuthenticated ? (
+            <NavLink to="/user-dashboard">PrePay</NavLink>
+          ) : (
+            <NavLink to="/dashboard">PrePay</NavLink>
+          )}
+          <NavLink to="/install">Vendor</NavLink>
           {isAuthenticated && user?.role === 'admin' && (
-            <NavLink to="/admin" className="admin-link">🛡️ Admin</NavLink>
+            <NavLink to="/admin" className="admin-link">Admin</NavLink>
           )}
         </div>
 
@@ -47,12 +42,12 @@ export default function Navbar(){
             <span className="user-greeting">
               {user?.firstName || user?.email?.split('@')[0]}
             </span>
-            <button className="btn ghost" onClick={handleLogout}>Logout</button>
+            <button className="btn ghost logout" onClick={handleLogout}>Logout</button>
           </div>
         ) : (
           <div className="auth-nav">
-            <Link to="/login" className="btn ghost">Login</Link>
-            <Link to="/register" className="btn primary">Sign Up</Link>
+            <Link to="/login" className="nav-login">Login</Link>
+            <Link to="/install" className="nav-install">Install Free</Link>
           </div>
         )}
       </div>

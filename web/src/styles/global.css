@@ -408,44 +408,7 @@ a {
   box-shadow: 0 4px 18px oklch(65% .22 25 / .4) !important;
 }
 
-/* ---------- Hero ---------- */
-.hero {
-  background:
-    radial-gradient(80% 120% at 50% -10%, oklch(78% .18 320 / .35), transparent),
-    var(--gradient-mesh),
-    var(--background) !important;
-  color: var(--foreground) !important;
-  position: relative;
-  overflow: hidden;
-}
-.hero::before {
-  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%) !important;
-}
-.hero h1 {
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-.hero p { color: var(--muted-foreground) !important; }
-.kicker {
-  color: var(--accent) !important;
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 600;
-}
-.pill {
-  background: rgba(255,255,255,0.06) !important;
-  border: 1px solid var(--border-color) !important;
-  color: var(--foreground) !important;
-  backdrop-filter: blur(8px);
-}
-.pill:hover {
-  background: rgba(255,255,255,0.12) !important;
-  border-color: rgba(255,255,255,0.2) !important;
-}
+/* ---------- Hero (owned by HeroCTA.css; keep empty to avoid overrides) ---------- */
 
 /* ---------- Sections ---------- */
 .section.subhero {

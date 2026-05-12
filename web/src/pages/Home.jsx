@@ -9,7 +9,7 @@ import FeatureGrid from '../components/FeatureGrid.jsx'
 export default function Home(){
   return (
     <div>
-      <HeroCTA title="Save Money Automatically" subtitle="Our smart browser extension finds and applies the best coupon codes instantly at checkout."/>
+      <HeroCTA title="Save money" accent="automatically" subtitle="PriceKlick is the smart browser companion that scans, tests, and stacks the best coupon codes at checkout — in under three seconds. Always free."/>
       <Section className="animate-fade-in-up animate-delay-1">
         <MiniWidget/>
       </Section>
