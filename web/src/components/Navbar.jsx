@@ -26,11 +26,7 @@ export default function Navbar(){
           <NavLink to="/lens">JustKlick</NavLink>
           <NavLink to="/stores">Stores</NavLink>
           <NavLink to="/services">Services</NavLink>
-          {isAuthenticated ? (
-            <NavLink to="/user-dashboard">PrePay</NavLink>
-          ) : (
-            <NavLink to="/dashboard">PrePay</NavLink>
-          )}
+          <NavLink to="/prepay">PrePay</NavLink>
           <NavLink to="/install">Vendor</NavLink>
           {isAuthenticated && user?.role === 'admin' && (
             <NavLink to="/admin" className="admin-link">Admin</NavLink>
