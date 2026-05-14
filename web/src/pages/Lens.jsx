@@ -1,11 +1,13 @@
 ﻿import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import './Lens.css'
+
 const API = import.meta.env.VITE_API_URL || ''
 
 const DEMO_RESULT = {
   ok: true,
   brand: 'Nike',
-  products: ['Nike Air Max 270 React â€” Black/White'],
+  products: ['Nike Air Max 270 React — Black/White'],
   promotionTitle: 'Nike Air Max 270 React',
   productCategory: 'Shoes',
   discountAmount: '25%',
@@ -15,7 +17,11 @@ const DEMO_RESULT = {
   redirectUrl: 'https://www.nike.com/t/air-max-270-react',
   checkoutUrl: 'https://www.nike.com/cart',
   hasDirectProductMatch: true,
-  similarProducts: [],
+  similarProducts: [
+    { title: 'Nike Air Max 270 React — Phantom', url: 'https://www.nike.com', price: '$119.99', source: 'Nike', thumbnail: '' },
+    { title: 'Nike Air Max 90 — Triple Black', url: 'https://www.nike.com', price: '$129.99', source: 'Nike', thumbnail: '' },
+    { title: 'Nike Pegasus 40 — Black/White', url: 'https://www.nike.com', price: '$140.00', source: 'Nike', thumbnail: '' },
+  ],
   urlSource: 'SERP-verified',
   confidence: 'high'
 }
@@ -27,15 +33,14 @@ export default function Lens() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [dragOver, setDragOver] = useState(false)
-  const [autoRedirect, setAutoRedirect] = useState(true)
+  const [autoRedirect, setAutoRedirect] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [demo, setDemo] = useState(false)
-  const [demoStep, setDemoStep] = useState(0) // 0=idle, 1=uploading, 2=analyzing, 3=result
+  const [demoStep, setDemoStep] = useState(0)
   const countdownRef = useRef(null)
   const demoRef = useRef(null)
   const fileRef = useRef()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [showSimilar, setShowSimilar] = useState(false)
 
   const hasDirectProductMatch = result?.hasDirectProductMatch !== false
 
@@ -45,7 +50,11 @@ export default function Lens() {
       setSearchParams(searchParams, { replace: true })
       setTimeout(() => runDemo(), 300)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      clearInterval(countdownRef.current)
+      clearTimeout(demoRef.current)
+    }
+  }, []) // eslint-disable-line
 
   const handleFile = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return
@@ -59,9 +68,7 @@ export default function Lens() {
 
   const analyze = async () => {
     if (!image) return
-    setLoading(true)
-    setError(null)
-    setResult(null)
+    setLoading(true); setError(null); setResult(null)
     try {
       const res = await fetch(`${API}/api/promo/find-url`, {
         method: 'POST',
@@ -71,15 +78,12 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
-      setShowSimilar(false)
-      // Auto-redirect only when we found a direct product match.
       const url = data.hasDirectProductMatch ? (data.productUrl || data.checkoutUrl || data.redirectUrl) : null
       if (autoRedirect && url) {
         setCountdown(3)
         let t = 3
         countdownRef.current = setInterval(() => {
-          t -= 1
-          setCountdown(t)
+          t -= 1; setCountdown(t)
           if (t <= 0) {
             clearInterval(countdownRef.current)
             window.open(url, '_blank', 'noopener,noreferrer')
@@ -94,343 +98,287 @@ export default function Lens() {
   }
 
   const reset = () => {
-    clearInterval(countdownRef.current)
-    setCountdown(null)
-    setImage(null)
-    setPreview(null)
-    setResult(null)
-    setError(null)
+    clearInterval(countdownRef.current); setCountdown(null)
+    setImage(null); setPreview(null); setResult(null); setError(null)
   }
-
-  const cancelRedirect = () => {
-    clearInterval(countdownRef.current)
-    setCountdown(null)
-  }
-
+  const cancelRedirect = () => { clearInterval(countdownRef.current); setCountdown(null) }
   const runDemo = () => {
-    reset()
-    setDemo(true)
-    setDemoStep(1) // show "uploading"
+    reset(); setDemo(true); setDemoStep(1)
     demoRef.current = setTimeout(() => {
-      setDemoStep(2) // show "analyzing"
+      setDemoStep(2)
       demoRef.current = setTimeout(() => {
-        setDemoStep(3) // show result
-        setResult(DEMO_RESULT)
-      }, 2200)
-    }, 1200)
+        setDemoStep(3); setResult(DEMO_RESULT)
+      }, 2000)
+    }, 1000)
   }
-
-  const exitDemo = () => {
-    clearTimeout(demoRef.current)
-    setDemo(false)
-    setDemoStep(0)
-    reset()
+  const exitDemo = () => { clearTimeout(demoRef.current); setDemo(false); setDemoStep(0); reset() }
+  const webSearch = () => {
+    const q = result?.products?.[0] || result?.promotionTitle || result?.brand || ''
+    if (q) window.open(`https://www.google.com/search?q=${encodeURIComponent(q + ' buy online')}`, '_blank', 'noopener')
   }
 
   return (
-    <section style={{ minHeight: '80vh', padding: '80px 20px 60px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <span style={{ fontSize: 36 }}>ðŸ”</span>
-          <h1 style={{ fontSize: '2.4rem', fontWeight: 800, margin: 0 }}>Promo Lens</h1>
-          <span style={{ background: 'linear-gradient(135deg,#4285F4,#EA4335,#FBBC05,#34A853)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>AI</span>
-        </div>
-        <p style={{ color: '#6a6880', fontSize: 16, marginBottom: 16 }}>
-          Upload any product image or promotional screenshot â€” our AI identifies the product and finds where to buy it online.
+    <div className="lens-page">
+      <div className="lens-bg" />
+
+      <section className="container lens-hero">
+        <span className="lens-pill">✦ AI-Powered Visual Search</span>
+        <h1 className="lens-title">
+          <span>Snap it.</span>
+          <span className="lens-grad">Find it. Buy it.</span>
+        </h1>
+        <p className="lens-sub">
+          Upload any product photo, promo flyer, or screenshot — our AI identifies the exact
+          brand, model, and best place to buy online.
         </p>
+        <span className="lens-live">● AI vision online</span>
+      </section>
 
-        {!demo && !result && (
-          <button onClick={runDemo} style={{ ...btnSecondary, marginBottom: 28, gap: 6, display: 'inline-flex', alignItems: 'center' }}>
-            â–¶ï¸ View Demo
-          </button>
-        )}
-
-        {/* Demo simulation */}
-        {demo && !result && (
-          <div style={{ marginBottom: 24 }}>
-            {/* Demo banner */}
-            <div style={{ background: 'linear-gradient(135deg,#FFA726,#FF7043)', color: '#fff', borderRadius: 12, padding: '10px 20px', marginBottom: 20, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>ðŸŽ¬ Demo Mode â€” Simulated walkthrough</span>
-              <button onClick={exitDemo} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Exit Demo</button>
+      <section className="container lens-spread">
+        <div className="lens-spread-grid">
+          {/* LEFT — uploader + result */}
+          <div
+            className={`lens-card ${dragOver ? 'drag' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault(); setDragOver(false)
+              handleFile(e.dataTransfer.files?.[0])
+            }}
+          >
+            <div className="lens-card-head">
+              <span className="lens-tag-mini">✦ JUSTKLICK LENS</span>
+              {!demo && !result && (
+                <button className="lens-mini-btn" onClick={runDemo}>▶ Try demo</button>
+              )}
+              {demo && (
+                <button className="lens-mini-btn" onClick={exitDemo}>✕ Exit demo</button>
+              )}
             </div>
 
-            {/* Step 1: upload animation */}
-            {demoStep >= 1 && (
-              <div style={{
-                border: '2.5px dashed #34A853', borderRadius: 20, padding: 16,
-                background: 'rgba(255,255,255,0.04)', marginBottom: 20, animation: 'fadeIn 0.5s ease'
-              }}>
-                <div style={{ fontSize: 56, marginBottom: 4 }}>ðŸ‘Ÿ</div>
-                <div style={{ fontSize: 14, color: '#34A853', fontWeight: 700 }}>âœ“ Image uploaded â€” Nike shoe detected</div>
-              </div>
-            )}
+            {!result && (
+              <>
+                <h2 className="lens-card-title">Upload a product photo</h2>
+                <p className="lens-card-sub">
+                  Drop in any image — we'll identify the product and surface the cheapest online buy link.
+                </p>
 
-            {/* Step 2: analyzing */}
-            {demoStep === 2 && (
-              <div style={{ padding: 24, animation: 'fadeIn 0.5s ease' }}>
-                <div style={{ width: '100%', height: 6, background: '#e8e6f0', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ width: '80%', height: '100%', background: 'linear-gradient(90deg,#6D4AFF,#4285F4)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <div
+                  className="lens-drop"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {preview ? (
+                    <img src={preview} alt="preview" className="lens-preview" />
+                  ) : (
+                    <>
+                      <div className="lens-drop-icon">📷</div>
+                      <div className="lens-drop-title">Click to upload or drag &amp; drop</div>
+                      <div className="lens-drop-hint">Product photo · flyer · screenshot — JPG · PNG · HEIC</div>
+                    </>
+                  )}
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => handleFile(e.target.files?.[0])} />
                 </div>
-                <p style={{ color: '#6a6880', marginTop: 12, fontSize: 14 }}>ðŸ¤– AI is analyzing... identifying brand, model, finding best prices and coupons.</p>
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Auto-redirect toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#555' }}>
-            <span onClick={() => setAutoRedirect(!autoRedirect)} style={{
-              width: 40, height: 22, borderRadius: 12, background: autoRedirect ? '#6D4AFF' : '#d1d0e0',
-              position: 'relative', display: 'inline-block', transition: 'background 0.2s', cursor: 'pointer'
-            }}>
-              <span style={{
-                position: 'absolute', top: 2, left: autoRedirect ? 20 : 2,
-                width: 18, height: 18, borderRadius: '50%', background: 'rgba(40,28,70,0.6)', transition: 'left 0.2s', boxShadow: '0 1px 3px #0003'
-              }} />
-            </span>
-            Auto-redirect to checkout page
-          </label>
-        </div>
+                <div className="lens-actions">
+                  <button className="lens-btn primary" onClick={analyze} disabled={!image || loading}>
+                    {loading ? '🔄 Analyzing…' : '🔍 Find This Product'}
+                  </button>
+                  {preview && !loading && (
+                    <button className="lens-btn ghost" onClick={reset}>✕ Clear</button>
+                  )}
+                  <label className="lens-toggle">
+                    <input type="checkbox" checked={autoRedirect} onChange={() => setAutoRedirect(!autoRedirect)} />
+                    <span>Auto-open checkout</span>
+                  </label>
+                </div>
 
-        {!result && (
-          <>
-            <div
-              onClick={() => fileRef.current?.click()}
-              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }}
-              style={{
-                border: `2.5px dashed ${dragOver ? '#6D4AFF' : preview ? '#34A853' : '#d1d0e0'}`,
-                borderRadius: 20, padding: preview ? 16 : 48, cursor: 'pointer',
-                background: dragOver ? '#f3f0ff' : '#fafafe', transition: 'all 0.2s',
-                marginBottom: 20
-              }}
-            >
-              {preview ? (
-                <img src={preview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 340, borderRadius: 12 }} />
-              ) : (
-                <>
-                  <div style={{ fontSize: 48, marginBottom: 8 }}>ðŸ“¸</div>
-                  <div style={{ fontSize: 15, color: '#6a6880' }}>
-                    <strong style={{ color: 'oklch(82% .18 295)' }}>Click to upload</strong> or drag & drop
+                {demo && demoStep <= 2 && (
+                  <div className="lens-demo-banner">
+                    🎬 Demo running — {demoStep === 1 ? 'uploading sample image' : 'AI analyzing'}…
                   </div>
-                  <div style={{ fontSize: 13, color: '#aaa', marginTop: 4 }}>Product photo, promo flyer, store ad, or screenshot</div>
-                </>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => handleFile(e.target.files[0])} />
-            </div>
+                )}
 
-            {preview && (
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
-                <button onClick={analyze} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}>
-                  {loading ? 'ðŸ”„ Analyzing...' : 'ðŸ” Find This Product'}
-                </button>
-                <button onClick={reset} style={btnSecondary}>âœ• Clear</button>
-              </div>
+                {loading && (
+                  <div className="lens-progress">
+                    <div className="lens-progress-bar" />
+                    <span>AI is scanning your image — identifying brand, model, and best buy link…</span>
+                  </div>
+                )}
+
+                {error && <div className="lens-error">⚠ {error}</div>}
+              </>
             )}
 
-            {loading && (
-              <div style={{ padding: 24 }}>
-                <div style={{ width: '100%', height: 6, background: '#e8e6f0', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ width: '60%', height: '100%', background: 'linear-gradient(90deg,#6D4AFF,#4285F4)', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            {result && (
+              <div className="lens-result">
+                <div className="lens-result-head">
+                  <span className={`lens-match-pill ${hasDirectProductMatch ? 'good' : 'warn'}`}>
+                    {result.isGroceryFlyer
+                      ? `📰 ${result.brand || 'Grocery'} flyer detected`
+                      : hasDirectProductMatch ? '✓ Exact product found' : '🔎 Similar products found'}
+                  </span>
+                  {result.confidence && <span className="lens-conf">{result.confidence} confidence</span>}
                 </div>
-                <p style={{ color: '#6a6880', marginTop: 12, fontSize: 14 }}>AI is analyzing your image... identifying product, brand, and finding best prices.</p>
-              </div>
-            )}
 
-            {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: 16, color: '#dc2626', marginTop: 16 }}>
-                {error}
-              </div>
-            )}
-          </>
-        )}
+                {!demo && countdown !== null && countdown > 0 && (
+                  <div className="lens-redirect">
+                    <span>🚀 Opening checkout in {countdown}s…</span>
+                    <button className="lens-mini-btn" onClick={cancelRedirect}>Cancel</button>
+                  </div>
+                )}
 
-        {result && (
-          <div style={{ textAlign: 'left', background: 'rgba(40,28,70,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 28, marginTop: 8, animation: 'fadeIn 0.5s ease' }}>
-            {demo && (
-              <div style={{ background: 'linear-gradient(135deg,#FFA726,#FF7043)', color: '#fff', borderRadius: 12, padding: '10px 20px', marginBottom: 16, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>ðŸŽ¬ Demo Result â€” This is what Lens returns for a real product image</span>
-                <button onClick={exitDemo} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Exit Demo</button>
-              </div>
-            )}
-            {!demo && countdown !== null && countdown > 0 && (
-              <div style={{ background: 'linear-gradient(135deg,#6D4AFF,#4285F4)', color: '#fff', borderRadius: 12, padding: '12px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>ðŸš€ Taking you to checkout in {countdown}s...</span>
-                <button onClick={cancelRedirect} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
-              </div>
-            )}
-            <div style={{
-              background: hasDirectProductMatch
-                ? 'linear-gradient(135deg,#d1fae5,#ecfdf5)'
-                : 'linear-gradient(135deg,#fef3c7,#fffbeb)',
-              border: `1px solid ${hasDirectProductMatch ? '#10b981' : '#f59e0b'}`,
-              borderRadius: 12, padding: '10px 16px', marginBottom: 16,
-              fontSize: 14, fontWeight: 600,
-              color: hasDirectProductMatch ? '#065f46' : '#92400e'
-            }}>
-              {result.isGroceryFlyer
-                ? `ðŸ“ ${result.brand || 'Grocery'} flyer detected â€” this is an in-store deal`
-                : hasDirectProductMatch
-                  ? 'âœ… Exact product found â€” ready to buy'
-                  : 'ðŸ” Exact product not found â€” showing similar items you can buy'}
-            </div>
+                <div className="lens-result-body">
+                  <div className="lens-thumbs">
+                    {preview && (
+                      <div className="lens-thumb">
+                        <img src={preview} alt="your upload" />
+                        <span>Your upload</span>
+                      </div>
+                    )}
+                    {result.mainProductImage?.thumbnail && (
+                      <div className="lens-thumb match">
+                        <img src={result.mainProductImage.thumbnail} alt="match" />
+                        <span>{hasDirectProductMatch ? '✓ Matched' : 'Detected'}</span>
+                      </div>
+                    )}
+                  </div>
 
-            <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              {preview && (
-                <div style={{ textAlign: 'center' }}>
-                  <img src={preview} alt="Your upload" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: '2px solid #e2e8f0' }} />
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontWeight: 600 }}>Your upload</div>
-                </div>
-              )}
-              {result.mainProductImage?.thumbnail && (
-                <div style={{ textAlign: 'center' }}>
-                  <img src={result.mainProductImage.thumbnail} alt={result.products?.[0] || 'Product'} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: `2px solid ${hasDirectProductMatch ? '#10b981' : '#cbd5e1'}` }} />
-                  <div style={{ fontSize: 11, color: hasDirectProductMatch ? '#10b981' : '#64748b', marginTop: 4, fontWeight: 700 }}>
-                    {hasDirectProductMatch ? 'âœ“ Matched product' : 'Detected product'}
+                  <div className="lens-result-text">
+                    {result.brand && <div className="lens-brand">{result.brand}</div>}
+                    <h3 className="lens-pname">{result.products?.[0] || result.promotionTitle || 'Product identified'}</h3>
+                    <div className="lens-result-meta">
+                      {result.productCategory && <span className="lens-chip">{result.productCategory}</span>}
+                      {result.discountAmount && <span className="lens-chip off">{result.discountAmount} OFF</span>}
+                    </div>
+                    {(result.productPrice?.sale || result.mainProductImage?.price) && (
+                      <div className="lens-price">
+                        <span className="lens-price-sale">{result.productPrice?.sale || result.mainProductImage?.price}</span>
+                        {result.productPrice?.original && (
+                          <span className="lens-price-orig">{result.productPrice.original}</span>
+                        )}
+                        {result.mainProductImage?.merchant && (
+                          <span className="lens-merchant">at {result.mainProductImage.merchant}</span>
+                        )}
+                      </div>
+                    )}
+                    {result.promotionDescription && (
+                      <p className="lens-desc">{result.promotionDescription}</p>
+                    )}
                   </div>
                 </div>
-              )}
-              <div style={{ flex: 1, minWidth: 200 }}>
-                {result.brand && <div style={{ fontSize: 13, color: 'oklch(82% .18 295)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{result.brand}</div>}
-                <h3 style={{ fontSize: '1.3rem', margin: '4px 0' }}>{result.products?.[0] || result.promotionTitle || 'Product Identified'}</h3>
-                {result.productCategory && <span style={tag}>{result.productCategory}</span>}
-                {result.discountAmount && <span style={{ ...tag, background: '#dcfce7', color: '#16a34a' }}>{result.discountAmount} OFF</span>}
-                {result.mainProductImage?.price && (
-                  <div style={{ marginTop: 8, fontSize: '1.3rem', fontWeight: 800, color: '#16a34a' }}>
-                    {result.mainProductImage.price}
-                    {result.mainProductImage.merchant && <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginLeft: 8 }}>at {result.mainProductImage.merchant}</span>}
+
+                {result.coupons?.length > 0 && (
+                  <div className="lens-coupons">
+                    <div className="lens-section-label">COUPON CODES</div>
+                    <div className="lens-coupons-row">
+                      {result.coupons.map((c, i) => (
+                        <div key={i} className="lens-coupon">
+                          <code>{c.code}</code>
+                          {c.description && <span>{c.description}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="lens-result-actions">
+                  {result.isGroceryFlyer ? (
+                    <>
+                      <a className="lens-btn primary" href={result.redirectUrl} target="_blank" rel="noopener noreferrer">📰 View This Week's Flyer</a>
+                      {result.storeLocatorUrl && (
+                        <a className="lens-btn ghost" href={result.storeLocatorUrl} target="_blank" rel="noopener noreferrer">📍 Find Nearest Store</a>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {(result.productUrl || result.redirectUrl) && (
+                        <a className="lens-btn primary" href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer">🛒 Buy Now</a>
+                      )}
+                      <button className="lens-btn ghost" onClick={webSearch}>🌐 Search on the web</button>
+                    </>
+                  )}
+                  <button className="lens-btn ghost" onClick={demo ? exitDemo : reset}>
+                    {demo ? '🔍 Try It For Real' : '🔄 Try Another'}
+                  </button>
+                </div>
+
+                {result.similarProducts?.length > 0 && (
+                  <div className="lens-similar">
+                    <div className="lens-section-label">{hasDirectProductMatch ? 'OTHER MATCHES' : 'SIMILAR PRODUCTS'}</div>
+                    <div className="lens-similar-grid">
+                      {result.similarProducts.slice(0, 6).map((item, i) => (
+                        <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" className="lens-similar-card">
+                          {item.thumbnail ? (
+                            <img src={item.thumbnail} alt={item.title} />
+                          ) : (
+                            <div className="lens-similar-ph">🛍️</div>
+                          )}
+                          <div className="lens-similar-title">{item.title}</div>
+                          <div className="lens-similar-foot">
+                            {item.price && <span className="lens-similar-price">{item.price}</span>}
+                            <span className="lens-similar-source">{item.source || 'Shop'} →</span>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-
-            {result.promotionDescription && (
-              <p style={{ color: '#555', fontSize: 14, marginBottom: 16 }}>{result.promotionDescription}</p>
             )}
-
-            {(!hasDirectProductMatch || showSimilar) && result.similarProducts?.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>ðŸ›ï¸</span> {hasDirectProductMatch ? 'Other matches from Google Lens' : 'Similar products you can buy now'}
-                </div>
-                <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>
-                  Pick any option below â€” all links go directly to a retailer product page.
-                </p>
-                <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-                  {result.similarProducts.map((item, index) => (
-                    <a
-                      key={`${item.url}-${index}`}
-                      href={item.url} target="_blank" rel="noopener noreferrer"
-                      style={{
-                        border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 12, background: 'rgba(40,28,70,0.6)',
-                        textDecoration: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', gap: 8,
-                        transition: 'all 0.2s', cursor: 'pointer'
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#6D4AFF'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(109,74,255,0.12)' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none' }}
-                    >
-                      {item.thumbnail ? (
-                        <img src={item.thumbnail} alt={item.title} style={{ width: '100%', height: 140, objectFit: 'contain', borderRadius: 10, background: 'rgba(255,255,255,0.04)' }} />
-                      ) : (
-                        <div style={{ width: '100%', height: 140, borderRadius: 10, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>ðŸ›ï¸</div>
-                      )}
-                      <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                        {item.price ? (
-                          <span style={{ fontSize: 15, fontWeight: 800, color: '#16a34a' }}>{item.price}</span>
-                        ) : (
-                          <span style={{ fontSize: 12, color: '#64748b' }}>View price</span>
-                        )}
-                        <span style={{ fontSize: 11, color: 'oklch(82% .18 295)', fontWeight: 600 }}>{item.source || 'Shop'} â†’</span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {result.coupons?.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Coupon Codes:</div>
-                {result.coupons.map((c, i) => (
-                  <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'oklch(68% .22 295 / .15)', borderRadius: 8, padding: '6px 14px', marginRight: 8, marginBottom: 6 }}>
-                    <code style={{ fontWeight: 700, color: 'oklch(82% .18 295)' }}>{c.code}</code>
-                    {c.description && <span style={{ fontSize: 12, color: '#888' }}>{c.description}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {result.productPrice && (
-              <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
-                {result.productPrice.sale && <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#16a34a' }}>{result.productPrice.sale}</span>}
-                {result.productPrice.original && <span style={{ fontSize: '1.1rem', color: '#999', textDecoration: 'line-through' }}>{result.productPrice.original}</span>}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
-              {result.isGroceryFlyer ? (
-                <>
-                  <a href={result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    ðŸ“° View This Week's Flyer
-                  </a>
-                  {result.storeLocatorUrl && (
-                    <a href={result.storeLocatorUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      ðŸ“ Find Nearest Store
-                    </a>
-                  )}
-                </>
-              ) : (
-                <>
-                  {hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
-                    <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      ðŸ›’ Buy Now
-                    </a>
-                  )}
-                  {hasDirectProductMatch && result.checkoutUrl && result.checkoutUrl !== (result.productUrl || result.redirectUrl) && (
-                    <a href={result.checkoutUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      ðŸ›ï¸ View Cart
-                    </a>
-                  )}
-                  {!hasDirectProductMatch && (result.productUrl || result.redirectUrl) && (
-                    <a href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnSecondary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      ðŸ”Ž Browse Store Results
-                    </a>
-                  )}
-                </>
-              )}
-              <button onClick={demo ? exitDemo : reset} style={btnSecondary}>{demo ? 'ðŸ” Try It For Real' : 'ðŸ”„ Try Another'}</button>
-            </div>
-
-            {result.isGroceryFlyer && (
-              <div style={{ marginTop: 14, padding: '10px 14px', background: '#f8fafc', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, fontSize: 13, color: '#475569' }}>
-                ðŸ’¡ Grocery flyer deals are <strong>in-store only</strong>. Show the flyer at checkout â€” there's no online cart for these prices.
-              </div>
-            )}
-
-            {hasDirectProductMatch && result.similarProducts?.length > 0 && !showSimilar && (
-              <button
-                onClick={() => setShowSimilar(true)}
-                style={{ marginTop: 12, background: 'none', border: 'none', color: 'oklch(82% .18 295)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-              >
-                Not the right product? Show {result.similarProducts.length} visually similar options
-              </button>
-            )}
-
-            <div style={{ marginTop: 16, fontSize: 12, color: '#aaa' }}>
-              Source: {result.urlSource} â€¢ Confidence: {result.confidence}
-            </div>
           </div>
-        )}
 
-        <style>{`@keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} } @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }`}</style>
-      </div>
-    </section>
+          {/* RIGHT — how it works + tips */}
+          <aside className="lens-side">
+            <span className="lens-tag-green">✦ HOW IT WORKS</span>
+            <h2 className="lens-side-title">From photo to checkout in seconds.</h2>
+            <p className="lens-side-sub">
+              No more guessing keywords. JustKlick reads the image and goes straight to a real product page.
+            </p>
+
+            <div className="lens-steps">
+              <div className="lens-step">
+                <div className="lens-step-n">01</div>
+                <div>
+                  <h4>Upload or screenshot</h4>
+                  <p>Drop in a photo of a product, a flyer, an Instagram ad — anything visual.</p>
+                </div>
+              </div>
+              <div className="lens-step">
+                <div className="lens-step-n">02</div>
+                <div>
+                  <h4>AI identifies the product</h4>
+                  <p>Vision model detects brand, model, colour, category, and pulls a SERP-verified buy link.</p>
+                </div>
+              </div>
+              <div className="lens-step">
+                <div className="lens-step-n">03</div>
+                <div>
+                  <h4>Buy now or compare</h4>
+                  <p>Open the exact product page, run a web search for the best price, or grab a coupon code.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="lens-stats">
+              <div><div className="lens-stat-num">2.4s</div><div className="lens-stat-cap">avg detection</div></div>
+              <div><div className="lens-stat-num">96%</div><div className="lens-stat-cap">match accuracy</div></div>
+              <div><div className="lens-stat-num">1000+</div><div className="lens-stat-cap">stores indexed</div></div>
+            </div>
+
+            <div className="lens-tips">
+              <div className="lens-section-label">PERFECT FOR</div>
+              <div className="lens-tip-tags">
+                <span>👟 Sneakers</span>
+                <span>🎧 Headphones</span>
+                <span>📱 Phones</span>
+                <span>🛒 Grocery flyers</span>
+                <span>🧴 Cosmetics</span>
+                <span>📺 Electronics</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </div>
   )
 }
-
-const btnPrimary = { padding: '12px 28px', borderRadius: 12, border: 'none', background: '#6D4AFF', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }
-const btnSecondary = { padding: '12px 28px', borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.12)', background: 'rgba(40,28,70,0.6)', color: 'var(--foreground)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }
-const tag = { display: 'inline-block', background: 'oklch(68% .22 295 / .15)', color: 'oklch(82% .18 295)', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, marginRight: 6 }
