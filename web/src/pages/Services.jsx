@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import './Services.css'
 
 const CATEGORIES = [
@@ -87,6 +87,16 @@ function ProviderRow({ p }) {
 export default function Services() {
   const [cat, setCat] = useState('All')
   const [view, setView] = useState('list')
+  const [lensPreview, setLensPreview] = useState(null)
+  const [lensDrag, setLensDrag] = useState(false)
+  const lensInput = useRef(null)
+  const navigate = useNavigate()
+
+  const onLensFile = (file) => {
+    if (!file || !file.type?.startsWith('image/')) return
+    setLensPreview(URL.createObjectURL(file))
+  }
+  const goLens = () => navigate('/lens')
 
   const filtered = useMemo(() => {
     if (cat === 'All') return PROVIDERS
@@ -131,6 +141,111 @@ export default function Services() {
             <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={()=>setView('list')}>📋 List</button>
             <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={()=>setView('map')}>🗺 Map</button>
           </div>
+        </div>
+      </section>
+
+      <section className="container sv-section sv-lens-spread">
+        <div className="sv-lens-grid">
+          <div
+            className={`sv-lens-card ${lensDrag ? 'drag' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setLensDrag(true) }}
+            onDragLeave={() => setLensDrag(false)}
+            onDrop={(e) => {
+              e.preventDefault(); setLensDrag(false)
+              const f = e.dataTransfer.files?.[0]
+              if (f) onLensFile(f)
+            }}
+          >
+            <div className="sv-lens-head">
+              <span className="sv-tag-mini">✦ JUSTKLICK LENS</span>
+              <span className="sv-lens-live">● AI vision live</span>
+            </div>
+            <h2 className="sv-lens-title">
+              Snap it. <span className="sv-title-grad">Find it. Book it.</span>
+            </h2>
+            <p className="sv-lens-sub">
+              Photograph a broken pipe, a flyer, a quote, or a job site — our AI identifies the
+              category, surfaces verified pros nearby, and pre-fills the request.
+            </p>
+
+            <div className="sv-lens-drop" onClick={() => lensInput.current?.click()}>
+              {lensPreview ? (
+                <img src={lensPreview} alt="preview" className="sv-lens-preview" />
+              ) : (
+                <>
+                  <div className="sv-lens-icon">📷</div>
+                  <div className="sv-lens-drop-title">Drop a photo or click to upload</div>
+                  <div className="sv-lens-drop-hint">JPG · PNG · HEIC · up to 10MB</div>
+                </>
+              )}
+              <input
+                ref={lensInput}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => onLensFile(e.target.files?.[0])}
+              />
+            </div>
+
+            <div className="sv-lens-actions">
+              <button className="sv-btn primary" onClick={goLens}>⚡ Analyze with Lens</button>
+              <button className="sv-btn ghost" onClick={goLens}>Open full Lens →</button>
+            </div>
+
+            <div className="sv-lens-tags">
+              <span className="sv-trend">🔧 Plumbing leak</span>
+              <span className="sv-trend">💡 Flickering outlet</span>
+              <span className="sv-trend">🌿 Overgrown lawn</span>
+              <span className="sv-trend">🧱 Cracked tile</span>
+            </div>
+          </div>
+
+          <aside className="sv-lens-side">
+            <div className="sv-tag">✦ HOW IT WORKS</div>
+            <h2 className="sv-lens-side-title">From photo to pro in three steps.</h2>
+            <p className="sv-lens-side-sub">
+              No more guessing categories or describing problems — just point your camera.
+            </p>
+
+            <div className="sv-lens-steps">
+              <div className="sv-lens-step">
+                <div className="sv-lens-step-n">01</div>
+                <div>
+                  <h4>Snap or upload</h4>
+                  <p>Drop in any photo of the issue, item, or quote. Works with screenshots too.</p>
+                </div>
+              </div>
+              <div className="sv-lens-step">
+                <div className="sv-lens-step-n">02</div>
+                <div>
+                  <h4>AI identifies the job</h4>
+                  <p>Lens detects the category, urgency, and likely scope using on-device vision.</p>
+                </div>
+              </div>
+              <div className="sv-lens-step">
+                <div className="sv-lens-step-n">03</div>
+                <div>
+                  <h4>Matched to verified pros</h4>
+                  <p>Get a ranked list of preferred vendors with transparent pricing — book in one click.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="sv-lens-stats">
+              <div>
+                <div className="sv-stat-num">2.4s</div>
+                <div className="sv-stat-cap">avg detection</div>
+              </div>
+              <div>
+                <div className="sv-stat-num">96%</div>
+                <div className="sv-stat-cap">match accuracy</div>
+              </div>
+              <div>
+                <div className="sv-stat-num">15+</div>
+                <div className="sv-stat-cap">service categories</div>
+              </div>
+            </div>
+          </aside>
         </div>
       </section>
 
