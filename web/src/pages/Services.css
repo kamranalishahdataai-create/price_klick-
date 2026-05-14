@@ -424,3 +424,93 @@
   .sv-lens-card, .sv-lens-side { padding: 22px; }
   .sv-lens-stats { grid-template-columns: 1fr 1fr; }
 }
+
+/* Lens inline analysis state */
+.sv-lens-progress {
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: oklch(68% .22 295 / .08);
+  border: 1px solid oklch(68% .22 295 / .25);
+  display: flex; flex-direction: column; gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.sv-lens-progress-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.sv-lens-progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, oklch(68% .22 295), oklch(82% .16 200));
+  animation: svScan 1.4s ease-in-out infinite;
+}
+@keyframes svScan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(280%); }
+}
+.sv-lens-error {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: oklch(60% .2 25 / .12);
+  border: 1px solid oklch(60% .2 25 / .35);
+  color: oklch(80% .2 25);
+  font-size: 13px;
+}
+
+.sv-lens-result {
+  margin-top: 4px;
+  padding: 18px;
+  border-radius: 16px;
+  background: oklch(22% .04 280 / .55);
+  border: 1px solid oklch(74% .18 155 / .35);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.sv-lens-result-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sv-lens-conf { font-size: 11px; color: var(--muted-foreground); text-transform: capitalize; letter-spacing: 0.05em; }
+.sv-lens-result-body { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.sv-lens-match-img {
+  width: 96px; height: 96px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+}
+.sv-lens-result-text { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 4px; }
+.sv-lens-brand {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: oklch(82% .16 200);
+}
+.sv-lens-pname {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--foreground);
+  line-height: 1.2;
+}
+.sv-lens-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.sv-off {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: oklch(74% .18 155 / .15);
+  border: 1px solid oklch(74% .18 155 / .35);
+  color: oklch(82% .18 155);
+}
+.sv-lens-price { display: flex; gap: 10px; align-items: baseline; margin-top: 6px; }
+.sv-lens-price-sale {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: oklch(82% .18 155);
+}
+.sv-lens-price-orig { color: var(--muted-foreground); text-decoration: line-through; font-size: 14px; }
+.sv-lens-result-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06); }

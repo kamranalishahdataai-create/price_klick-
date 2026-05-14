@@ -2,6 +2,8 @@ import React, { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import './Services.css'
 
+const API = import.meta.env.VITE_API_URL || ''
+
 const CATEGORIES = [
   'Auto Repair','Catering','Cleaning','Electrical','HVAC','IT Support',
   'Landscaping','Moving','Painting','Personal Training','Pest Control',
@@ -88,14 +90,54 @@ export default function Services() {
   const [cat, setCat] = useState('All')
   const [view, setView] = useState('list')
   const [lensPreview, setLensPreview] = useState(null)
+  const [lensImage, setLensImage] = useState(null)
   const [lensDrag, setLensDrag] = useState(false)
+  const [lensLoading, setLensLoading] = useState(false)
+  const [lensResult, setLensResult] = useState(null)
+  const [lensError, setLensError] = useState(null)
   const lensInput = useRef(null)
   const navigate = useNavigate()
 
   const onLensFile = (file) => {
     if (!file || !file.type?.startsWith('image/')) return
+    setLensError(null)
+    setLensResult(null)
     setLensPreview(URL.createObjectURL(file))
+    const reader = new FileReader()
+    reader.onload = () => setLensImage(reader.result)
+    reader.readAsDataURL(file)
   }
+
+  const analyzeLens = async () => {
+    if (!lensImage) { lensInput.current?.click(); return }
+    setLensLoading(true)
+    setLensError(null)
+    setLensResult(null)
+    try {
+      const res = await fetch(`${API}/api/promo/find-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: lensImage })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
+      setLensResult(data)
+    } catch (e) {
+      setLensError(e.message || 'Could not analyze image')
+    } finally {
+      setLensLoading(false)
+    }
+  }
+
+  const resetLens = () => {
+    setLensImage(null); setLensPreview(null); setLensResult(null); setLensError(null)
+  }
+
+  const webSearch = () => {
+    const q = lensResult?.products?.[0] || lensResult?.promotionTitle || lensResult?.brand || ''
+    if (q) window.open(`https://www.google.com/search?q=${encodeURIComponent(q + ' buy online')}`, '_blank', 'noopener')
+  }
+
   const goLens = () => navigate('/lens')
 
   const filtered = useMemo(() => {
@@ -188,16 +230,72 @@ export default function Services() {
             </div>
 
             <div className="sv-lens-actions">
-              <button className="sv-btn primary" onClick={goLens}>⚡ Analyze with Lens</button>
+              <button className="sv-btn primary" onClick={analyzeLens} disabled={lensLoading}>
+                {lensLoading ? '🔄 Analyzing…' : (lensImage ? '⚡ Analyze with Lens' : '📷 Upload a photo')}
+              </button>
+              {lensImage && !lensLoading && (
+                <button className="sv-btn ghost" onClick={resetLens}>✕ Clear</button>
+              )}
               <button className="sv-btn ghost" onClick={goLens}>Open full Lens →</button>
             </div>
 
-            <div className="sv-lens-tags">
-              <span className="sv-trend">🔧 Plumbing leak</span>
-              <span className="sv-trend">💡 Flickering outlet</span>
-              <span className="sv-trend">🌿 Overgrown lawn</span>
-              <span className="sv-trend">🧱 Cracked tile</span>
-            </div>
+            {lensLoading && (
+              <div className="sv-lens-progress">
+                <div className="sv-lens-progress-bar" />
+                <span>AI is scanning your image — identifying brand, model, and best buy link…</span>
+              </div>
+            )}
+
+            {lensError && (
+              <div className="sv-lens-error">⚠ {lensError}</div>
+            )}
+
+            {lensResult && (
+              <div className="sv-lens-result">
+                <div className="sv-lens-result-head">
+                  <span className="sv-tag">✓ MATCH FOUND</span>
+                  {lensResult.confidence && <span className="sv-lens-conf">{lensResult.confidence} confidence</span>}
+                </div>
+                <div className="sv-lens-result-body">
+                  {lensResult.mainProductImage?.thumbnail && (
+                    <img src={lensResult.mainProductImage.thumbnail} alt="match" className="sv-lens-match-img" />
+                  )}
+                  <div className="sv-lens-result-text">
+                    {lensResult.brand && <div className="sv-lens-brand">{lensResult.brand}</div>}
+                    <div className="sv-lens-pname">{lensResult.products?.[0] || lensResult.promotionTitle || 'Product identified'}</div>
+                    <div className="sv-lens-meta">
+                      {lensResult.productCategory && <span className="sv-row-cat">{lensResult.productCategory}</span>}
+                      {lensResult.discountAmount && <span className="sv-off">{lensResult.discountAmount} OFF</span>}
+                    </div>
+                    {(lensResult.productPrice?.sale || lensResult.mainProductImage?.price) && (
+                      <div className="sv-lens-price">
+                        <span className="sv-lens-price-sale">{lensResult.productPrice?.sale || lensResult.mainProductImage?.price}</span>
+                        {lensResult.productPrice?.original && (
+                          <span className="sv-lens-price-orig">{lensResult.productPrice.original}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="sv-lens-result-actions">
+                  {(lensResult.productUrl || lensResult.redirectUrl) && (
+                    <a className="sv-btn primary" href={lensResult.productUrl || lensResult.redirectUrl} target="_blank" rel="noopener noreferrer">🛒 Buy Now</a>
+                  )}
+                  <button className="sv-btn ghost" onClick={webSearch}>🌐 Search on the web</button>
+                  <button className="sv-btn ghost" onClick={resetLens}>🔄 Try another</button>
+                </div>
+              </div>
+            )}
+
+            {!lensResult && !lensLoading && (
+              <div className="sv-lens-tags">
+                <span className="sv-trend">👟 Sneakers</span>
+                <span className="sv-trend">🎧 Headphones</span>
+                <span className="sv-trend">📱 Phones</span>
+                <span className="sv-trend">🛒 Grocery flyers</span>
+                <span className="sv-trend">🧴 Cosmetics</span>
+              </div>
+            )}
           </div>
 
           <aside className="sv-lens-side">
