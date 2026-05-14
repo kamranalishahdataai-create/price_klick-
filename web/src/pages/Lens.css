@@ -59,50 +59,6 @@
 }
 @keyframes lensPulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
 
-/* Intro video */
-.lens-video-section { padding: 8px 0 24px; }
-.lens-video-frame {
-  position: relative;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: oklch(22% .04 280 / .55);
-  box-shadow: 0 40px 100px -40px oklch(0% 0 0 / .7), 0 0 0 1px oklch(68% .22 295 / .15) inset;
-  backdrop-filter: blur(12px) saturate(160%);
-}
-.lens-video-frame::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 26px;
-  background: linear-gradient(135deg, oklch(68% .22 295 / .35), transparent 40%, oklch(82% .16 200 / .3));
-  z-index: -1;
-  filter: blur(20px);
-  opacity: .8;
-}
-.lens-video {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 560px;
-  object-fit: cover;
-  background: #000;
-}
-.lens-video-tag {
-  position: absolute;
-  top: 16px; left: 16px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: oklch(16% .03 280 / .8);
-  border: 1px solid oklch(68% .22 295 / .4);
-  color: oklch(82% .18 295);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  backdrop-filter: blur(8px);
-  pointer-events: none;
-}
-
 /* Spread */
 .lens-spread { padding: 16px 0 40px; }
 .lens-spread-grid {

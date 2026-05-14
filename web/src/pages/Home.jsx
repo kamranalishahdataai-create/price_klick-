@@ -10,6 +10,20 @@ export default function Home(){
   return (
     <div>
       <HeroCTA title="Save money" accent="automatically" subtitle="PriceKlick is the smart browser companion that scans, tests, and stacks the best coupon codes at checkout — in under three seconds. Always free."/>
+      <section className="container home-intro-video">
+        <div className="home-video-frame">
+          <video
+            className="home-video"
+            src="/priceklick-intro.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            controls
+          />
+          <div className="home-video-tag">▶ See PriceKlick in action</div>
+        </div>
+      </section>
       <Section className="animate-fade-in-up animate-delay-1">
         <MiniWidget/>
       </Section>

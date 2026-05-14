@@ -136,22 +136,6 @@ export default function Lens() {
         <span className="lens-live">● AI vision online</span>
       </section>
 
-      <section className="container lens-video-section">
-        <div className="lens-video-frame">
-          <video
-            className="lens-video"
-            src="/priceklick-intro.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            controls
-            poster=""
-          />
-          <div className="lens-video-tag">▶ See JustKlick in action</div>
-        </div>
-      </section>
-
       <section className="container lens-spread">
         <div className="lens-spread-grid">
           {/* LEFT — uploader + result */}
