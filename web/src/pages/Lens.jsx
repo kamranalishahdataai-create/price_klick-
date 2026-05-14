@@ -33,7 +33,7 @@ export default function Lens() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [dragOver, setDragOver] = useState(false)
-  const [autoRedirect, setAutoRedirect] = useState(false)
+  const [autoRedirect, setAutoRedirect] = useState(true)
   const [countdown, setCountdown] = useState(null)
   const [demo, setDemo] = useState(false)
   const [demoStep, setDemoStep] = useState(0)
@@ -78,7 +78,9 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
-      const url = data.hasDirectProductMatch ? (data.productUrl || data.checkoutUrl || data.redirectUrl) : null
+      const directUrl = data.productUrl || data.redirectUrl || data.checkoutUrl
+      const similarUrl = data.similarProducts?.find(p => p?.url)?.url
+      const url = data.hasDirectProductMatch ? directUrl : (directUrl || similarUrl)
       if (autoRedirect && url) {
         setCountdown(3)
         let t = 3
@@ -222,7 +224,7 @@ export default function Lens() {
 
                 {!demo && countdown !== null && countdown > 0 && (
                   <div className="lens-redirect">
-                    <span>🚀 Opening checkout in {countdown}s…</span>
+                    <span>🚀 Opening {hasDirectProductMatch ? 'product page' : 'best similar match'} in {countdown}s…</span>
                     <button className="lens-mini-btn" onClick={cancelRedirect}>Cancel</button>
                   </div>
                 )}
