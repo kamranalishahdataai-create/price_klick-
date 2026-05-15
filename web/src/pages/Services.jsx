@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import './Services.css'
 
 const API = import.meta.env.VITE_API_URL || ''
@@ -89,56 +89,6 @@ function ProviderRow({ p }) {
 export default function Services() {
   const [cat, setCat] = useState('All')
   const [view, setView] = useState('list')
-  const [lensPreview, setLensPreview] = useState(null)
-  const [lensImage, setLensImage] = useState(null)
-  const [lensDrag, setLensDrag] = useState(false)
-  const [lensLoading, setLensLoading] = useState(false)
-  const [lensResult, setLensResult] = useState(null)
-  const [lensError, setLensError] = useState(null)
-  const lensInput = useRef(null)
-  const navigate = useNavigate()
-
-  const onLensFile = (file) => {
-    if (!file || !file.type?.startsWith('image/')) return
-    setLensError(null)
-    setLensResult(null)
-    setLensPreview(URL.createObjectURL(file))
-    const reader = new FileReader()
-    reader.onload = () => setLensImage(reader.result)
-    reader.readAsDataURL(file)
-  }
-
-  const analyzeLens = async () => {
-    if (!lensImage) { lensInput.current?.click(); return }
-    setLensLoading(true)
-    setLensError(null)
-    setLensResult(null)
-    try {
-      const res = await fetch(`${API}/api/promo/find-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: lensImage })
-      })
-      const data = await res.json()
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
-      setLensResult(data)
-    } catch (e) {
-      setLensError(e.message || 'Could not analyze image')
-    } finally {
-      setLensLoading(false)
-    }
-  }
-
-  const resetLens = () => {
-    setLensImage(null); setLensPreview(null); setLensResult(null); setLensError(null)
-  }
-
-  const webSearch = () => {
-    const q = lensResult?.products?.[0] || lensResult?.promotionTitle || lensResult?.brand || ''
-    if (q) window.open(`https://www.google.com/search?q=${encodeURIComponent(q + ' buy online')}`, '_blank', 'noopener')
-  }
-
-  const goLens = () => navigate('/lens')
 
   const filtered = useMemo(() => {
     if (cat === 'All') return PROVIDERS
@@ -186,164 +136,31 @@ export default function Services() {
         </div>
       </section>
 
-      <section className="container sv-section sv-lens-spread">
-        <div className="sv-lens-grid">
-          <div
-            className={`sv-lens-card ${lensDrag ? 'drag' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setLensDrag(true) }}
-            onDragLeave={() => setLensDrag(false)}
-            onDrop={(e) => {
-              e.preventDefault(); setLensDrag(false)
-              const f = e.dataTransfer.files?.[0]
-              if (f) onLensFile(f)
-            }}
-          >
-            <div className="sv-lens-head">
-              <span className="sv-tag-mini">✦ JUSTKLICK LENS</span>
-              <span className="sv-lens-live">● AI vision live</span>
-            </div>
-            <h2 className="sv-lens-title">
-              Snap it. <span className="sv-title-grad">Find it. Book it.</span>
-            </h2>
-            <p className="sv-lens-sub">
-              Photograph a broken pipe, a flyer, a quote, or a job site — our AI identifies the
-              category, surfaces verified pros nearby, and pre-fills the request.
-            </p>
-
-            <div className="sv-lens-drop" onClick={() => lensInput.current?.click()}>
-              {lensPreview ? (
-                <img src={lensPreview} alt="preview" className="sv-lens-preview" />
-              ) : (
-                <>
-                  <div className="sv-lens-icon">📷</div>
-                  <div className="sv-lens-drop-title">Drop a photo or click to upload</div>
-                  <div className="sv-lens-drop-hint">JPG · PNG · HEIC · up to 10MB</div>
-                </>
-              )}
-              <input
-                ref={lensInput}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={(e) => onLensFile(e.target.files?.[0])}
-              />
-            </div>
-
-            <div className="sv-lens-actions">
-              <button className="sv-btn primary" onClick={analyzeLens} disabled={lensLoading}>
-                {lensLoading ? '🔄 Analyzing…' : (lensImage ? '⚡ Analyze with Lens' : '📷 Upload a photo')}
-              </button>
-              {lensImage && !lensLoading && (
-                <button className="sv-btn ghost" onClick={resetLens}>✕ Clear</button>
-              )}
-              <button className="sv-btn ghost" onClick={goLens}>Open full Lens →</button>
-            </div>
-
-            {lensLoading && (
-              <div className="sv-lens-progress">
-                <div className="sv-lens-progress-bar" />
-                <span>AI is scanning your image — identifying brand, model, and best buy link…</span>
-              </div>
-            )}
-
-            {lensError && (
-              <div className="sv-lens-error">⚠ {lensError}</div>
-            )}
-
-            {lensResult && (
-              <div className="sv-lens-result">
-                <div className="sv-lens-result-head">
-                  <span className="sv-tag">✓ MATCH FOUND</span>
-                  {lensResult.confidence && <span className="sv-lens-conf">{lensResult.confidence} confidence</span>}
-                </div>
-                <div className="sv-lens-result-body">
-                  {lensResult.mainProductImage?.thumbnail && (
-                    <img src={lensResult.mainProductImage.thumbnail} alt="match" className="sv-lens-match-img" />
-                  )}
-                  <div className="sv-lens-result-text">
-                    {lensResult.brand && <div className="sv-lens-brand">{lensResult.brand}</div>}
-                    <div className="sv-lens-pname">{lensResult.products?.[0] || lensResult.promotionTitle || 'Product identified'}</div>
-                    <div className="sv-lens-meta">
-                      {lensResult.productCategory && <span className="sv-row-cat">{lensResult.productCategory}</span>}
-                      {lensResult.discountAmount && <span className="sv-off">{lensResult.discountAmount} OFF</span>}
-                    </div>
-                    {(lensResult.productPrice?.sale || lensResult.mainProductImage?.price) && (
-                      <div className="sv-lens-price">
-                        <span className="sv-lens-price-sale">{lensResult.productPrice?.sale || lensResult.mainProductImage?.price}</span>
-                        {lensResult.productPrice?.original && (
-                          <span className="sv-lens-price-orig">{lensResult.productPrice.original}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="sv-lens-result-actions">
-                  {(lensResult.productUrl || lensResult.redirectUrl) && (
-                    <a className="sv-btn primary" href={lensResult.productUrl || lensResult.redirectUrl} target="_blank" rel="noopener noreferrer">🛒 Buy Now</a>
-                  )}
-                  <button className="sv-btn ghost" onClick={webSearch}>🌐 Search on the web</button>
-                  <button className="sv-btn ghost" onClick={resetLens}>🔄 Try another</button>
-                </div>
-              </div>
-            )}
-
-            {!lensResult && !lensLoading && (
-              <div className="sv-lens-tags">
-                <span className="sv-trend">👟 Sneakers</span>
-                <span className="sv-trend">🎧 Headphones</span>
-                <span className="sv-trend">📱 Phones</span>
-                <span className="sv-trend">🛒 Grocery flyers</span>
-                <span className="sv-trend">🧴 Cosmetics</span>
-              </div>
-            )}
+      <section className="container sv-section sv-vendor-cta-section">
+        <div className="sv-vendor-cta-grid">
+          <div className="sv-vendor-cta-card primary">
+            <span className="sv-tag-mini">✦ FOR SERVICE PROS</span>
+            <h2>Vendor Registration</h2>
+            <p>Join the PriceKlick Preferred network. Reach thousands of local customers actively searching for your services — free to list, pay only when you win the job.</p>
+            <ul className="sv-vendor-bullets">
+              <li>✓ Free profile + verified badge</li>
+              <li>✓ Show up in category search instantly</li>
+              <li>✓ Direct messaging &amp; booking inbox</li>
+            </ul>
+            <Link to="/register?role=vendor" className="sv-btn primary block">Register as a vendor →</Link>
           </div>
 
-          <aside className="sv-lens-side">
-            <div className="sv-tag">✦ HOW IT WORKS</div>
-            <h2 className="sv-lens-side-title">From photo to pro in three steps.</h2>
-            <p className="sv-lens-side-sub">
-              No more guessing categories or describing problems — just point your camera.
-            </p>
-
-            <div className="sv-lens-steps">
-              <div className="sv-lens-step">
-                <div className="sv-lens-step-n">01</div>
-                <div>
-                  <h4>Snap or upload</h4>
-                  <p>Drop in any photo of the issue, item, or quote. Works with screenshots too.</p>
-                </div>
-              </div>
-              <div className="sv-lens-step">
-                <div className="sv-lens-step-n">02</div>
-                <div>
-                  <h4>AI identifies the job</h4>
-                  <p>Lens detects the category, urgency, and likely scope using on-device vision.</p>
-                </div>
-              </div>
-              <div className="sv-lens-step">
-                <div className="sv-lens-step-n">03</div>
-                <div>
-                  <h4>Matched to verified pros</h4>
-                  <p>Get a ranked list of preferred vendors with transparent pricing — book in one click.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="sv-lens-stats">
-              <div>
-                <div className="sv-stat-num">2.4s</div>
-                <div className="sv-stat-cap">avg detection</div>
-              </div>
-              <div>
-                <div className="sv-stat-num">96%</div>
-                <div className="sv-stat-cap">match accuracy</div>
-              </div>
-              <div>
-                <div className="sv-stat-num">15+</div>
-                <div className="sv-stat-cap">service categories</div>
-              </div>
-            </div>
-          </aside>
+          <div className="sv-vendor-cta-card accent">
+            <span className="sv-tag-mini">✦ BOOST VISIBILITY</span>
+            <h2>Promote My Listing</h2>
+            <p>Already a vendor? Climb to the top of category results, get featured in "Preferred Vendors", and unlock priority badges for high-intent buyers.</p>
+            <ul className="sv-vendor-bullets">
+              <li>★ Top-of-list placement</li>
+              <li>★ Featured in PREFERRED carousel</li>
+              <li>★ Priority highlight on map view</li>
+            </ul>
+            <Link to="/dashboard?tab=promote" className="sv-btn ghost block">Promote my listing →</Link>
+          </div>
         </div>
       </section>
 
@@ -392,13 +209,6 @@ export default function Services() {
                 <span className="sv-from">from $60</span>
                 <span className="sv-verified">✓ Verified</span>
               </div>
-            </div>
-
-            <div className="sv-side-card sv-vendors-cta">
-              <div className="sv-tag-mini">FOR VENDORS</div>
-              <h3>Grow your business with us</h3>
-              <p>Reach thousands of local customers actively searching for your services.</p>
-              <Link to="/install" className="sv-btn primary block">Get started — Free</Link>
             </div>
 
             <div className="sv-side-card">
