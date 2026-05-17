@@ -89,11 +89,21 @@ function ProviderRow({ p }) {
 export default function Services() {
   const [cat, setCat] = useState('All')
   const [view, setView] = useState('list')
+  const [q, setQ] = useState('')
 
   const filtered = useMemo(() => {
-    if (cat === 'All') return PROVIDERS
-    return PROVIDERS.filter(p => p.cat === cat)
-  }, [cat])
+    const ql = q.trim().toLowerCase()
+    let list = (cat === 'All') ? PROVIDERS : PROVIDERS.filter(p => p.cat === cat)
+    if (ql) {
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(ql) ||
+        p.cat.toLowerCase().includes(ql) ||
+        p.blurb.toLowerCase().includes(ql) ||
+        p.city.toLowerCase().includes(ql)
+      )
+    }
+    return list
+  }, [cat, q])
 
   const sortedByRating = useMemo(() => [...filtered].sort((a,b) => b.rating - a.rating), [filtered])
   const preferredByCat = useMemo(() => {
@@ -106,61 +116,58 @@ export default function Services() {
     <div className="sv-page">
       <div className="sv-bg" />
 
-      <section className="container sv-hero">
-        <div className="sv-kicker">✦ Local Services Marketplace</div>
-        <h1 className="sv-title">
-          <span>Scroll less,</span>
-          <span className="sv-title-grad">save more.</span>
-        </h1>
-        <p className="sv-sub">
-          Discover trusted local pros for every job — vetted by neighbours, priced fairly,
-          and ready to book in a click.
-        </p>
-
-        <div className="sv-chips">
-          <button className={`sv-chip ${cat==='All' ? 'active' : ''}`} onClick={()=>setCat('All')}>All</button>
-          {CATEGORIES.map(c => (
-            <button key={c} className={`sv-chip ${cat===c ? 'active' : ''}`} onClick={()=>setCat(c)}>{c}</button>
-          ))}
+      <section className="container sv-hero-v2">
+        <div className="sv-util-row">
+          <Link to="/register?role=vendor" className="sv-util-link">🏪 For Vendors</Link>
+          <span className="sv-util-dot">·</span>
+          <Link to="/dashboard?tab=promote" className="sv-util-link">📣 Promote My Listing</Link>
         </div>
 
-        <div className="sv-controls">
-          <div className="sv-control-group">
-            <button className="sv-control active">📍 Near me</button>
-            <button className="sv-control">Within 25 km</button>
-          </div>
-          <div className="sv-control-group">
-            <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={()=>setView('list')}>📋 List</button>
-            <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={()=>setView('map')}>🗺 Map</button>
-          </div>
+        <div className="sv-hero-center">
+          <h1 className="sv-brand-title">PriceKlick</h1>
+          <p className="sv-brand-sub">Scroll less, save more.</p>
         </div>
-      </section>
 
-      <section className="container sv-section sv-vendor-cta-section">
-        <div className="sv-vendor-cta-grid">
-          <div className="sv-vendor-cta-card primary">
-            <span className="sv-tag-mini">✦ FOR SERVICE PROS</span>
-            <h2>Vendor Registration</h2>
-            <p>Join the PriceKlick Preferred network. Reach thousands of local customers actively searching for your services — free to list, pay only when you win the job.</p>
-            <ul className="sv-vendor-bullets">
-              <li>✓ Free profile + verified badge</li>
-              <li>✓ Show up in category search instantly</li>
-              <li>✓ Direct messaging &amp; booking inbox</li>
-            </ul>
-            <Link to="/register?role=vendor" className="sv-btn primary block">Register as a vendor →</Link>
+        <div className="sv-hero-grid">
+          <div className="sv-hero-left">
+            <div className="sv-search-wrap">
+              <span className="sv-search-icon" aria-hidden>🔍</span>
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search plumber, electrician, tutor, cleaner..."
+                className="sv-search-input"
+              />
+            </div>
+
+            <div className="sv-chips">
+              <button className={`sv-chip ${cat==='All' ? 'active' : ''}`} onClick={()=>setCat('All')}>All</button>
+              {CATEGORIES.map(c => (
+                <button key={c} className={`sv-chip ${cat===c ? 'active' : ''}`} onClick={()=>setCat(c)}>{c}</button>
+              ))}
+            </div>
+
+            <div className="sv-controls">
+              <div className="sv-control-group">
+                <button className="sv-control active">📍 Near me</button>
+                <button className="sv-control">Within 25 km</button>
+              </div>
+              <div className="sv-control-group">
+                <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={()=>setView('list')}>📋 List</button>
+                <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={()=>setView('map')}>🗺 Map</button>
+              </div>
+            </div>
           </div>
 
-          <div className="sv-vendor-cta-card accent">
-            <span className="sv-tag-mini">✦ BOOST VISIBILITY</span>
-            <h2>Promote My Listing</h2>
-            <p>Already a vendor? Climb to the top of category results, get featured in "Preferred Vendors", and unlock priority badges for high-intent buyers.</p>
-            <ul className="sv-vendor-bullets">
-              <li>★ Top-of-list placement</li>
-              <li>★ Featured in PREFERRED carousel</li>
-              <li>★ Priority highlight on map view</li>
-            </ul>
-            <Link to="/dashboard?tab=promote" className="sv-btn ghost block">Promote my listing →</Link>
-          </div>
+          <aside className="sv-hero-trend">
+            <div className="sv-trend-head">🔥 <span>Trending near you</span></div>
+            <div className="sv-trending">
+              {TRENDING.map(t => (
+                <button key={t} className="sv-trend" onClick={() => setQ(t)}>{t}</button>
+              ))}
+            </div>
+          </aside>
         </div>
       </section>
 
