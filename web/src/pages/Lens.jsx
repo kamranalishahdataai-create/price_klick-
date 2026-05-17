@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useCallback, useEffect } from 'react'
+﻿import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import './Lens.css'
 
@@ -26,6 +26,90 @@ const DEMO_RESULT = {
   confidence: 'high'
 }
 
+// === Geo + price helpers ===
+const COUNTRY_TLDS = {
+  CA: ['.ca'],
+  GB: ['.co.uk', '.uk'],
+  UK: ['.co.uk', '.uk'],
+  AU: ['.com.au', '.au'],
+  IN: ['.co.in', '.in'],
+  DE: ['.de'],
+  FR: ['.fr'],
+  IT: ['.it'],
+  ES: ['.es'],
+  JP: ['.co.jp', '.jp'],
+  BR: ['.com.br', '.br'],
+  MX: ['.com.mx', '.mx'],
+  NZ: ['.co.nz', '.nz'],
+  IE: ['.ie'],
+  SG: ['.sg'],
+  AE: ['.ae'],
+  ZA: ['.co.za'],
+}
+
+function parsePrice(str) {
+  if (str == null) return null
+  if (typeof str === 'number') return str
+  const m = String(str).replace(/,/g, '').match(/([\d]+(?:\.[\d]+)?)/)
+  return m ? parseFloat(m[1]) : null
+}
+
+function hostOf(url) {
+  try { return new URL(url).hostname.toLowerCase() } catch { return '' }
+}
+
+function matchesCountry(url, country) {
+  if (!country) return false
+  const host = hostOf(url)
+  if (!host) return false
+  const tlds = COUNTRY_TLDS[country.toUpperCase()]
+  if (tlds) return tlds.some(t => host.endsWith(t))
+  // US fallback: most .com hosts ship US
+  if (country.toUpperCase() === 'US') return host.endsWith('.com') || host.endsWith('.us')
+  return false
+}
+
+function buildOptions(data) {
+  const opts = []
+  const mainUrl = data.productUrl || data.redirectUrl || data.checkoutUrl
+  const mainPrice = parsePrice(data.productPrice?.sale || data.productPrice?.original || data.mainProductImage?.price)
+  if (mainUrl) {
+    opts.push({
+      url: mainUrl,
+      price: mainPrice,
+      source: data.mainProductImage?.merchant || data.brand || hostOf(mainUrl),
+      title: data.products?.[0] || data.promotionTitle,
+      thumbnail: data.mainProductImage?.thumbnail,
+      isMain: true,
+    })
+  }
+  (data.similarProducts || []).forEach(p => {
+    if (!p?.url) return
+    opts.push({
+      url: p.url,
+      price: parsePrice(p.price),
+      source: p.source || hostOf(p.url),
+      title: p.title,
+      thumbnail: p.thumbnail,
+    })
+  })
+  return opts
+}
+
+function pickCheapestNearby(options, country) {
+  if (!options.length) return null
+  const priced = options.filter(o => o.price != null && o.price > 0)
+  const pool = priced.length ? priced : options
+  if (country) {
+    const local = pool.filter(o => matchesCountry(o.url, country))
+    if (local.length) {
+      const lp = local.filter(o => o.price != null)
+      return (lp.length ? lp : local).sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))[0]
+    }
+  }
+  return pool.slice().sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))[0]
+}
+
 export default function Lens() {
   const [image, setImage] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -37,12 +121,17 @@ export default function Lens() {
   const [countdown, setCountdown] = useState(null)
   const [demo, setDemo] = useState(false)
   const [demoStep, setDemoStep] = useState(0)
+  const [geo, setGeo] = useState({ country: null, label: null, source: null })
   const countdownRef = useRef(null)
   const demoRef = useRef(null)
   const fileRef = useRef()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const hasDirectProductMatch = result?.hasDirectProductMatch !== false
+  const cheapest = useMemo(() => {
+    if (!result) return null
+    return pickCheapestNearby(buildOptions(result), geo.country)
+  }, [result, geo.country])
 
   useEffect(() => {
     if (searchParams.get('demo') === '1') {
@@ -50,6 +139,30 @@ export default function Lens() {
       setSearchParams(searchParams, { replace: true })
       setTimeout(() => runDemo(), 300)
     }
+    // Resolve user country: IP-based first (no permission), upgrade via geolocation
+    ;(async () => {
+      try {
+        const r = await fetch('https://ipapi.co/json/').then(x => x.json()).catch(() => null)
+        if (r?.country_code) {
+          setGeo({ country: r.country_code, label: [r.city, r.region, r.country_name].filter(Boolean).join(', '), source: 'ip' })
+        }
+      } catch {}
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords
+            const rev = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`).then(x => x.json())
+            if (rev?.countryCode) {
+              setGeo({
+                country: rev.countryCode,
+                label: [rev.city || rev.locality, rev.principalSubdivision, rev.countryName].filter(Boolean).join(', '),
+                source: 'gps',
+              })
+            }
+          } catch {}
+        }, () => {}, { timeout: 5000, maximumAge: 600000 })
+      }
+    })()
     return () => {
       clearInterval(countdownRef.current)
       clearTimeout(demoRef.current)
@@ -78,9 +191,8 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
-      const directUrl = data.productUrl || data.redirectUrl || data.checkoutUrl
-      const similarUrl = data.similarProducts?.find(p => p?.url)?.url
-      const url = data.hasDirectProductMatch ? directUrl : (directUrl || similarUrl)
+      const best = pickCheapestNearby(buildOptions(data), geo.country)
+      const url = best?.url || data.productUrl || data.redirectUrl || data.checkoutUrl
       if (autoRedirect && url) {
         setCountdown(3)
         let t = 3
@@ -134,6 +246,9 @@ export default function Lens() {
           brand, model, and best place to buy online.
         </p>
         <span className="lens-live">● AI vision online</span>
+        {geo.country && (
+          <span className="lens-geo">📍 Cheapest near {geo.label || geo.country}</span>
+        )}
       </section>
 
       <section className="container lens-spread">
@@ -224,7 +339,12 @@ export default function Lens() {
 
                 {!demo && countdown !== null && countdown > 0 && (
                   <div className="lens-redirect">
-                    <span>🚀 Opening {hasDirectProductMatch ? 'product page' : 'best similar match'} in {countdown}s…</span>
+                    <span>
+                      🚀 Opening {cheapest?.source ? <strong>cheapest at {cheapest.source}</strong> : (hasDirectProductMatch ? 'product page' : 'best similar match')}
+                      {cheapest?.price != null && <> for <strong>${cheapest.price.toFixed(2)}</strong></>}
+                      {geo.country && <> · 📍 near {geo.label || geo.country}</>}
+                      {' '}in {countdown}s…
+                    </span>
                     <button className="lens-mini-btn" onClick={cancelRedirect}>Cancel</button>
                   </div>
                 )}
@@ -283,6 +403,61 @@ export default function Lens() {
                   </div>
                 )}
 
+                {/* === Product Information panel === */}
+                <div className="lens-info">
+                  <div className="lens-section-label">📋 PRODUCT INFORMATION</div>
+                  <div className="lens-info-grid">
+                    {result.brand && (
+                      <div className="lens-info-row"><span className="lens-info-k">Brand</span><span className="lens-info-v">{result.brand}</span></div>
+                    )}
+                    {(result.products?.[0] || result.promotionTitle) && (
+                      <div className="lens-info-row"><span className="lens-info-k">Product</span><span className="lens-info-v">{result.products?.[0] || result.promotionTitle}</span></div>
+                    )}
+                    {result.productCategory && (
+                      <div className="lens-info-row"><span className="lens-info-k">Category</span><span className="lens-info-v">{result.productCategory}</span></div>
+                    )}
+                    {(result.productPrice?.sale || result.productPrice?.original || result.mainProductImage?.price) && (
+                      <div className="lens-info-row">
+                        <span className="lens-info-k">Listed price</span>
+                        <span className="lens-info-v">
+                          {result.productPrice?.sale || result.mainProductImage?.price}
+                          {result.productPrice?.original && result.productPrice?.sale && (
+                            <span className="lens-info-strike"> {result.productPrice.original}</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {result.discountAmount && (
+                      <div className="lens-info-row"><span className="lens-info-k">Discount</span><span className="lens-info-v lens-info-off">{result.discountAmount} OFF</span></div>
+                    )}
+                    {(result.mainProductImage?.merchant || result.domain) && (
+                      <div className="lens-info-row"><span className="lens-info-k">Seller</span><span className="lens-info-v">{result.mainProductImage?.merchant || result.domain}</span></div>
+                    )}
+                    {result.confidence && (
+                      <div className="lens-info-row"><span className="lens-info-k">AI confidence</span><span className="lens-info-v">{result.confidence}</span></div>
+                    )}
+                    {result.urlSource && (
+                      <div className="lens-info-row"><span className="lens-info-k">Source</span><span className="lens-info-v">{result.urlSource}</span></div>
+                    )}
+                  </div>
+                  {result.promotionDescription && (
+                    <p className="lens-info-desc">{result.promotionDescription}</p>
+                  )}
+
+                  {cheapest && (
+                    <div className="lens-cheapest">
+                      <div className="lens-cheapest-tag">💰 CHEAPEST {geo.country ? `NEAR ${geo.label || geo.country}` : 'AVAILABLE'}</div>
+                      <div className="lens-cheapest-body">
+                        <div>
+                          <div className="lens-cheapest-title">{cheapest.title || result.products?.[0] || result.brand}</div>
+                          <div className="lens-cheapest-source">at <strong>{cheapest.source}</strong>{cheapest.price != null && <> · <strong>${cheapest.price.toFixed(2)}</strong></>}</div>
+                        </div>
+                        <a className="lens-btn primary" href={cheapest.url} target="_blank" rel="noopener noreferrer">Buy cheapest →</a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="lens-result-actions">
                   {result.isGroceryFlyer ? (
                     <>
@@ -308,8 +483,11 @@ export default function Lens() {
                   <div className="lens-similar">
                     <div className="lens-section-label">{hasDirectProductMatch ? 'OTHER MATCHES' : 'SIMILAR PRODUCTS'}</div>
                     <div className="lens-similar-grid">
-                      {result.similarProducts.slice(0, 6).map((item, i) => (
-                        <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" className="lens-similar-card">
+                      {result.similarProducts.slice(0, 6).map((item, i) => {
+                        const isCheapest = cheapest && !cheapest.isMain && cheapest.url === item.url
+                        return (
+                        <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" className={`lens-similar-card ${isCheapest ? 'cheapest' : ''}`}>
+                          {isCheapest && <span className="lens-similar-flag">💰 Cheapest</span>}
                           {item.thumbnail ? (
                             <img src={item.thumbnail} alt={item.title} />
                           ) : (
@@ -321,7 +499,7 @@ export default function Lens() {
                             <span className="lens-similar-source">{item.source || 'Shop'} →</span>
                           </div>
                         </a>
-                      ))}
+                      )})}
                     </div>
                   </div>
                 )}
