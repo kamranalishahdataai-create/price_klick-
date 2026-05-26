@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { searchServices, enrichProvider, trackProviderClick, resolveUserLocation } from '../api/services'
 import './Services.css'
 
 const API = import.meta.env.VITE_API_URL || ''
@@ -10,33 +11,29 @@ const CATEGORIES = [
   'Photography','Plumbing','Roofing','Tutoring'
 ]
 
-const PROVIDERS = [
-  { id: '4f0dc22f', initial: 'A', name: 'AutoPro Garage',         cat: 'Auto Repair',        addr: '654 Motor Way',    price: 60,  rating: 4.3, reviews: 156, dist: 8.4,  city: 'Brooklyn, NY', phone: '(718) 555-0505', blurb: 'Full-service auto repair and maintenance' },
-  { id: 'c59e53e6', initial: 'F', name: 'Flavor Fusion Catering', cat: 'Catering',           addr: '159 Taste Blvd',   price: 300, rating: 4.7, reviews: 72,  dist: 17.9, city: 'Queens, NY',   phone: '(718) 555-1313', blurb: 'Gourmet catering for any occasion' },
-  { id: 'd38e8604', initial: 'C', name: 'Crystal Clean Co',       cat: 'Cleaning',           addr: '789 Pine Rd',      price: 50,  rating: 4.8, reviews: 215, dist: 4.2,  city: 'Brooklyn, NY', phone: '(718) 555-0303', blurb: 'Eco-friendly cleaning for homes and offices' },
-  { id: '9a7770e4', initial: 'B', name: 'Bright Spark Electric',  cat: 'Electrical',         addr: '456 Oak Ave',      price: 100, rating: 4.5, reviews: 89,  dist: 17.9, city: 'New York, NY', phone: '(212) 555-0202', blurb: 'Licensed electricians for residential & commercial' },
-  { id: '4c5aed01', initial: 'C', name: 'Cool Breeze HVAC',       cat: 'HVAC',               addr: '147 Cool St',      price: 120, rating: 4.4, reviews: 73,  dist: 5.0,  city: 'New York, NY', phone: '(212) 555-0707', blurb: 'Heating and cooling experts' },
-  { id: '5975ea1f', initial: 'T', name: 'TechFix IT Support',     cat: 'IT Support',         addr: '468 Byte Rd',      price: 75,  rating: 4.4, reviews: 104, dist: 4.2,  city: 'Brooklyn, NY', phone: '(718) 555-1515', blurb: 'Fast and reliable IT solutions' },
-  { id: 'f1b3cdf7', initial: 'G', name: 'Green Thumb Landscaping',cat: 'Landscaping',        addr: '987 Garden Ln',    price: 80,  rating: 4.6, reviews: 92,  dist: 5.1,  city: 'New York, NY', phone: '(212) 555-0606', blurb: 'Beautiful lawns and gardens since 2010' },
-  { id: '7c003a97', initial: 'S', name: 'Swift Movers',           cat: 'Moving',             addr: '369 Transit Ave',  price: 150, rating: 4.2, reviews: 134, dist: 6.5,  city: 'Brooklyn, NY', phone: '(718) 555-0909', blurb: 'Stress-free moving, local and long-distance' },
-  { id: '83154774', initial: 'P', name: 'Perfect Coat Painters',  cat: 'Painting',           addr: '258 Color Blvd',   price: 200, rating: 4.7, reviews: 48,  dist: 17.9, city: 'Queens, NY',   phone: '(718) 555-0808', blurb: 'Premium painting services' },
-  { id: '781f8119', initial: 'F', name: 'FitLife Personal Training',cat: 'Personal Training',addr: '357 Muscle St',    price: 50,  rating: 4.9, reviews: 186, dist: 0.0,  city: 'New York, NY', phone: '(212) 555-1414', blurb: 'Certified personal trainers' },
-  { id: 'ddbbac4b', initial: 'S', name: 'Shield Pest Control',    cat: 'Pest Control',       addr: '741 Guard St',     price: 100, rating: 4.5, reviews: 61,  dist: 0.0,  city: 'New York, NY', phone: '(212) 555-1010', blurb: 'Safe and effective pest elimination' },
-  { id: '9b508c37', initial: 'C', name: 'Capture Moments Photography',cat: 'Photography',    addr: '963 Lens Ave',     price: 200, rating: 4.8, reviews: 95,  dist: 5.3,  city: 'New York, NY', phone: '(212) 555-1212', blurb: 'Professional event and portrait photography' },
-  { id: '10a562da', initial: 'Q', name: 'Quick Fix Plumbing',     cat: 'Plumbing',           addr: '123 Main St',      price: 75,  rating: 4.7, reviews: 128, dist: 0.0,  city: 'New York, NY', phone: '(212) 555-0101', blurb: 'Emergency plumbing services available 24/7' },
-  { id: 'd0085adf', initial: 'T', name: 'TopRoof Solutions',      cat: 'Roofing',            addr: '852 High Rd',      price: 500, rating: 4.6, reviews: 38,  dist: 5.1,  city: 'New York, NY', phone: '(212) 555-1111', blurb: 'Certified roofing contractors' },
-  { id: '07b5ab99', initial: 'M', name: 'MathWiz Tutoring',       cat: 'Tutoring',           addr: '321 Elm St',       price: 40,  rating: 4.9, reviews: 67,  dist: 5.3,  city: 'New York, NY', phone: '(212) 555-0404', blurb: 'Expert math and science tutoring K-12' },
-]
-
 const TRENDING = ['Plumber','Tutor','Electrician','House cleaner','Dog walker','Massage','Mechanic']
 
 function Stars({ r }) {
   return (
     <span className="sv-stars" aria-label={`Rating ${r}`}>
       <span className="sv-star">★</span>
-      <span>{r.toFixed(1)}</span>
+      <span>{Number(r).toFixed(1)}</span>
     </span>
   )
+}
+
+function initialOf(p) { return (p.name || '?').trim().charAt(0).toUpperCase() }
+function shortAddr(p) { return p.address || p.addr || p.city || '' }
+function priceLabel(p) {
+  if (p.priceValue) return `from $${p.priceValue}`
+  if (p.price && typeof p.price === 'string') return p.price
+  if (p.price) return `$${p.price}`
+  return ''
+}
+function distLabel(p) {
+  if (typeof p.distanceKm === 'number') return `${p.distanceKm.toFixed(1)} km`
+  if (typeof p.dist === 'number') return `${p.dist.toFixed(1)} km`
+  return ''
 }
 
 function PreferredCard({ p }) {
@@ -44,43 +41,61 @@ function PreferredCard({ p }) {
     <div className="sv-pref-card">
       <div className="sv-pref-badge">PREFERRED</div>
       <div className="sv-pref-head">
-        <div className="sv-avatar">{p.initial}</div>
+        {p.thumbnail
+          ? <img className="sv-avatar img" src={p.thumbnail} alt="" />
+          : <div className="sv-avatar">{initialOf(p)}</div>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="sv-pref-name">{p.name}</div>
-          <div className="sv-pref-addr">{p.addr}</div>
+          <div className="sv-pref-name" title={p.name}>{p.name}</div>
+          <div className="sv-pref-addr">{shortAddr(p)}</div>
         </div>
       </div>
       <div className="sv-pref-meta">
-        <span className="sv-price">${p.price}</span>
-        <Stars r={p.rating} />
-        <span className="sv-reviews">({p.reviews})</span>
+        {priceLabel(p) && <span className="sv-price">{priceLabel(p)}</span>}
+        {p.rating != null && <Stars r={p.rating} />}
+        {p.reviewsCount != null && <span className="sv-reviews">({p.reviewsCount})</span>}
         <span className="sv-verified">✓ VERIFIED</span>
       </div>
-      <p className="sv-pref-blurb">{p.blurb}</p>
+      {(p.description || p.blurb) && <p className="sv-pref-blurb">{p.description || p.blurb}</p>}
     </div>
   )
 }
 
-function ProviderRow({ p }) {
+function ProviderRow({ p, onEnrich, enriching }) {
+  const phoneHref = p.phone ? `tel:${String(p.phone).replace(/[^\d+]/g,'')}` : null
+  const mapsHref = p.mapsUrl ||
+    (p.lat && p.lng ? `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}` :
+     p.name ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + (p.address||''))}` : null)
+  const isEnriching = enriching === (p.placeId || p.name)
   return (
     <div className="sv-row">
       <div className="sv-row-left">
-        <div className="sv-avatar lg">{p.initial}</div>
+        {p.thumbnail
+          ? <img className="sv-avatar lg img" src={p.thumbnail} alt="" />
+          : <div className="sv-avatar lg">{initialOf(p)}</div>}
         <div className="sv-row-body">
-          <div className="sv-row-name">{p.name} <span className="sv-row-cat">{p.cat}</span></div>
-          <div className="sv-row-blurb">{p.blurb}</div>
+          <div className="sv-row-name">{p.name} {p.category && <span className="sv-row-cat">{p.category}</span>}</div>
+          {(p.description || p.blurb) && <div className="sv-row-blurb">{p.description || p.blurb}</div>}
           <div className="sv-row-meta">
-            <Stars r={p.rating} />
-            <span className="sv-reviews">({p.reviews})</span>
-            <span className="sv-dist">{p.dist.toFixed(1)} km</span>
-            <span className="sv-from">from ${p.price}</span>
+            {p.rating != null && <Stars r={p.rating} />}
+            {p.reviewsCount != null && <span className="sv-reviews">({p.reviewsCount})</span>}
+            {distLabel(p) && <span className="sv-dist">{distLabel(p)}</span>}
+            {priceLabel(p) && <span className="sv-from">{priceLabel(p)}</span>}
           </div>
-          <div className="sv-row-city">{p.city}</div>
+          <div className="sv-row-city">{shortAddr(p)}</div>
         </div>
       </div>
       <div className="sv-row-actions">
-        <Link to={`#`} className="sv-btn primary">View &amp; Buy</Link>
-        <a href={`tel:${p.phone}`} className="sv-btn ghost">📞 Call</a>
+        {p.website
+          ? <a href={p.website} target="_blank" rel="noopener noreferrer"
+               onClick={() => trackProviderClick({ providerId: p.placeId, placeId: p.placeId, name: p.name, category: p.category, type: 'service_click' })}
+               className="sv-btn primary">View &amp; Buy</a>
+          : mapsHref && <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="sv-btn primary">View on Maps</a>}
+        {phoneHref && <a href={phoneHref} className="sv-btn ghost">📞 Call</a>}
+        {onEnrich && (
+          <button className="sv-btn ghost" disabled={isEnriching} onClick={() => onEnrich(p)}>
+            {isEnriching ? '… Loading' : '✨ Details'}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -93,39 +108,105 @@ export default function Services() {
   const [budget, setBudget] = useState('')
   const [sort, setSort] = useState('rating')
   const [quick, setQuick] = useState(null) // 'budget' | 'top' | 'close'
+  const [radiusKm, setRadiusKm] = useState(25)
 
-  const filtered = useMemo(() => {
-    const ql = q.trim().toLowerCase()
-    let list = (cat === 'All') ? PROVIDERS : PROVIDERS.filter(p => p.cat === cat)
-    if (ql) {
-      list = list.filter(p =>
-        p.name.toLowerCase().includes(ql) ||
-        p.cat.toLowerCase().includes(ql) ||
-        p.blurb.toLowerCase().includes(ql) ||
-        p.city.toLowerCase().includes(ql)
-      )
-    }
-    const max = parseFloat(budget)
-    if (!Number.isNaN(max) && max > 0) list = list.filter(p => p.price <= max)
-    if (quick === 'budget') list = list.filter(p => p.price < 50)
-    if (quick === 'top') list = list.filter(p => p.rating >= 4.5)
-    return list
-  }, [cat, q, budget, quick])
+  // Live backend state
+  const [geo, setGeo] = useState({ lat: null, lng: null, city: '', source: 'none' })
+  const [providers, setProviders] = useState([])     // real, fetched from SerpAPI Google Maps
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [enriching, setEnriching] = useState(null)   // placeId being enriched
+  const [enriched, setEnriched] = useState(null)     // last enrichment result
+  const debounceRef = useRef(null)
 
-  const sortedByRating = useMemo(() => {
-    const arr = [...filtered]
-    if (sort === 'price-asc') arr.sort((a, b) => a.price - b.price)
-    else if (sort === 'price-desc') arr.sort((a, b) => b.price - a.price)
-    else if (sort === 'distance' || quick === 'close') arr.sort((a, b) => a.dist - b.dist)
-    else arr.sort((a, b) => b.rating - a.rating)
-    return arr
-  }, [filtered, sort, quick])
-  const preferredByCat = useMemo(() => {
-    const map = {}
-    PROVIDERS.forEach(p => { if (!map[p.cat]) map[p.cat] = p })
-    return map
+  // Resolve user location once on mount (GPS → fallback to IP)
+  useEffect(() => {
+    let cancelled = false
+    resolveUserLocation().then(g => { if (!cancelled) setGeo(g) }).catch(() => {})
+    return () => { cancelled = true }
   }, [])
 
+  // The effective query: typed search OR the selected category OR a sensible default
+  const effectiveQuery = useMemo(() => {
+    const typed = q.trim()
+    if (typed) return typed
+    if (cat && cat !== 'All') return cat.toLowerCase()
+    return 'local services'
+  }, [q, cat])
+
+  // Fire backend search (debounced) whenever inputs change
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true); setError('')
+      try {
+        const maxPrice = parseFloat(budget) || (quick === 'budget' ? 50 : undefined)
+        const minRating = quick === 'top' ? 4.5 : undefined
+        const data = await searchServices({
+          query: effectiveQuery,
+          lat: geo.lat ?? undefined,
+          lng: geo.lng ?? undefined,
+          radiusKm,
+          maxPrice,
+          minRating,
+          limit: 25
+        })
+        if (!data.ok) {
+          setError(data.message || data.error || 'Search failed')
+          setProviders([])
+        } else {
+          setProviders(data.providers || [])
+        }
+      } catch (e) {
+        setError(e.message || 'Network error')
+        setProviders([])
+      } finally {
+        setLoading(false)
+      }
+    }, 400)
+    return () => debounceRef.current && clearTimeout(debounceRef.current)
+  }, [effectiveQuery, geo.lat, geo.lng, radiusKm, budget, quick])
+
+  // Local sort + quick-distance toggle (data is already filtered server-side)
+  const sortedByRating = useMemo(() => {
+    const arr = [...providers]
+    const dist = p => (typeof p.distanceKm === 'number' ? p.distanceKm : Infinity)
+    const priceN = p => (typeof p.priceValue === 'number' ? p.priceValue : Infinity)
+    if (sort === 'price-asc') arr.sort((a, b) => priceN(a) - priceN(b))
+    else if (sort === 'price-desc') arr.sort((a, b) => priceN(b) - priceN(a))
+    else if (sort === 'distance' || quick === 'close') arr.sort((a, b) => dist(a) - dist(b))
+    else arr.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    return arr
+  }, [providers, sort, quick])
+
+  // Group one preferred (highest-rated) provider per category for the Preferred section
+  const preferredByCat = useMemo(() => {
+    const map = {}
+    const sorted = [...providers].sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    for (const p of sorted) {
+      const key = p.category || cat
+      if (key && !map[key]) map[key] = p
+    }
+    return map
+  }, [providers, cat])
+
+  // Enrich a provider via Apify (Google Places full data: photos, reviews, hours, socials)
+  async function handleEnrich(prov) {
+    if (!prov) return
+    setEnriching(prov.placeId || prov.name)
+    try {
+      const r = await enrichProvider({
+        placeId: prov.placeId,
+        name: prov.name,
+        address: prov.address
+      })
+      setEnriched(r)
+    } catch (e) {
+      setEnriched({ ok: false, error: e.message })
+    } finally {
+      setEnriching(null)
+    }
+  }
   return (
     <div className="sv-page">
       <div className="sv-bg" />
@@ -174,7 +255,7 @@ export default function Services() {
               <div className="sv-filter-cell"><span>⦾</span> Near me</div>
               <div className="sv-filter-cell">
                 <span>Within</span>
-                <select className="sv-filter-select" defaultValue="25">
+                <select className="sv-filter-select" value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))}>
                   <option value="5">5 km</option>
                   <option value="10">10 km</option>
                   <option value="25">25 km</option>
@@ -223,17 +304,37 @@ export default function Services() {
         <div className="sv-section-head">
           <span className="sv-tag">✦ TRUSTED PARTNERS</span>
           <h2>PriceKlick Preferred Vendors</h2>
-          <p>Top-rated, verified service providers hand-picked for quality and value in every industry.</p>
+          <p>Top-rated, verified providers in <strong>{geo.city || 'your area'}</strong> {geo.source !== 'none' ? `(· ${geo.source.toUpperCase()})` : ''}.</p>
         </div>
 
-        <div className="sv-pref-grid">
-          {CATEGORIES.map(c => (
-            <div key={c} className="sv-pref-col">
-              <div className="sv-pref-cat">{c}</div>
-              {preferredByCat[c] && <PreferredCard p={preferredByCat[c]} />}
-            </div>
-          ))}
-        </div>
+        {cat === 'All' ? (
+          <div className="sv-pref-grid">
+            {CATEGORIES.map(c => (
+              <button key={c} className="sv-pref-col sv-pref-cta" onClick={() => setCat(c)}>
+                <div className="sv-pref-cat">{c}</div>
+                <div className="sv-pref-hint">Tap to find top-rated {c.toLowerCase()} near you</div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="sv-pref-grid">
+            {sortedByRating.slice(0, 6).map(p => (
+              <div key={p.placeId || p.name} className="sv-pref-col">
+                <div className="sv-pref-cat">{cat}</div>
+                <PreferredCard p={p} />
+              </div>
+            ))}
+            {sortedByRating.length === 0 && !loading && (
+              <div className="sv-pref-col" style={{ gridColumn: '1 / -1' }}>
+                <div className="sv-empty">
+                  <div className="sv-empty-icon">🔍</div>
+                  <h3>No {cat.toLowerCase()} providers found nearby</h3>
+                  <p>Try a different category or widen the radius.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="container sv-section sv-providers">
@@ -241,20 +342,32 @@ export default function Services() {
           <div>
             <div className="sv-providers-head">
               <h2>All Providers</h2>
-              <span className="sv-count">{sortedByRating.length} providers found within 25 km</span>
+              <span className="sv-count">
+                {loading ? 'Searching…' :
+                  `${sortedByRating.length} ${sortedByRating.length === 1 ? 'provider' : 'providers'} found within ${radiusKm} km`}
+              </span>
             </div>
-            {sortedByRating.length === 0 ? (
+            {error && (
+              <div className="sv-empty" style={{ borderColor: 'oklch(70% .18 25 / .4)' }}>
+                <div className="sv-empty-icon">⚠️</div>
+                <h3>Search failed</h3>
+                <p>{error}</p>
+              </div>
+            )}
+            {!error && sortedByRating.length === 0 && !loading ? (
               <div className="sv-empty">
                 <div className="sv-empty-icon">🔍</div>
                 <h3>No providers found</h3>
                 <p>Try adjusting your filters.</p>
-                <button className="sv-btn ghost" onClick={() => { setCat('All'); setQ(''); setBudget(''); setQuick(null); }}>
+                <button className="sv-btn ghost" onClick={() => { setCat('All'); setQ(''); setBudget(''); setQuick(null); setRadiusKm(25); }}>
                   Clear all filters
                 </button>
               </div>
             ) : (
               <div className="sv-rows">
-                {sortedByRating.map(p => <ProviderRow key={p.id} p={p} />)}
+                {sortedByRating.map(p => (
+                  <ProviderRow key={p.placeId || p.name} p={p} onEnrich={handleEnrich} enriching={enriching} />
+                ))}
               </div>
             )}
           </div>
@@ -287,23 +400,27 @@ export default function Services() {
               </button>
             </div>
 
-            <div className="sv-side-card sv-deal">
-              <div className="sv-tag-mini">📈 DEAL OF THE DAY</div>
-              <div className="sv-deal-row">
-                <Stars r={4.3} />
-              </div>
-              <div className="sv-deal-name">
-                <div className="sv-avatar">A</div>
-                <div>
-                  <div className="sv-pref-name">AutoPro Garage</div>
-                  <div className="sv-pref-addr">Auto Repair</div>
+            {sortedByRating[0] && (
+              <div className="sv-side-card sv-deal">
+                <div className="sv-tag-mini">📈 TOP RATED NEARBY</div>
+                <div className="sv-deal-row">
+                  {sortedByRating[0].rating != null && <Stars r={sortedByRating[0].rating} />}
+                </div>
+                <div className="sv-deal-name">
+                  {sortedByRating[0].thumbnail
+                    ? <img className="sv-avatar img" src={sortedByRating[0].thumbnail} alt="" />
+                    : <div className="sv-avatar">{initialOf(sortedByRating[0])}</div>}
+                  <div style={{ minWidth: 0 }}>
+                    <div className="sv-pref-name" title={sortedByRating[0].name}>{sortedByRating[0].name}</div>
+                    <div className="sv-pref-addr">{shortAddr(sortedByRating[0])}</div>
+                  </div>
+                </div>
+                <div className="sv-deal-foot">
+                  {priceLabel(sortedByRating[0]) && <span className="sv-from">{priceLabel(sortedByRating[0])}</span>}
+                  <span className="sv-verified">✓ Verified</span>
                 </div>
               </div>
-              <div className="sv-deal-foot">
-                <span className="sv-from">from $60</span>
-                <span className="sv-verified">✓ Verified</span>
-              </div>
-            </div>
+            )}
 
             <div className="sv-side-card sv-vendors-cta">
               <div className="sv-tag-mini">📣 FOR VENDORS</div>
@@ -314,6 +431,55 @@ export default function Services() {
           </aside>
         </div>
       </section>
+
+      {enriched && (
+        <div className="sv-modal" role="dialog" aria-modal="true" onClick={() => setEnriched(null)}>
+          <div className="sv-modal-card" onClick={(e) => e.stopPropagation()}>
+            <button className="sv-modal-close" onClick={() => setEnriched(null)} aria-label="Close">✕</button>
+            {!enriched.ok ? (
+              <div style={{ padding: 24 }}>
+                <h3>Couldn't load extra details</h3>
+                <p style={{ color: 'var(--muted-foreground)' }}>{enriched.error || enriched.message || 'Unknown error.'}</p>
+                <p style={{ fontSize: 13, opacity: .75 }}>Tip: set <code>APIFY_TOKEN</code> in <code>server/.env</code> to enable Google Places enrichment (photos, hours, reviews).</p>
+              </div>
+            ) : (
+              <div className="sv-modal-body">
+                <h3>{enriched.provider?.name || enriched.name}</h3>
+                <p className="sv-pref-addr">{enriched.provider?.address}</p>
+                <div className="sv-pref-meta" style={{ margin: '10px 0' }}>
+                  {enriched.provider?.rating != null && <Stars r={enriched.provider.rating} />}
+                  {enriched.provider?.reviewsCount != null && <span className="sv-reviews">({enriched.provider.reviewsCount} reviews)</span>}
+                  {enriched.provider?.phone && <a href={`tel:${enriched.provider.phone}`} className="sv-btn ghost">📞 {enriched.provider.phone}</a>}
+                  {enriched.provider?.website && <a href={enriched.provider.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary">Visit site</a>}
+                </div>
+                {enriched.provider?.photos?.length > 0 && (
+                  <div className="sv-photos">
+                    {enriched.provider.photos.slice(0, 8).map((src, i) => (
+                      <img key={i} src={src} alt="" />
+                    ))}
+                  </div>
+                )}
+                {enriched.provider?.openingHours && (
+                  <div style={{ marginTop: 12 }}>
+                    <strong>Opening hours</strong>
+                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, margin: '6px 0 0' }}>
+                      {typeof enriched.provider.openingHours === 'string'
+                        ? enriched.provider.openingHours
+                        : JSON.stringify(enriched.provider.openingHours, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {enriched.provider?.reviewsSummary && (
+                  <div style={{ marginTop: 12 }}>
+                    <strong>What customers say</strong>
+                    <p style={{ marginTop: 6 }}>{enriched.provider.reviewsSummary}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
