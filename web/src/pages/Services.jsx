@@ -213,7 +213,7 @@ export default function Services() {
 
       <section className="container sv-hero-v2">
         <div className="sv-util-row">
-          <Link to="/register?role=vendor" className="sv-util-link">🏪 For Vendors</Link>
+          <Link to="/vendor" className="sv-util-link">🏪 For Vendors</Link>
           <span className="sv-util-dot">·</span>
           <Link to="/dashboard?tab=promote" className="sv-util-link">📣 Promote My Listing</Link>
           <span className="sv-util-dot">·</span>
@@ -426,34 +426,9 @@ export default function Services() {
               <div className="sv-tag-mini">📣 FOR VENDORS</div>
               <h3>Grow your business with us</h3>
               <p>Reach thousands of local customers actively searching for your services.</p>
-              <Link to="/register?role=vendor" className="sv-btn primary block">Get started — Free</Link>
+              <Link to="/vendor" className="sv-btn primary block">Get started — Free</Link>
             </div>
           </aside>
-        </div>
-      </section>
-
-      {/* === Vendor Registration Pitch === */}
-      <section className="container sv-vendor-pitch-wrap">
-        <div className="sv-vendor-pitch">
-          <span className="sv-vp-pill">🏪 VENDOR REGISTRATION</span>
-          <h2 className="sv-vp-title">
-            Join PriceKlick — <span className="sv-vp-grad">no discounting required</span>
-          </h2>
-          <p className="sv-vp-sub">
-            Unlike WagJag, Square, Groupon and other deal sites, we never ask vendors to
-            slash prices. You set the price you're comfortable selling at — we categorize you
-            by pricepoint so the right customers find you.
-          </p>
-          <ul className="sv-vp-list">
-            <li><span className="sv-vp-check">✓</span> Keep 100% of your margins — no forced discounts</li>
-            <li><span className="sv-vp-check">✓</span> Listed by pricepoint category, not by deal</li>
-            <li><span className="sv-vp-check">✓</span> Reach budget-aware customers actively searching</li>
-            <li><span className="sv-vp-check">✓</span> Manage products, specials, and orders from one dashboard</li>
-          </ul>
-          <div className="sv-vp-actions">
-            <Link to="/register?role=vendor" className="sv-vp-btn primary">Register as a Vendor</Link>
-            <Link to="/login?role=vendor" className="sv-vp-btn outline">Vendor Login</Link>
-          </div>
         </div>
       </section>
 

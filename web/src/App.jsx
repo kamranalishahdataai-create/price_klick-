@@ -18,6 +18,7 @@ import Privacy from './pages/Privacy.jsx'
 import Lens from './pages/Lens.jsx'
 import Services from './pages/Services.jsx'
 import SmartCompare from './pages/SmartCompare.jsx'
+import Vendor from './pages/Vendor.jsx'
 import PrePay from './pages/PrePay.jsx'
 import AuthProvider from './context/AuthContext.jsx'
 
@@ -52,6 +53,8 @@ export default function App(){
               <Route path="/services" element={<Services/>} />
               <Route path="/smart-compare" element={<SmartCompare/>} />
               <Route path="/compare" element={<SmartCompare/>} />
+              <Route path="/vendor" element={<Vendor/>} />
+              <Route path="/vendors" element={<Vendor/>} />
               <Route path="/prepay" element={<PrePay/>} />
             </Routes>
             <Footer/>

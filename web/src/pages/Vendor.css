@@ -1,0 +1,72 @@
+/* Vendor.css — Vendor registration pitch landing page */
+
+.vendor-page { position: relative; min-height: 100vh; padding: 40px 0 80px; }
+.vendor-bg {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(900px 500px at 10% -10%, oklch(85% .08 295 / .5), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, oklch(90% .06 170 / .5), transparent 60%),
+    linear-gradient(180deg, #f6f4ff 0%, #f3faf6 100%);
+}
+
+.vendor-wrap { max-width: 920px; margin: 0 auto; padding: 0 20px }
+.vendor-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: #1a1a1a; text-decoration: none; font-weight: 500; font-size: 14px;
+  margin-bottom: 24px; transition: opacity .15s;
+}
+.vendor-back:hover { opacity: .65 }
+
+.vendor-card {
+  background: rgba(255,255,255,.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 24px;
+  padding: 48px 52px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.05);
+  margin-top: 20px;
+}
+
+.vp-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fff; border: 1px solid rgba(16,185,129,.3);
+  color: #10b981; font-weight: 700; font-size: 13px; letter-spacing: .08em;
+  padding: 7px 14px; border-radius: 999px; margin-bottom: 22px;
+}
+
+.vp-title {
+  font-size: 48px; font-weight: 800; line-height: 1.1; letter-spacing: -.02em;
+  margin: 0 0 18px; color: #111;
+}
+.vp-grad {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+.vp-sub { font-size: 16px; line-height: 1.65; color: #555; margin: 0 0 28px; max-width: 660px }
+
+.vp-list { list-style: none; padding: 0; margin: 0 0 36px; display: flex; flex-direction: column; gap: 14px }
+.vp-list li { display: flex; align-items: center; gap: 10px; font-size: 15px; color: #2d2d3a }
+.vp-check { color: #10b981; font-weight: 800; font-size: 16px; flex: 0 0 18px }
+
+.vp-actions { display: flex; gap: 12px; flex-wrap: wrap }
+.vp-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 13px 28px; border-radius: 999px;
+  font-weight: 700; font-size: 14px;
+  text-decoration: none; transition: all .15s ease; cursor: pointer;
+  border: 1px solid transparent;
+}
+.vp-btn.primary {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  color: #fff; box-shadow: 0 6px 20px rgba(99,102,241,.3);
+}
+.vp-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(99,102,241,.4) }
+.vp-btn.outline { background: #fff; border-color: rgba(0,0,0,.12); color: #111 }
+.vp-btn.outline:hover { border-color: #6366f1; color: #6366f1 }
+
+@media (max-width: 720px) {
+  .vendor-card { padding: 30px 24px }
+  .vp-title { font-size: 32px }
+}
