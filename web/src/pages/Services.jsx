@@ -215,9 +215,9 @@ export default function Services() {
         <div className="sv-util-row">
           <Link to="/vendor" className="sv-util-link">🏪 For Vendors</Link>
           <span className="sv-util-dot">·</span>
-          <Link to="/dashboard?tab=promote" className="sv-util-link">📣 Promote My Listing</Link>
+          <Link to="/vendor" className="sv-util-link">📣 Promote My Listing</Link>
           <span className="sv-util-dot">·</span>
-          <Link to="/install" className="sv-util-link">🚀 Join the PriceKlick Network</Link>
+          <Link to="/vendor" className="sv-util-link">🚀 Join the PriceKlick Network</Link>
         </div>
 
         <div className="sv-hero-center">
