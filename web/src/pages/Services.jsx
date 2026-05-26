@@ -217,7 +217,7 @@ export default function Services() {
           <span className="sv-util-dot">·</span>
           <Link to="/promote" className="sv-util-link">📣 Promote My Listing</Link>
           <span className="sv-util-dot">·</span>
-          <Link to="/vendor" className="sv-util-link">🚀 Join the PriceKlick Network</Link>
+          <Link to="/network" className="sv-util-link">🚀 Join the PriceKlick Network</Link>
         </div>
 
         <div className="sv-hero-center">
