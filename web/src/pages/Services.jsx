@@ -223,7 +223,7 @@ export default function Services() {
         <div className="sv-hero-center">
           <h1 className="sv-brand-title">PriceKlick</h1>
           <p className="sv-brand-sub">Scroll less, save more.</p>
-          <Link to="/lens" className="sv-compare-btn">
+          <Link to="/smart-compare" className="sv-compare-btn">
             <span className="sv-compare-icon">✨</span>
             <span className="sv-compare-label">Smart Compare Advisor</span>
             <span className="sv-compare-sep">—</span>

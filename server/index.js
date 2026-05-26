@@ -24,6 +24,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import servicesRoutes from './routes/services.js';
 import insightsRoutes from './routes/insights.js';
+import smartCompareRoutes from './routes/smartCompare.js';
 import { runDealScraperOnce } from './services/dealScraper.js';
 import { authenticate } from './middleware/auth.js';
 import User from './models/User.js';
@@ -65,6 +66,7 @@ if (mongoConnection) {
   app.use('/api/admin', adminRoutes);
   app.use('/api/services', servicesRoutes);
   app.use('/api/insights', insightsRoutes);
+  app.use('/api/smart-compare', smartCompareRoutes);
 
   // Bootstrap: Promote first user to admin (only if no admins exist yet)
   app.post('/api/admin/bootstrap', authenticate, async (req, res) => {
