@@ -1,0 +1,83 @@
+/* Promote.css — Preferred Vendor Ads landing */
+
+.promote-page { position: relative; min-height: 100vh; padding: 40px 0 80px; }
+.promote-bg {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(900px 500px at 10% -10%, oklch(85% .08 295 / .5), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, oklch(90% .06 170 / .5), transparent 60%),
+    linear-gradient(180deg, #f6f4ff 0%, #f3faf6 100%);
+}
+
+.promote-wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px }
+.promote-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: #1a1a1a; text-decoration: none; font-weight: 500; font-size: 14px;
+  margin-bottom: 24px; transition: opacity .15s;
+}
+.promote-back:hover { opacity: .65 }
+
+.promote-card {
+  background: rgba(255,255,255,.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 24px;
+  padding: 56px 60px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.05);
+  margin-top: 20px;
+}
+
+.pm-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fff; border: 1px solid rgba(16,185,129,.3);
+  color: #10b981; font-weight: 700; font-size: 13px; letter-spacing: .08em;
+  padding: 7px 14px; border-radius: 999px; margin-bottom: 24px;
+}
+
+.pm-title {
+  font-size: 52px; font-weight: 800; line-height: 1.1; letter-spacing: -.02em;
+  margin: 0 0 20px; color: #111;
+}
+.pm-grad {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+.pm-sub { font-size: 16px; line-height: 1.65; color: #555; margin: 0 0 36px; max-width: 720px }
+
+.pm-tiers {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 32px;
+}
+.pm-tier {
+  background: #fff; border: 1px solid rgba(0,0,0,.06); border-radius: 16px;
+  padding: 24px 22px; transition: transform .15s, box-shadow .15s;
+}
+.pm-tier:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,.07) }
+.pm-tier-name { color: #10b981; font-weight: 700; font-size: 13px; letter-spacing: .1em; margin-bottom: 8px }
+.pm-tier-price { font-size: 30px; font-weight: 800; color: #111; margin-bottom: 14px; letter-spacing: -.02em }
+.pm-tier-price span { font-size: 16px; font-weight: 600; color: #6b7280 }
+.pm-tier-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px }
+.pm-tier-list li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #2d2d3a }
+.pm-spark { color: #10b981; font-size: 13px }
+
+.pm-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap }
+.pm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 28px; border-radius: 999px;
+  font-weight: 700; font-size: 14px;
+  text-decoration: none; transition: all .15s ease; cursor: pointer;
+  border: 1px solid transparent;
+}
+.pm-btn.primary {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  color: #fff; box-shadow: 0 6px 20px rgba(99,102,241,.3);
+}
+.pm-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(99,102,241,.4) }
+.pm-note { color: #6b7280; font-size: 14px; display: inline-flex; align-items: center; gap: 6px }
+
+@media (max-width: 880px) {
+  .promote-card { padding: 32px 24px }
+  .pm-title { font-size: 34px }
+  .pm-tiers { grid-template-columns: 1fr; }
+}
