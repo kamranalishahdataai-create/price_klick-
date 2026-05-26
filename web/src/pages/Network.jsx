@@ -53,7 +53,7 @@ export default function Network() {
           <div className="nw-actions">
             <Link to="/register?role=vendor&plan=network" className="nw-btn primary">Join the Network →</Link>
             <Link to="/promote" className="nw-btn outline">📣 Promote My Services</Link>
-            <Link to="/login?role=vendor" className="nw-btn ghost">Vendor Login</Link>
+            <Link to="/vendor-login" className="nw-btn ghost">Vendor Login</Link>
           </div>
         </div>
       </div>

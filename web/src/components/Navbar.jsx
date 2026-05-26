@@ -27,7 +27,7 @@ export default function Navbar(){
           <NavLink to="/stores">Stores</NavLink>
           <NavLink to="/services">Services</NavLink>
           <NavLink to="/prepay">PrePay</NavLink>
-          <NavLink to="/vendor">Vendor</NavLink>
+          <NavLink to="/vendor-login">Vendor</NavLink>
           {isAuthenticated && user?.role === 'admin' && (
             <NavLink to="/admin" className="admin-link">Admin</NavLink>
           )}

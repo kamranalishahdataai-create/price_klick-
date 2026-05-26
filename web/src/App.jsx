@@ -21,6 +21,7 @@ import SmartCompare from './pages/SmartCompare.jsx'
 import Vendor from './pages/Vendor.jsx'
 import Promote from './pages/Promote.jsx'
 import Network from './pages/Network.jsx'
+import VendorLogin from './pages/VendorLogin.jsx'
 import PrePay from './pages/PrePay.jsx'
 import AuthProvider from './context/AuthContext.jsx'
 
@@ -59,6 +60,7 @@ export default function App(){
               <Route path="/vendors" element={<Vendor/>} />
               <Route path="/promote" element={<Promote/>} />
               <Route path="/network" element={<Network/>} />
+              <Route path="/vendor-login" element={<VendorLogin/>} />
               <Route path="/prepay" element={<PrePay/>} />
             </Routes>
             <Footer/>

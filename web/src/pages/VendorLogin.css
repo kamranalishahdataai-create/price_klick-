@@ -1,0 +1,65 @@
+/* VendorLogin.css — clean light vendor sign-in matching screenshot */
+
+.vlogin-page { position: relative; min-height: calc(100vh - 60px); padding: 60px 20px 80px; }
+.vlogin-bg {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(900px 500px at 10% 0%, oklch(85% .08 295 / .45), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, oklch(90% .06 170 / .45), transparent 60%),
+    linear-gradient(180deg, #f6f4ff 0%, #f3faf6 100%);
+}
+
+.vlogin-wrap { max-width: 460px; margin: 0 auto; }
+
+.vlogin-head { text-align: center; margin-bottom: 28px }
+.vlogin-icon {
+  width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  box-shadow: 0 8px 22px rgba(99,102,241,.35);
+}
+.vlogin-title { font-size: 30px; font-weight: 800; color: #111; margin: 0 0 6px; letter-spacing: -.01em }
+.vlogin-sub { color: #6b7280; font-size: 14px; margin: 0 }
+
+.vlogin-card {
+  background: #fff; border: 1px solid rgba(0,0,0,.06);
+  border-radius: 20px; padding: 28px 28px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.05);
+}
+
+.vlogin-form { display: flex; flex-direction: column; gap: 16px }
+.vlogin-error {
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  padding: 10px 12px; border-radius: 10px; font-size: 13px;
+}
+.vlogin-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px }
+.vlogin-input {
+  position: relative; display: flex; align-items: center;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.vlogin-input:focus-within { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.12) }
+.vlogin-input-icon {
+  position: absolute; left: 12px; color: #9ca3af; display: flex; pointer-events: none;
+}
+.vlogin-input input {
+  flex: 1; padding: 12px 14px 12px 38px;
+  border: 0; outline: none; background: transparent;
+  font-size: 14px; color: #111; border-radius: 12px;
+}
+.vlogin-input input::placeholder { color: #9ca3af }
+
+.vlogin-btn {
+  margin-top: 4px; padding: 13px 18px; border: 0; border-radius: 12px;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 6px 18px rgba(99,102,241,.3);
+  transition: transform .15s, box-shadow .15s;
+}
+.vlogin-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(99,102,241,.4) }
+.vlogin-btn:disabled { opacity: .7; cursor: not-allowed }
+
+.vlogin-foot { text-align: center; color: #6b7280; font-size: 14px; margin-top: 18px }
+.vlogin-link { color: #10b981; font-weight: 700; text-decoration: none }
+.vlogin-link:hover { text-decoration: underline }

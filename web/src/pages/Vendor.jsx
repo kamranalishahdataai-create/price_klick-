@@ -27,7 +27,7 @@ export default function Vendor() {
           </ul>
           <div className="vp-actions">
             <Link to="/register?role=vendor" className="vp-btn primary">Register as a Vendor</Link>
-            <Link to="/login?role=vendor" className="vp-btn outline">Vendor Login</Link>
+            <Link to="/vendor-login" className="vp-btn outline">Vendor Login</Link>
           </div>
         </div>
       </section>
