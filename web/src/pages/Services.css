@@ -169,7 +169,7 @@
   font-family: 'Space Grotesk', sans-serif;
 }
 .sv-avatar.lg { width: 56px; height: 56px; font-size: 22px; }
-.sv-pref-name { font-weight: 600; color: var(--foreground); font-size: 15px; }
+.sv-pref-name { font-weight: 600; color: var(--foreground); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 90px); }
 .sv-pref-addr { font-size: 12px; color: var(--muted-foreground, #a9a3c4); }
 .sv-pref-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
 .sv-price { color: oklch(82% .18 155); font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
@@ -679,3 +679,53 @@
   .sv-hero-grid { grid-template-columns: 1fr; }
   .sv-hero-trend { order: -1; }
 }
+
+/* === Smart Compare Advisor pill === */
+.sv-compare-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:999px;
+  background:linear-gradient(95deg, oklch(68% .22 295), oklch(74% .18 155));color:#fff;font-weight:600;
+  text-decoration:none;margin-top:14px;box-shadow:0 10px 30px oklch(68% .22 295 / .35);
+  transition:transform .15s ease, box-shadow .2s ease;border:0;flex-wrap:wrap;justify-content:center;max-width:100%}
+.sv-compare-btn:hover{transform:translateY(-1px);box-shadow:0 14px 36px oklch(68% .22 295 / .45)}
+.sv-compare-icon{font-size:18px}
+.sv-compare-label{font-weight:700;letter-spacing:.2px}
+.sv-compare-sep{opacity:.7}
+.sv-compare-hint{opacity:.92;font-weight:400}
+
+/* === Filter bar (Near me / Within / Budget / Sort / List|Map) === */
+.sv-filter-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.sv-filter-cell{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;
+  background:var(--card,#fff);border:1px solid var(--border, rgba(0,0,0,.08));font-size:14px;color:var(--foreground)}
+.sv-filter-cell > span:first-child{opacity:.7;font-weight:600}
+.sv-filter-select,.sv-filter-input{border:0;background:transparent;outline:0;font:inherit;color:inherit;min-width:80px;padding:0 4px}
+.sv-filter-input{max-width:120px}
+.sv-filter-view{display:inline-flex;gap:6px;margin-left:auto}
+
+/* === Empty state === */
+.sv-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:60px 24px;border:1px dashed var(--border, rgba(0,0,0,.12));
+  border-radius:16px;background:var(--card,#fff);gap:8px}
+.sv-empty-icon{font-size:42px;margin-bottom:8px;opacity:.7}
+.sv-empty h3{margin:0;font-size:20px;font-weight:700}
+.sv-empty p{margin:0;color:var(--muted-foreground)}
+.sv-empty button{margin-top:10px}
+
+/* === Quick filter icon cards === */
+.sv-quick{display:flex;flex-direction:column;gap:10px}
+.sv-quick-card{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;
+  width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border, rgba(0,0,0,.08));
+  background:var(--card,#fff);cursor:pointer;text-align:left;transition:all .15s ease;font:inherit;color:inherit}
+.sv-quick-card:hover{border-color:oklch(68% .22 295 / .4);transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.06)}
+.sv-quick-card.active{border-color:oklch(68% .22 295);background:oklch(68% .22 295 / .06)}
+.sv-quick-ic{width:42px;height:42px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+.sv-quick-body strong{display:block;font-size:14px;font-weight:600}
+.sv-quick-meta{font-size:12px;color:var(--muted-foreground)}
+
+/* === FOR VENDORS sidebar card === */
+.sv-vendors-cta{background:linear-gradient(160deg, oklch(96% .04 295), oklch(94% .06 200));
+  border:1px solid oklch(68% .22 295 / .2)}
+.sv-vendors-cta h3{margin:8px 0 6px;font-size:17px;font-weight:700}
+.sv-vendors-cta p{margin:0 0 12px;color:var(--muted-foreground);font-size:13.5px;line-height:1.45}
+.sv-btn.block{display:block;width:100%;text-align:center}
+
+/* === Side trending (reuse hero style inside sidebar) === */
+.sv-side-trend{margin-bottom:14px}

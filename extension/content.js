@@ -516,57 +516,82 @@
     }, 20000);
   }
 
-  // Find coupon input field on the page
+  // Find coupon input field on the page (HARDENED — never fills login/credential fields)
   function findCouponInputField() {
-    const selectors = [
-      'input[name*="coupon" i]',
-      'input[id*="coupon" i]',
-      'input[placeholder*="coupon" i]',
-      'input[name*="promo" i]',
-      'input[id*="promo" i]',
-      'input[placeholder*="promo" i]',
-      'input[name*="discount" i]',
-      'input[id*="discount" i]',
-      'input[placeholder*="discount" i]',
-      'input[name*="voucher" i]',
-      'input[id*="voucher" i]',
-      'input[aria-label*="coupon" i]',
-      'input[aria-label*="promo" i]',
-      // Amazon specific
-      'input[name*="claimCode" i]',
-      'input[id*="gcpromoinput" i]',
-      'input[id*="spc-gcpromoinput" i]',
-      '#gcpromoinput',
-      '#gc-redemption-input',
-      'input[placeholder*="gift card" i]',
-      'input[placeholder*="code" i]',
-      // Generic code inputs
-      'input[name*="code" i]',
-      'input[id*="code" i]'
+    // Things this regex matches => REJECT the field
+    const FORBID_RX = /(user[\s_-]?name|userid|user_id|login|signin|sign[\s_-]?in|signup|sign[\s_-]?up|register|account|email|e-mail|phone|mobile|tel\b|pass(word)?|pwd|secret|otp|verif|two[\s_-]?factor|2fa|captcha|search|query|address|street|city|state|zip|postal|first[\s_-]?name|last[\s_-]?name|full[\s_-]?name|company|card[\s_-]?number|cardnum|ccnum|cvv|cvc|expir|dob|birth|ssn|tax)/i;
+    // Strong coupon-only signals
+    const COUPON_RX = /(coupon|promo[\s_-]?code|promotional[\s_-]?code|discount[\s_-]?code|voucher|redeem|reward[\s_-]?code|gift[\s_-]?card|claim[\s_-]?code|store[\s_-]?credit|offer[\s_-]?code)/i;
+
+    function attrsOf(el) {
+      return [el.name, el.id, el.placeholder, el.className,
+              el.getAttribute('aria-label'), el.getAttribute('data-testid'),
+              el.getAttribute('autocomplete')]
+        .filter(Boolean).join(' ');
+    }
+
+    function isSafe(el) {
+      if (!el) return false;
+      if (el.offsetParent === null && el.type !== 'hidden') return false; // must be visible
+      const type = (el.type || 'text').toLowerCase();
+      // ONLY allow plain text / search inputs — never password, email, tel, number, etc.
+      if (!['text', 'search', ''].includes(type)) return false;
+      // Reject obvious credential autocompletes
+      const ac = (el.autocomplete || '').toLowerCase();
+      if (/username|current-password|new-password|email|tel|one-time-code|cc-|address|name/.test(ac)) return false;
+      // Reject by name/id/placeholder/aria-label/class signals
+      if (FORBID_RX.test(attrsOf(el))) return false;
+      // Reject if inside a form that looks like login/signup OR contains a password field
+      const form = el.closest('form');
+      if (form) {
+        const fattr = [form.id, form.name, form.action || '', form.className].filter(Boolean).join(' ');
+        if (/login|signin|sign-in|signup|sign-up|register|auth|password|reset|forgot|create[-_ ]?account/i.test(fattr)) return false;
+        if (form.querySelector('input[type="password"]')) return false;
+      }
+      return true;
+    }
+
+    // Strict selectors — coupon/promo/voucher/redeem/gift-card only (NO bare "code")
+    const STRICT_SELECTORS = [
+      'input[name*="coupon" i]', 'input[id*="coupon" i]', 'input[placeholder*="coupon" i]', 'input[aria-label*="coupon" i]',
+      'input[name*="promo" i]',  'input[id*="promo" i]',  'input[placeholder*="promo" i]',  'input[aria-label*="promo" i]',
+      'input[name*="discount" i]','input[id*="discount" i]','input[placeholder*="discount" i]','input[aria-label*="discount" i]',
+      'input[name*="voucher" i]','input[id*="voucher" i]','input[placeholder*="voucher" i]','input[aria-label*="voucher" i]',
+      'input[name*="redeem" i]', 'input[id*="redeem" i]', 'input[placeholder*="redeem" i]',
+      'input[name*="claimcode" i]', 'input[id*="claimcode" i]',
+      'input[placeholder*="gift card" i]', 'input[placeholder*="promotional code" i]',
+      '#gcpromoinput', '#gc-redemption-input', 'input[id*="spc-gcpromoinput" i]'
     ];
-    
-    for (const selector of selectors) {
-      const field = document.querySelector(selector);
-      if (field && field.offsetParent !== null) { // Check if visible
-        return field;
+    for (const sel of STRICT_SELECTORS) {
+      try {
+        const el = document.querySelector(sel);
+        if (el && isSafe(el)) return el;
+      } catch (_) {}
+    }
+
+    // Contextual fallback — ONLY inside cart/checkout/order containers, and label must contain coupon/promo term
+    const ctxList = document.querySelectorAll(
+      '[class*="cart" i],[class*="checkout" i],[class*="order" i],[class*="basket" i],[class*="payment" i],' +
+      '[id*="cart" i],[id*="checkout" i],[id*="order" i],[id*="basket" i],[id*="payment" i]'
+    );
+    const contexts = ctxList.length ? Array.from(ctxList) : [];
+    for (const ctx of contexts) {
+      // Skip a context that is itself a login/signup region
+      const ctxAttrs = [ctx.id || '', ctx.className || ''].join(' ');
+      if (/login|signin|signup|register|auth/i.test(ctxAttrs)) continue;
+      const inputs = ctx.querySelectorAll('input[type="text"], input[type="search"], input:not([type])');
+      for (const input of inputs) {
+        if (!isSafe(input)) continue;
+        // Look at immediate context: own attrs, sibling label, wrapping label/div text
+        const ownAttrs = attrsOf(input);
+        let nearbyText = '';
+        if (input.labels && input.labels[0]) nearbyText += ' ' + input.labels[0].textContent;
+        const wrap = input.closest('label, .form-group, .form-row, .field, div, fieldset');
+        if (wrap) nearbyText += ' ' + (wrap.textContent || '').slice(0, 300);
+        const combined = (ownAttrs + ' ' + nearbyText).slice(0, 600);
+        if (COUPON_RX.test(combined) && !FORBID_RX.test(combined)) return input;
       }
     }
-    
-    // Try to find any text input near "coupon", "promo", "code" text
-    const allInputs = document.querySelectorAll('input[type="text"], input:not([type])');
-    for (const input of allInputs) {
-      if (input.offsetParent === null) continue; // Skip hidden
-      
-      // Check if there's a label nearby with coupon/promo text
-      const parent = input.closest('div, form, section');
-      if (parent) {
-        const text = parent.textContent.toLowerCase();
-        if (text.includes('coupon') || text.includes('promo') || text.includes('discount') || text.includes('code')) {
-          return input;
-        }
-      }
-    }
-    
     return null;
   }
 
@@ -591,44 +616,59 @@
   // Try to apply coupon automatically
   function tryApplyCoupon(code, field) {
     try {
+      // SAFETY: re-validate the field is a coupon field, not a credential field
+      if (!field) return;
+      const type = (field.type || 'text').toLowerCase();
+      if (!['text', 'search', ''].includes(type)) {
+        log('Agent: REFUSED to fill — not a text input', type);
+        return;
+      }
+      const fAttrs = [field.name, field.id, field.placeholder, field.className,
+                      field.getAttribute('aria-label'), field.getAttribute('autocomplete')]
+                      .filter(Boolean).join(' ').toLowerCase();
+      if (/user|login|email|phone|tel|pass|pwd|otp|verif|2fa|card|cvv|name|address|zip|postal|search/.test(fAttrs)) {
+        log('Agent: REFUSED to fill — field looks like credential/PII:', fAttrs);
+        return;
+      }
+      const owningForm = field.closest('form');
+      if (owningForm && owningForm.querySelector('input[type="password"]')) {
+        log('Agent: REFUSED to fill — form contains password input');
+        return;
+      }
+
       // Fill the input field
       field.value = code;
       field.dispatchEvent(new Event('input', { bubbles: true }));
       field.dispatchEvent(new Event('change', { bubbles: true }));
-      
+
       // Highlight the field
       highlightCouponField(field);
-      
-      // Try to find and click the apply button
-      const applyButtons = [
-        ...document.querySelectorAll('button, input[type="submit"], input[type="button"]')
-      ].filter(btn => {
-        const text = (btn.textContent || btn.value || '').toLowerCase();
-        return text.includes('apply') || text.includes('submit') || text.includes('redeem');
+
+      // Find an "apply" button — must be in the SAME form/container as the coupon field,
+      // and the button text must explicitly say apply/redeem/use code (never login/submit/signin)
+      const APPLY_OK = /\b(apply|redeem|use\s*(coupon|code|promo|voucher)|add\s*(coupon|code|promo))\b/i;
+      const APPLY_BAD = /\b(login|log\s*in|sign\s*in|sign\s*up|register|create\s*account|continue|next|checkout|pay|place\s*order|submit)\b/i;
+      const scope = field.closest('form, section, div, [class*="coupon" i], [class*="promo" i], [class*="cart" i], [class*="checkout" i]') || document;
+      const candidates = scope.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"]');
+      let bestBtn = null;
+      let bestDist = Infinity;
+      candidates.forEach(btn => {
+        const t = (btn.textContent || btn.value || btn.getAttribute('aria-label') || '').trim();
+        if (!t) return;
+        if (APPLY_BAD.test(t)) return;
+        if (!APPLY_OK.test(t)) return;
+        const dist = Math.abs(btn.getBoundingClientRect().top - field.getBoundingClientRect().top);
+        if (dist < bestDist) { bestDist = dist; bestBtn = btn; }
       });
-      
-      if (applyButtons.length > 0) {
-        // Find the closest apply button to the input field
-        let closestBtn = applyButtons[0];
-        let minDistance = Infinity;
-        
-        applyButtons.forEach(btn => {
-          const distance = Math.abs(
-            btn.getBoundingClientRect().top - field.getBoundingClientRect().top
-          );
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestBtn = btn;
-          }
-        });
-        
-        // Click the apply button after a short delay
+
+      if (bestBtn) {
         setTimeout(() => {
-          closestBtn.click();
-          log('Agent: Clicked apply button');
+          try { bestBtn.click(); log('Agent: Clicked apply button'); } catch (_) {}
         }, 500);
+      } else {
+        log('Agent: No safe "Apply" button found — code filled only');
       }
-      
+
       log('Agent: Coupon code filled:', code);
     } catch (e) {
       log('Agent: Failed to apply coupon automatically', e);
@@ -815,6 +855,26 @@
   // Try applying a coupon and check if it worked - with visual feedback
   async function tryApplyCouponAndCheck(coupon, field) {
     try {
+      // SAFETY: refuse to fill credential / PII fields
+      if (!field) return { success: false, error: 'no field' };
+      const type = (field.type || 'text').toLowerCase();
+      if (!['text', 'search', ''].includes(type)) {
+        log('Agent: REFUSED auto-test — not a text input', type);
+        return { success: false, error: 'unsafe field type' };
+      }
+      const fAttrs = [field.name, field.id, field.placeholder, field.className,
+                      field.getAttribute('aria-label'), field.getAttribute('autocomplete')]
+                      .filter(Boolean).join(' ').toLowerCase();
+      if (/user|login|email|phone|tel|pass|pwd|otp|verif|2fa|card|cvv|name|address|zip|postal|search/.test(fAttrs)) {
+        log('Agent: REFUSED auto-test — field looks like credential/PII:', fAttrs);
+        return { success: false, error: 'unsafe field attrs' };
+      }
+      const fForm = field.closest('form');
+      if (fForm && fForm.querySelector('input[type="password"]')) {
+        log('Agent: REFUSED auto-test — form contains password input');
+        return { success: false, error: 'login form' };
+      }
+
       const originalValue = getPageTotal();
       
       // Show indicator that we're typing
@@ -850,12 +910,17 @@
       await new Promise(resolve => setTimeout(resolve, 200));
       field.style.background = '';
       
-      // Find and click apply button
+      // Find and click apply button — must be coupon-apply, never login/signup/checkout
+      const APPLY_OK = /\b(apply|redeem|use\s*(coupon|code|promo|voucher)|add\s*(coupon|code|promo))\b/i;
+      const APPLY_BAD = /\b(login|log\s*in|sign\s*in|sign\s*up|register|create\s*account|continue|next|checkout|pay|place\s*order|submit)\b/i;
+      const applyScope = field.closest('form, section, div, [class*="coupon" i], [class*="promo" i], [class*="cart" i], [class*="checkout" i]') || document;
       const applyButtons = [
-        ...document.querySelectorAll('button, input[type="submit"], input[type="button"]')
+        ...applyScope.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"]')
       ].filter(btn => {
-        const text = (btn.textContent || btn.value || '').toLowerCase();
-        return text.includes('apply') || text.includes('submit') || text.includes('redeem') || text.includes('add');
+        const text = (btn.textContent || btn.value || btn.getAttribute('aria-label') || '').trim();
+        if (!text) return false;
+        if (APPLY_BAD.test(text)) return false;
+        return APPLY_OK.test(text);
       });
       
       if (applyButtons.length > 0) {

@@ -90,6 +90,9 @@ export default function Services() {
   const [cat, setCat] = useState('All')
   const [view, setView] = useState('list')
   const [q, setQ] = useState('')
+  const [budget, setBudget] = useState('')
+  const [sort, setSort] = useState('rating')
+  const [quick, setQuick] = useState(null) // 'budget' | 'top' | 'close'
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase()
@@ -102,10 +105,21 @@ export default function Services() {
         p.city.toLowerCase().includes(ql)
       )
     }
+    const max = parseFloat(budget)
+    if (!Number.isNaN(max) && max > 0) list = list.filter(p => p.price <= max)
+    if (quick === 'budget') list = list.filter(p => p.price < 50)
+    if (quick === 'top') list = list.filter(p => p.rating >= 4.5)
     return list
-  }, [cat, q])
+  }, [cat, q, budget, quick])
 
-  const sortedByRating = useMemo(() => [...filtered].sort((a,b) => b.rating - a.rating), [filtered])
+  const sortedByRating = useMemo(() => {
+    const arr = [...filtered]
+    if (sort === 'price-asc') arr.sort((a, b) => a.price - b.price)
+    else if (sort === 'price-desc') arr.sort((a, b) => b.price - a.price)
+    else if (sort === 'distance' || quick === 'close') arr.sort((a, b) => a.dist - b.dist)
+    else arr.sort((a, b) => b.rating - a.rating)
+    return arr
+  }, [filtered, sort, quick])
   const preferredByCat = useMemo(() => {
     const map = {}
     PROVIDERS.forEach(p => { if (!map[p.cat]) map[p.cat] = p })
@@ -121,11 +135,19 @@ export default function Services() {
           <Link to="/register?role=vendor" className="sv-util-link">🏪 For Vendors</Link>
           <span className="sv-util-dot">·</span>
           <Link to="/dashboard?tab=promote" className="sv-util-link">📣 Promote My Listing</Link>
+          <span className="sv-util-dot">·</span>
+          <Link to="/install" className="sv-util-link">🚀 Join the PriceKlick Network</Link>
         </div>
 
         <div className="sv-hero-center">
           <h1 className="sv-brand-title">PriceKlick</h1>
           <p className="sv-brand-sub">Scroll less, save more.</p>
+          <Link to="/lens" className="sv-compare-btn">
+            <span className="sv-compare-icon">✨</span>
+            <span className="sv-compare-label">Smart Compare Advisor</span>
+            <span className="sv-compare-sep">—</span>
+            <span className="sv-compare-hint">describe anything, get a full comparison</span>
+          </Link>
         </div>
 
         <div className="sv-hero-grid">
@@ -148,13 +170,39 @@ export default function Services() {
               ))}
             </div>
 
-            <div className="sv-controls">
-              <div className="sv-control-group">
-                <button className="sv-control active">📍 Near me</button>
-                <button className="sv-control">Within 25 km</button>
+            <div className="sv-filter-bar">
+              <div className="sv-filter-cell"><span>⦾</span> Near me</div>
+              <div className="sv-filter-cell">
+                <span>Within</span>
+                <select className="sv-filter-select" defaultValue="25">
+                  <option value="5">5 km</option>
+                  <option value="10">10 km</option>
+                  <option value="25">25 km</option>
+                  <option value="50">50 km</option>
+                </select>
               </div>
-              <div className="sv-control-group">
-                <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={()=>setView('list')}>📋 List</button>
+              <div className="sv-filter-cell">
+                <span>$</span>
+                <input
+                  type="number"
+                  className="sv-filter-input"
+                  placeholder="Max budget"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  min="0"
+                />
+              </div>
+              <div className="sv-filter-cell">
+                <span>≅</span>
+                <select className="sv-filter-select" value={sort} onChange={(e) => setSort(e.target.value)}>
+                  <option value="rating">Top Rated</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="distance">Closest First</option>
+                </select>
+              </div>
+              <div className="sv-filter-view">
+                <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={()=>setView('list')}>☰ List</button>
                 <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={()=>setView('map')}>🗺 Map</button>
               </div>
             </div>
@@ -193,15 +241,54 @@ export default function Services() {
           <div>
             <div className="sv-providers-head">
               <h2>All Providers</h2>
-              <span className="sv-count">{filtered.length} providers found within 25 km</span>
+              <span className="sv-count">{sortedByRating.length} providers found within 25 km</span>
             </div>
-            <div className="sv-rows">
-              {sortedByRating.map(p => <ProviderRow key={p.id} p={p} />)}
-            </div>
+            {sortedByRating.length === 0 ? (
+              <div className="sv-empty">
+                <div className="sv-empty-icon">🔍</div>
+                <h3>No providers found</h3>
+                <p>Try adjusting your filters.</p>
+                <button className="sv-btn ghost" onClick={() => { setCat('All'); setQ(''); setBudget(''); setQuick(null); }}>
+                  Clear all filters
+                </button>
+              </div>
+            ) : (
+              <div className="sv-rows">
+                {sortedByRating.map(p => <ProviderRow key={p.id} p={p} />)}
+              </div>
+            )}
           </div>
           <aside className="sv-side">
+            <aside className="sv-hero-trend sv-side-trend">
+              <div className="sv-trend-head">🔥 <span>Trending near you</span></div>
+              <div className="sv-trending">
+                {TRENDING.map(t => (
+                  <button key={t} className="sv-trend" onClick={() => setQ(t)}>{t}</button>
+                ))}
+              </div>
+            </aside>
+
+            <div className="sv-side-card sv-quick">
+              <div className="sv-tag-mini">QUICK FILTERS</div>
+              <button className={`sv-quick-card ${quick==='budget' ? 'active' : ''}`} onClick={() => setQuick(quick==='budget' ? null : 'budget')}>
+                <span className="sv-quick-ic" style={{background:'oklch(74% .18 155 / .15)', color:'oklch(70% .18 155)'}}>$</span>
+                <span className="sv-quick-body"><strong>Under $50</strong></span>
+                <span className="sv-quick-meta">Budget</span>
+              </button>
+              <button className={`sv-quick-card ${quick==='top' ? 'active' : ''}`} onClick={() => setQuick(quick==='top' ? null : 'top')}>
+                <span className="sv-quick-ic" style={{background:'oklch(85% .15 90 / .2)', color:'oklch(70% .15 80)'}}>★</span>
+                <span className="sv-quick-body"><strong>Top rated</strong></span>
+                <span className="sv-quick-meta">4.5+</span>
+              </button>
+              <button className={`sv-quick-card ${quick==='close' ? 'active' : ''}`} onClick={() => setQuick(quick==='close' ? null : 'close')}>
+                <span className="sv-quick-ic" style={{background:'oklch(82% .16 200 / .2)', color:'oklch(70% .16 200)'}}>◷</span>
+                <span className="sv-quick-body"><strong>Closest first</strong></span>
+                <span className="sv-quick-meta">Distance</span>
+              </button>
+            </div>
+
             <div className="sv-side-card sv-deal">
-              <div className="sv-tag-mini">DEAL OF THE DAY</div>
+              <div className="sv-tag-mini">📈 DEAL OF THE DAY</div>
               <div className="sv-deal-row">
                 <Stars r={4.3} />
               </div>
@@ -218,31 +305,11 @@ export default function Services() {
               </div>
             </div>
 
-            <div className="sv-side-card">
-              <div className="sv-tag-mini">QUICK FILTERS</div>
-              <div className="sv-filter-row">
-                <input type="checkbox" id="f1" defaultChecked />
-                <label htmlFor="f1">Verified only</label>
-              </div>
-              <div className="sv-filter-row">
-                <input type="checkbox" id="f2" />
-                <label htmlFor="f2">Open now</label>
-              </div>
-              <div className="sv-filter-row">
-                <input type="checkbox" id="f3" />
-                <label htmlFor="f3">Rated 4.5+</label>
-              </div>
-              <div className="sv-filter-row">
-                <input type="checkbox" id="f4" />
-                <label htmlFor="f4">Within 5 km</label>
-              </div>
-            </div>
-
-            <div className="sv-side-card">
-              <div className="sv-tag-mini">TRENDING NEAR YOU</div>
-              <div className="sv-trending">
-                {TRENDING.map(t => <span key={t} className="sv-trend">{t}</span>)}
-              </div>
+            <div className="sv-side-card sv-vendors-cta">
+              <div className="sv-tag-mini">📣 FOR VENDORS</div>
+              <h3>Grow your business with us</h3>
+              <p>Reach thousands of local customers actively searching for your services.</p>
+              <Link to="/register?role=vendor" className="sv-btn primary block">Get started — Free</Link>
             </div>
           </aside>
         </div>
