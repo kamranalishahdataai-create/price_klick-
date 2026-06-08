@@ -43,6 +43,90 @@ export async function enrichProvider(body = {}) {
   return res.json()
 }
 
+/**
+ * Scrape a service provider's own website via Firecrawl for real pricing & services.
+ * @param {{ url: string, name?: string }} body
+ */
+export async function scrapeProviderWebsite(body = {}) {
+  const res = await fetch(`${API}/api/services/scrape-website`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body)
+  })
+  if (!res.ok) throw new Error(`scrape-website failed ${res.status}`)
+  return res.json()
+}
+
+/**
+ * Scrape a product page URL for its live price via Firecrawl.
+ * @param {string} url
+ */
+export async function scrapeProductPrice(url) {
+  const res = await fetch(`${API}/api/prices/scrape`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ url })
+  })
+  if (!res.ok) throw new Error(`prices/scrape failed ${res.status}`)
+  return res.json()
+}
+
+/**
+ * Get or create a persistent anonymous session ID for pattern tracking.
+ */
+export function getSessionId() {
+  const KEY = 'pk_session_id'
+  let id = localStorage.getItem(KEY)
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now()
+    localStorage.setItem(KEY, id)
+  }
+  return id
+}
+
+/**
+ * Analyze this session's spending patterns + get matched deals (fast, no AI).
+ */
+export async function getSpendingPatterns() {
+  const sessionId = getSessionId()
+  const t = typeof localStorage !== 'undefined' ? localStorage.getItem('pk_token') : null
+  const headers = { 'X-Session-ID': sessionId }
+  if (t) headers.Authorization = `Bearer ${t}`
+  const res = await fetch(`${API}/api/insights/patterns`, { headers })
+  if (!res.ok) throw new Error(`patterns failed ${res.status}`)
+  return res.json()
+}
+
+/**
+ * Track a user activity event to the backend for pattern analysis.
+ */
+export async function trackActivity(payload = {}) {
+  const sessionId = getSessionId()
+  const t = typeof localStorage !== 'undefined' ? localStorage.getItem('pk_token') : null
+  const headers = { 'Content-Type': 'application/json', 'X-Session-ID': sessionId }
+  if (t) headers.Authorization = `Bearer ${t}`
+  try {
+    await fetch(`${API}/api/insights/activity`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    })
+  } catch (_) { /* best-effort */ }
+}
+
+/**
+ * Get deals matching given categories.
+ * @param {string[]} categories - e.g. ['electronics','fashion']
+ */
+export async function getSuggestedDeals(categories = [], limit = 8) {
+  const params = new URLSearchParams({ cats: categories.join(','), limit: String(limit) })
+  const res = await fetch(`${API}/api/insights/suggested-deals?${params}`, {
+    headers: { ...authHeaders() }
+  })
+  if (!res.ok) throw new Error(`suggested-deals failed ${res.status}`)
+  return res.json()
+}
+
 export async function trackProviderClick(payload = {}) {
   try {
     await fetch(`${API}/api/services/track-click`, {

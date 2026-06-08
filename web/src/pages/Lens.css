@@ -554,3 +554,55 @@
 @media (max-width: 720px) {
   .lens-info-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ── Result tabs ── */
+.lens-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding-bottom: 2px;
+}
+.lens-tab {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--muted-foreground, #888);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, color .15s;
+}
+.lens-tab:hover { background: rgba(255,255,255,.06); color: var(--foreground, #f7f5ff); }
+.lens-tab.active { background: rgba(109,74,255,.15); color: oklch(78% .18 295); border-bottom: 2px solid oklch(78% .18 295); }
+
+/* ── Product Info tab ── */
+.lens-product-info-tab { padding: 4px 0; }
+.lens-info-note { color: var(--muted-foreground, #888); font-size: 13px; line-height: 1.6; margin: 0 0 14px; }
+.lens-info-links { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.lens-official-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  color: oklch(78% .18 295);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .15s;
+}
+.lens-official-link:hover { background: rgba(109,74,255,.12); }
+.lens-official-link.primary { background: rgba(109,74,255,.15); border-color: rgba(109,74,255,.3); }
+.lens-info-disclaimer {
+  font-size: 11px;
+  color: var(--muted-foreground, #888);
+  opacity: .7;
+  line-height: 1.5;
+  margin-top: 12px;
+}

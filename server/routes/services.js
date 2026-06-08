@@ -1,6 +1,6 @@
 import express from 'express';
-import { searchServiceProviders } from '../services/serviceSearch.js';
-import { enrichProvider } from '../services/apifyEnrichment.js';
+import { searchServiceProviders, enrichYelpBusiness } from '../services/yelpSearch.js';
+import { enrichServiceWebsite, isConfigured as firecrawlReady } from '../services/firecrawl.js';
 import ServiceProvider from '../models/ServiceProvider.js';
 import Favorite from '../models/Favorite.js';
 import UserActivity from '../models/UserActivity.js';
@@ -131,17 +131,33 @@ router.get('/favorites', authenticate, async (req, res) => {
   }
 });
 
-// Enrich a provider via Apify Google Maps scraper (cached 7 days)
+// Enrich a provider via Yelp Business Details API (hours, photos, website — cached 7 days)
 router.post('/enrich', optionalAuth, async (req, res) => {
   try {
-    const { placeId, name, address, force } = req.body || {};
+    const { placeId, name } = req.body || {};
     if (!placeId && !name) {
       return res.status(400).json({ ok: false, error: 'placeId_or_name_required' });
     }
-    const result = await enrichProvider({ placeId, name, address, force: !!force });
+    const result = await enrichYelpBusiness({ placeId, name });
     res.json(result);
   } catch (e) {
     console.error('services/enrich', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Scrape a service provider's own website for real pricing & services (Firecrawl)
+router.post('/scrape-website', optionalAuth, async (req, res) => {
+  try {
+    const { url, name } = req.body || {};
+    if (!url) return res.status(400).json({ ok: false, error: 'url_required' });
+    if (!firecrawlReady()) {
+      return res.status(503).json({ ok: false, error: 'firecrawl_not_configured', message: 'Set FIRECRAWL_API_KEY in server/.env' });
+    }
+    const result = await enrichServiceWebsite(url, name || '');
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('services/scrape-website', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

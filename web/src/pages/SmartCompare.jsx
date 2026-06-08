@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './SmartCompare.css'
+import { scrapeProductPrice } from '../api/services'
 
 const API = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || ''
 
@@ -66,6 +67,22 @@ function FitBadge({ score }) {
 
 function OptionCard({ o }) {
   const lg = brandLogo(o.brand)
+  const [livePrice, setLivePrice] = useState(null)
+  const [checking, setChecking] = useState(false)
+
+  async function checkLivePrice() {
+    if (!o.url || checking) return
+    setChecking(true)
+    try {
+      const r = await scrapeProductPrice(o.url)
+      setLivePrice(r)
+    } catch (_) {
+      setLivePrice({ error: 'Could not fetch live price' })
+    } finally {
+      setChecking(false)
+    }
+  }
+
   return (
     <div className="sc-option">
       <div className="sc-option-head">
@@ -83,8 +100,26 @@ function OptionCard({ o }) {
         : <div className="sc-option-img placeholder">{o.brand}</div>}
       {o.tag && <span className="sc-option-tag">⚡ {o.tag}</span>}
       <div className="sc-option-price">
-        <strong>{o.price}</strong>
-        <span>{o.priceLabel || ''}</span>
+        {livePrice && !livePrice.error ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            <strong style={{ color:'oklch(82% .18 155)' }}>
+              {livePrice.currency || '$'}{livePrice.currentPrice ?? o.price}
+            </strong>
+            {livePrice.originalPrice && livePrice.originalPrice > livePrice.currentPrice && (
+              <span style={{ textDecoration:'line-through', color:'var(--muted-foreground)', fontSize:12 }}>
+                {livePrice.currency || '$'}{livePrice.originalPrice}
+              </span>
+            )}
+            <span style={{ fontSize:11, color:'oklch(82% .18 155)', fontWeight:600 }}>
+              🌐 Live price via Firecrawl
+            </span>
+          </div>
+        ) : (
+          <>
+            <strong>{o.price}</strong>
+            <span>{o.priceLabel || ''}</span>
+          </>
+        )}
       </div>
       <div className="sc-pc">
         <div className="sc-pc-col">
@@ -96,7 +131,16 @@ function OptionCard({ o }) {
           {(o.cons || []).slice(0, 3).map((p, i) => <div key={i} className="sc-pc-li">✕ {p}</div>)}
         </div>
       </div>
-      {o.url && <a className="sc-view-details" href={o.url} target="_blank" rel="noopener noreferrer">View Details →</a>}
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}>
+        {o.url && <a className="sc-view-details" href={o.url} target="_blank" rel="noopener noreferrer">View Details →</a>}
+        {o.url && !livePrice && (
+          <button onClick={checkLivePrice} disabled={checking}
+            style={{ fontSize:12, padding:'5px 11px', borderRadius:999, border:'1px solid rgba(255,255,255,.15)',
+              background:'transparent', color:'var(--muted-foreground)', cursor:'pointer', fontFamily:'inherit' }}>
+            {checking ? '⏳ Checking…' : '🔍 Live Price'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

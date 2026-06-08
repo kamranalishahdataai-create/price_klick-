@@ -25,7 +25,8 @@ import adminRoutes from './routes/admin.js';
 import servicesRoutes from './routes/services.js';
 import insightsRoutes from './routes/insights.js';
 import smartCompareRoutes from './routes/smartCompare.js';
-import { runDealScraperOnce } from './services/dealScraper.js';
+import { runDealScraperOnce, runStaggeredScrape, cleanOldDeals } from './services/dealScraper.js';
+import { scrapeProductPrice, isConfigured as firecrawlReady } from './services/firecrawl.js';
 import { authenticate } from './middleware/auth.js';
 import User from './models/User.js';
 
@@ -771,13 +772,13 @@ try {
   console.warn('Brand alert cron failed:', e?.message);
 }
 
-// --- Deal Scraper Cron (every 6 hours) ---
+// --- Deal Scraper Cron (staggered every 2 hours) ---
 try {
-  cron.schedule(process.env.DEAL_SCRAPER_CRON || '0 */6 * * *', async () => {
-    console.log('[deal-scraper] Running scheduled scrape...');
+  cron.schedule(process.env.DEAL_SCRAPER_CRON || '0 */2 * * *', async () => {
+    console.log('[deal-scraper] Running staggered scrape...');
     try {
-      const stats = await runDealScraperOnce();
-      console.log('[deal-scraper] done', stats);
+      const stats = await runStaggeredScrape();
+      console.log('[deal-scraper] done', JSON.stringify({ kept: stats.kept, cats: stats.categories, errors: stats.errors?.length }));
     } catch (e) {
       console.error('[deal-scraper] run failed', e?.message);
     }
@@ -785,6 +786,32 @@ try {
 } catch (e) {
   console.warn('Deal scraper cron failed:', e?.message);
 }
+
+// --- Deal Cleanup Cron (daily at 03:00 UTC) ---
+try {
+  cron.schedule('0 3 * * *', async () => {
+    console.log('[deal-scraper] Cleaning old deals...');
+    try {
+      const r = await cleanOldDeals();
+      console.log('[deal-scraper] cleaned', r);
+    } catch (e) {
+      console.error('[deal-scraper] cleanup failed', e?.message);
+    }
+  });
+} catch (e) {
+  console.warn('Deal cleanup cron failed:', e?.message);
+}
+
+// --- Startup scrape (non-blocking, runs 10s after boot) ---
+setTimeout(async () => {
+  console.log('[deal-scraper] Boot-time scrape starting...');
+  try {
+    const stats = await runStaggeredScrape();
+    console.log('[deal-scraper] boot scrape done', JSON.stringify({ kept: stats.kept }));
+  } catch (e) {
+    console.error('[deal-scraper] boot scrape failed', e?.message);
+  }
+}, 10000);
 
 // ========================================================
 // SEARCH MONITOR & RECOMMENDATION SYSTEM
@@ -1109,6 +1136,37 @@ app.post('/api/promo/find-url', async (req, res) => {
   } catch (e) {
     console.error('PROMO FIND-URL ERROR', e);
     res.status(500).json({ error: 'Server error analyzing screenshot. Please try again.', message: e.message });
+  }
+});
+
+// --- Firecrawl: Scrape live product price from any URL ---
+app.post('/api/prices/scrape', async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ ok: false, error: 'url required' });
+  if (!firecrawlReady()) {
+    return res.status(503).json({ ok: false, error: 'firecrawl_not_configured' });
+  }
+  try {
+    const data = await scrapeProductPrice(url);
+    if (!data) return res.status(404).json({ ok: false, error: 'no_price_found' });
+    res.json({ ok: true, url, ...data });
+  } catch (e) {
+    console.error('prices/scrape error', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// --- Firecrawl: Manually trigger deal scan ---
+app.post('/api/deals/firecrawl-scan', async (req, res) => {
+  const { secret } = req.query;
+  if (process.env.AGENT_SECRET && secret !== process.env.AGENT_SECRET) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  try {
+    const stats = await runDealScraperOnce({ minDiscount: 5 });
+    res.json({ ok: true, stats });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

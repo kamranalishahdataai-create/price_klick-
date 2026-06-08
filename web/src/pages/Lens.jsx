@@ -122,6 +122,7 @@ export default function Lens() {
   const [demo, setDemo] = useState(false)
   const [demoStep, setDemoStep] = useState(0)
   const [geo, setGeo] = useState({ country: null, label: null, source: null })
+  const [resultTab, setResultTab] = useState('compare')
   const countdownRef = useRef(null)
   const demoRef = useRef(null)
   const fileRef = useRef()
@@ -191,6 +192,7 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
+      setResultTab('compare')
       const best = pickCheapestNearby(buildOptions(data), geo.country)
       const url = best?.url || data.productUrl || data.redirectUrl || data.checkoutUrl
       if (autoRedirect && url) {
@@ -328,6 +330,82 @@ export default function Lens() {
 
             {result && (
               <div className="lens-result">
+                {/* Result tabs */}
+                <div className="lens-tabs">
+                  <button className={`lens-tab ${resultTab === 'compare' ? 'active' : ''}`} onClick={() => setResultTab('compare')}>
+                    🛒 Compare &amp; Buy
+                  </button>
+                  <button className={`lens-tab ${resultTab === 'info' ? 'active' : ''}`} onClick={() => setResultTab('info')}>
+                    📋 Product Info
+                  </button>
+                </div>
+
+                {resultTab === 'info' && (
+                  <div className="lens-product-info-tab">
+                    <div className="lens-section-label">📋 PRODUCT HISTORY &amp; OFFICIAL LINKS</div>
+                    <p className="lens-info-note">
+                      Non-AI sourced product information. Links go directly to the manufacturer or official product page.
+                    </p>
+                    <div className="lens-info-links">
+                      {result.brand && (
+                        <a
+                          className="lens-official-link"
+                          href={`https://www.google.com/search?q=${encodeURIComponent((result.brand || '') + ' official website')}`}
+                          target="_blank" rel="noopener noreferrer"
+                        >
+                          🏢 {result.brand} Official Website
+                        </a>
+                      )}
+                      {(result.products?.[0] || result.promotionTitle) && (
+                        <a
+                          className="lens-official-link"
+                          href={`https://www.google.com/search?q=${encodeURIComponent((result.products?.[0] || result.promotionTitle) + ' product page specifications')}`}
+                          target="_blank" rel="noopener noreferrer"
+                        >
+                          📄 {result.products?.[0] || result.promotionTitle} — Specs &amp; Details
+                        </a>
+                      )}
+                      {result.brand && (
+                        <a
+                          className="lens-official-link"
+                          href={`https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(result.brand + ' ' + (result.productCategory || ''))}`}
+                          target="_blank" rel="noopener noreferrer"
+                        >
+                          📖 Wikipedia — {result.brand} History
+                        </a>
+                      )}
+                      {result.productCategory && (
+                        <a
+                          className="lens-official-link"
+                          href={`https://www.rtings.com/search#${encodeURIComponent(result.products?.[0] || result.brand || '')}`}
+                          target="_blank" rel="noopener noreferrer"
+                        >
+                          🧪 Expert Reviews &amp; Tests
+                        </a>
+                      )}
+                      {(result.redirectUrl || result.productUrl) && (
+                        <a
+                          className="lens-official-link primary"
+                          href={result.productUrl || result.redirectUrl}
+                          target="_blank" rel="noopener noreferrer"
+                        >
+                          🔗 Official Product Page
+                        </a>
+                      )}
+                    </div>
+                    <div className="lens-info-grid" style={{ marginTop: 16 }}>
+                      {result.brand && <div className="lens-info-row"><span className="lens-info-k">Brand</span><span className="lens-info-v">{result.brand}</span></div>}
+                      {(result.products?.[0] || result.promotionTitle) && <div className="lens-info-row"><span className="lens-info-k">Product</span><span className="lens-info-v">{result.products?.[0] || result.promotionTitle}</span></div>}
+                      {result.productCategory && <div className="lens-info-row"><span className="lens-info-k">Category</span><span className="lens-info-v">{result.productCategory}</span></div>}
+                      {geo.label && <div className="lens-info-row"><span className="lens-info-k">Your Location</span><span className="lens-info-v">📍 {geo.label}</span></div>}
+                    </div>
+                    <p className="lens-info-disclaimer">
+                      ⚠️ Links above are search-based and not AI-generated. For the most accurate product history, visit the manufacturer's official website directly.
+                    </p>
+                  </div>
+                )}
+
+                {resultTab === 'compare' && <>
                 <div className="lens-result-head">
                   <span className={`lens-match-pill ${hasDirectProductMatch ? 'good' : 'warn'}`}>
                     {result.isGroceryFlyer
@@ -503,6 +581,7 @@ export default function Lens() {
                     </div>
                   </div>
                 )}
+                </>}
               </div>
             )}
           </div>

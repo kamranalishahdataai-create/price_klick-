@@ -63,7 +63,7 @@ function UserModal({ userId, onClose, onUpdate }) {
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-title">
           <span>User Details</span>
-          <button className="modal-close" onClick={onClose}>âœ•</button>
+          <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
         {loading ? (
@@ -135,15 +135,15 @@ function UserModal({ userId, onClose, onUpdate }) {
               <div style={{ display: 'flex', gap: 8 }}>
                 {user.isVerified ? (
                   <button className="panel-btn panel-btn-ghost panel-btn-sm" onClick={() => handleSuspend(true)}>
-                    ðŸš« Suspend User
+                    🚫 Suspend User
                   </button>
                 ) : (
                   <button className="panel-btn panel-btn-primary panel-btn-sm" onClick={() => handleSuspend(false)}>
-                    âœ… Unsuspend User
+                    ✅ Unsuspend User
                   </button>
                 )}
                 <button className="panel-btn panel-btn-danger panel-btn-sm" onClick={handleDelete}>
-                  ðŸ—‘ï¸ Delete User
+                  🗑️ Delete User
                 </button>
               </div>
 
@@ -161,7 +161,7 @@ function UserModal({ userId, onClose, onUpdate }) {
                 <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                   {history.slice(0, 20).map((h, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0ecff', fontSize: 12 }}>
-                      <span style={{ fontWeight: 600 }}>{h.brand || 'â€”'}</span>
+                      <span style={{ fontWeight: 600 }}>{h.brand || '—'}</span>
                       <span style={{ color: '#888', flex: 1 }}>{h.query}</span>
                       <span style={{ color: '#aaa' }}>{h.timestamp ? new Date(h.timestamp).toLocaleTimeString() : ''}</span>
                     </div>
@@ -293,18 +293,18 @@ export default function AdminPanel() {
         {/* Header */}
         <div className="panel-header">
           <div>
-            <h1 className="panel-title">ðŸ›¡ï¸ Admin Panel</h1>
+            <h1 className="panel-title">🛡️ Admin Panel</h1>
             <p className="panel-subtitle">Manage users, monitor analytics, and control the system</p>
           </div>
           <button className="panel-btn panel-btn-ghost" onClick={() => navigate('/user-dashboard')}>
-            â† Back to Dashboard
+            ← Back to Dashboard
           </button>
         </div>
 
         {error && (
           <div style={{ background: '#fce4ec', color: '#c62828', padding: '12px 16px', borderRadius: 12, marginBottom: 16, fontSize: 14 }}>
             {error}
-            <button onClick={() => setError('')} style={{ marginLeft: 8, border: 'none', background: 'none', cursor: 'pointer', fontWeight: 700 }}>âœ•</button>
+            <button onClick={() => setError('')} style={{ marginLeft: 8, border: 'none', background: 'none', cursor: 'pointer', fontWeight: 700 }}>✕</button>
           </div>
         )}
 
@@ -316,10 +316,10 @@ export default function AdminPanel() {
               className={`panel-tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'dashboard' ? 'ðŸ“Š Dashboard' :
-               tab === 'users' ? 'ðŸ‘¥ Users' :
-               tab === 'analytics' ? 'ðŸ“ˆ Analytics' :
-               tab === 'alerts' ? 'ðŸ”” Alerts' : 'âš™ï¸ Settings'}
+              {tab === 'dashboard' ? '📊 Dashboard' :
+               tab === 'users' ? '👥 Users' :
+               tab === 'analytics' ? '📈 Analytics' :
+               tab === 'alerts' ? '🔔 Alerts' : '⚙️ Settings'}
             </button>
           ))}
         </div>
@@ -333,32 +333,32 @@ export default function AdminPanel() {
               <>
                 <div className="stat-grid">
                   <div className="stat-card">
-                    <div className="stat-icon">ðŸ‘¥</div>
+                    <div className="stat-icon">👥</div>
                     <div className="stat-value">{stats.totalUsers}</div>
                     <div className="stat-label">Total Users</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">âœ“</div>
+                    <div className="stat-icon">✓</div>
                     <div className="stat-value">{stats.verifiedUsers}</div>
                     <div className="stat-label">Verified Users</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">ðŸ›¡ï¸</div>
+                    <div className="stat-icon">🛡️</div>
                     <div className="stat-value">{stats.adminUsers}</div>
                     <div className="stat-label">Admins</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">ðŸ†•</div>
+                    <div className="stat-icon">🆕</div>
                     <div className="stat-value">{stats.recentUsers}</div>
                     <div className="stat-label">New This Week</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">ðŸ”¥</div>
+                    <div className="stat-icon">🔥</div>
                     <div className="stat-value">{stats.trendingBrandsCount}</div>
                     <div className="stat-label">Trending Brands</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">ðŸ””</div>
+                    <div className="stat-icon">🔔</div>
                     <div className="stat-value">{stats.activeBrandAlerts}</div>
                     <div className="stat-label">Active Alerts</div>
                   </div>
@@ -366,19 +366,19 @@ export default function AdminPanel() {
 
                 {/* Quick Actions */}
                 <div className="panel-card">
-                  <div className="panel-card-title">âš¡ Quick Actions</div>
+                  <div className="panel-card-title">⚡ Quick Actions</div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <button className="panel-btn panel-btn-primary" onClick={() => setActiveTab('users')}>
-                      ðŸ‘¥ Manage Users
+                      👥 Manage Users
                     </button>
                     <button className="panel-btn panel-btn-ghost" onClick={() => setActiveTab('analytics')}>
-                      ðŸ“ˆ View Analytics
+                      📈 View Analytics
                     </button>
                     <button className="panel-btn panel-btn-ghost" onClick={() => setActiveTab('alerts')}>
-                      ðŸ”” Brand Alerts ({stats.activeBrandAlerts})
+                      🔔 Brand Alerts ({stats.activeBrandAlerts})
                     </button>
                     <button className="panel-btn panel-btn-ghost" onClick={loadDashboard}>
-                      ðŸ”„ Refresh
+                      🔄 Refresh
                     </button>
                   </div>
                 </div>
@@ -386,7 +386,7 @@ export default function AdminPanel() {
                 {/* Recent Trending */}
                 {trendingData.length > 0 && (
                   <div className="panel-card">
-                    <div className="panel-card-title">ðŸ”¥ Top Trending Brands</div>
+                    <div className="panel-card-title">🔥 Top Trending Brands</div>
                     <table className="panel-table">
                       <thead>
                         <tr>
@@ -429,18 +429,18 @@ export default function AdminPanel() {
                     <option value="admin">Admins</option>
                   </select>
                   <button className="panel-btn panel-btn-primary" onClick={() => loadUsers()}>
-                    ðŸ” Search
+                    🔍 Search
                   </button>
                 </div>
 
                 <div className="panel-card">
                   <div className="panel-card-title">
-                    ðŸ‘¥ Users ({usersPagination.total})
+                    👥 Users ({usersPagination.total})
                   </div>
 
                   {users.length === 0 ? (
                     <div className="empty-state">
-                      <div className="empty-icon">ðŸ‘¥</div>
+                      <div className="empty-icon">👥</div>
                       <div className="empty-text">No users found</div>
                       <div className="empty-hint">Try adjusting your search filters</div>
                     </div>
@@ -511,7 +511,7 @@ export default function AdminPanel() {
                           disabled={usersPagination.page <= 1}
                           onClick={() => loadUsers(usersPagination.page - 1)}
                         >
-                          â† Prev
+                          ← Prev
                         </button>
                         <span className="page-info">
                           Page {usersPagination.page} of {usersPagination.pages}
@@ -520,7 +520,7 @@ export default function AdminPanel() {
                           disabled={usersPagination.page >= usersPagination.pages}
                           onClick={() => loadUsers(usersPagination.page + 1)}
                         >
-                          Next â†’
+                          Next →
                         </button>
                       </div>
                     </>
@@ -543,7 +543,7 @@ export default function AdminPanel() {
               <>
                 {/* Brand Search */}
                 <div className="panel-card">
-                  <div className="panel-card-title">ðŸ” Brand Lookup</div>
+                  <div className="panel-card-title">🔍 Brand Lookup</div>
                   <div className="filter-row" style={{ marginBottom: 0 }}>
                     <input
                       className="filter-input"
@@ -572,13 +572,13 @@ export default function AdminPanel() {
                       <div style={{ padding: 12, background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
                         <div style={{ fontSize: 11, color: '#888' }}>Trending</div>
                         <span className={`badge ${brandInfo.trending ? 'badge-success' : 'badge-warning'}`}>
-                          {brandInfo.trending ? 'ðŸ”¥ Yes' : 'No'}
+                          {brandInfo.trending ? '🔥 Yes' : 'No'}
                         </span>
                       </div>
                       <div style={{ padding: 12, background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
                         <div style={{ fontSize: 11, color: '#888' }}>Alert Threshold</div>
                         <span className={`badge ${brandInfo.alertThresholdMet ? 'badge-danger' : 'badge-info'}`}>
-                          {brandInfo.alertThresholdMet ? 'âš ï¸ Met' : 'Not met'}
+                          {brandInfo.alertThresholdMet ? '⚠️ Met' : 'Not met'}
                         </span>
                       </div>
                       {brandInfo.queries && brandInfo.queries.length > 0 && (
@@ -597,10 +597,10 @@ export default function AdminPanel() {
 
                 {/* Trending Brands Table */}
                 <div className="panel-card">
-                  <div className="panel-card-title">ðŸ”¥ All Trending Brands</div>
+                  <div className="panel-card-title">🔥 All Trending Brands</div>
                   {trendingData.length === 0 ? (
                     <div className="empty-state">
-                      <div className="empty-icon">ðŸ“Š</div>
+                      <div className="empty-icon">📊</div>
                       <div className="empty-text">No trending data yet</div>
                       <div className="empty-hint">Trending data appears when users search using the extension</div>
                     </div>
@@ -648,19 +648,19 @@ export default function AdminPanel() {
                       alert(`Processed ${res.results?.length || 0} alert(s)`);
                     } catch (e) { setError(e.message); }
                   }}>
-                    ðŸ”” Process All Brand Alerts
+                    🔔 Process All Brand Alerts
                   </button>
                   <button className="panel-btn panel-btn-ghost" onClick={loadAlerts}>
-                    ðŸ”„ Refresh
+                    🔄 Refresh
                   </button>
                 </div>
 
                 {/* Active Alerts */}
                 <div className="panel-card">
-                  <div className="panel-card-title">âš ï¸ Brands Exceeding Alert Threshold</div>
+                  <div className="panel-card-title">⚠️ Brands Exceeding Alert Threshold</div>
                   {alerts.length === 0 ? (
                     <div className="empty-state">
-                      <div className="empty-icon">ðŸ””</div>
+                      <div className="empty-icon">🔔</div>
                       <div className="empty-text">No alerts triggered</div>
                       <div className="empty-hint">Alerts trigger when many users search for the same brand</div>
                     </div>
@@ -714,10 +714,10 @@ export default function AdminPanel() {
 
                 {/* Registered Brands */}
                 <div className="panel-card">
-                  <div className="panel-card-title">ðŸ¢ Registered Brand Contacts</div>
+                  <div className="panel-card-title">🏢 Registered Brand Contacts</div>
                   {registeredBrands.length === 0 ? (
                     <div className="empty-state">
-                      <div className="empty-icon">ðŸ“§</div>
+                      <div className="empty-icon">📧</div>
                       <div className="empty-text">No brands registered yet</div>
                       <div className="empty-hint">Brands can register via the API to receive search alerts</div>
                     </div>
@@ -735,10 +735,10 @@ export default function AdminPanel() {
                         {registeredBrands.map((b, i) => (
                           <tr key={i}>
                             <td><strong>{b.brand}</strong></td>
-                            <td>{b.email || 'â€”'}</td>
-                            <td style={{ fontSize: 12 }}>{b.webhookUrl ? 'âœ“ Configured' : 'â€”'}</td>
+                            <td>{b.email || '—'}</td>
+                            <td style={{ fontSize: 12 }}>{b.webhookUrl ? '✓ Configured' : '—'}</td>
                             <td style={{ fontSize: 12, color: '#888' }}>
-                              {b.registeredAt ? new Date(b.registeredAt).toLocaleDateString() : 'â€”'}
+                              {b.registeredAt ? new Date(b.registeredAt).toLocaleDateString() : '—'}
                             </td>
                           </tr>
                         ))}
@@ -753,7 +753,7 @@ export default function AdminPanel() {
             {activeTab === 'settings' && (
               <>
                 <div className="panel-card">
-                  <div className="panel-card-title">âš™ï¸ System Configuration</div>
+                  <div className="panel-card-title">⚙️ System Configuration</div>
                   {!settings ? (
                     <div className="panel-loading">Loading settings...</div>
                   ) : (
@@ -762,21 +762,21 @@ export default function AdminPanel() {
                         <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>AI Provider</div>
                         <div style={{ fontWeight: 700 }}>
                           <span className={`badge ${settings.aiProvider !== 'none' ? 'badge-success' : 'badge-danger'}`}>
-                            {settings.aiProvider === 'openai' ? 'ðŸ¤– OpenAI' :
-                             settings.aiProvider === 'google_vision' ? 'ðŸ‘ï¸ Google Vision' : 'âŒ None'}
+                            {settings.aiProvider === 'openai' ? '🤖 OpenAI' :
+                             settings.aiProvider === 'google_vision' ? '👁️ Google Vision' : 'âŒ None'}
                           </span>
                         </div>
                       </div>
                       <div style={{ padding: 16, background: 'rgba(255,255,255,0.04)', borderRadius: 12 }}>
                         <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>SERP API</div>
                         <span className={`badge ${settings.serpApiConfigured ? 'badge-success' : 'badge-warning'}`}>
-                          {settings.serpApiConfigured ? 'âœ“ Configured' : 'âš ï¸ Not configured'}
+                          {settings.serpApiConfigured ? '✓ Configured' : '⚠️ Not configured'}
                         </span>
                       </div>
                       <div style={{ padding: 16, background: 'rgba(255,255,255,0.04)', borderRadius: 12 }}>
                         <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>MongoDB</div>
                         <span className={`badge ${settings.mongoConnected ? 'badge-success' : 'badge-danger'}`}>
-                          {settings.mongoConnected ? 'âœ“ Connected' : 'âœ• Disconnected'}
+                          {settings.mongoConnected ? '✓ Connected' : '✕ Disconnected'}
                         </span>
                       </div>
                       <div style={{ padding: 16, background: 'rgba(255,255,255,0.04)', borderRadius: 12 }}>
@@ -796,7 +796,7 @@ export default function AdminPanel() {
                 </div>
 
                 <div className="panel-card">
-                  <div className="panel-card-title">â„¹ï¸ About</div>
+                  <div className="panel-card-title">ℹ️ About</div>
                   <div style={{ color: '#666', fontSize: 14, lineHeight: 1.8 }}>
                     <p><strong>PriceKlick Admin Panel</strong></p>
                     <p>This panel allows administrators to:</p>

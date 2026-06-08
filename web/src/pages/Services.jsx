@@ -1,21 +1,56 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { searchServices, enrichProvider, trackProviderClick, resolveUserLocation } from '../api/services'
+import { searchServices, enrichProvider, scrapeProviderWebsite, trackProviderClick, resolveUserLocation, getSpendingPatterns, trackActivity } from '../api/services'
+import ServiceMap from '../components/ServiceMap'
 import './Services.css'
 
-const API = import.meta.env.VITE_API_URL || ''
-
-const CATEGORIES = [
-  'Auto Repair','Catering','Cleaning','Electrical','HVAC','IT Support',
-  'Landscaping','Moving','Painting','Personal Training','Pest Control',
-  'Photography','Plumbing','Roofing','Tutoring'
+// ── Category taxonomy (all service types) ─────────────────
+const CATEGORY_GROUPS = [
+  { id: 'food',        icon: '🍽️', label: 'Food & Dining',    items: ['Restaurants','Catering','Coffee & Tea','Bakeries','Bars','Food Trucks','Pizza','Sushi','Burgers','Meal Prep'] },
+  { id: 'home',        icon: '🏠', label: 'Home Services',    items: ['Plumbing','Electrical','HVAC','House Cleaning','Landscaping','Pest Control','Roofing','Painting','Moving','Handyman'] },
+  { id: 'auto',        icon: '🚗', label: 'Auto & Transport', items: ['Auto Repair','Car Wash','Towing','Oil Change','Tire Shop','Body Shop','Auto Detailing','Mechanics'] },
+  { id: 'health',      icon: '🏥', label: 'Health & Medical', items: ['Doctors','Dentists','Therapists','Gyms','Massage','Optometrists','Chiropractors','Pharmacies','Acupuncture'] },
+  { id: 'beauty',      icon: '💇', label: 'Beauty & Care',    items: ['Hair Salons','Barbers','Nail Salons','Spas','Makeup Artists','Tanning','Waxing','Eyelash Extensions'] },
+  { id: 'education',   icon: '📚', label: 'Education',        items: ['Tutoring','Music Lessons','Language Classes','Test Prep','Driving School','Dance Classes','Coding Classes','Personal Training'] },
+  { id: 'professional',icon: '💼', label: 'Professional',     items: ['Accountants','Lawyers','IT Support','Photography','Marketing','Real Estate','Financial Advisors','Bookkeeping'] },
+  { id: 'events',      icon: '🎉', label: 'Events',           items: ['Event Planning','DJs','Venues','Florists','Wedding Planners','Photo Booths','Entertainment','Party Supplies'] },
+  { id: 'pet',         icon: '🐾', label: 'Pet Services',     items: ['Vets','Pet Grooming','Dog Walking','Pet Boarding','Pet Training','Pet Supplies'] },
+  { id: 'contractor',  icon: '🔨', label: 'Contractors',      items: ['General Contractors','Flooring','Carpentry','Masonry','Drywall','Remodeling','Insulation','Windows & Doors'] },
+  { id: 'hospitality', icon: '🏨', label: 'Hospitality',      items: ['Hotels','Bed & Breakfast','Vacation Rentals','Resorts','Motels','Hostels'] },
+  { id: 'childcare',   icon: '👶', label: 'Child & Family',   items: ['Childcare','Daycare','Nannies','Kids Activities','Family Counseling','Pediatrics'] },
 ]
 
-const TRENDING = ['Plumber','Tutor','Electrician','House cleaner','Dog walker','Massage','Mechanic']
+const TRENDING = ['Plumber','Electrician','House Cleaner','Restaurant','Mechanic','Personal Trainer','Dog Walker','Tutor','Hair Salon','Massage']
 
+// ── Pre Pay AI — localStorage pattern tracking ─────────────
+const PREPAY_KEY = 'pk_search_history'
+
+function trackSearch(category) {
+  try {
+    const h = JSON.parse(localStorage.getItem(PREPAY_KEY) || '[]')
+    h.push({ category, ts: Date.now() })
+    const cutoff = Date.now() - 30 * 24 * 3600 * 1000
+    localStorage.setItem(PREPAY_KEY, JSON.stringify(h.filter(x => x.ts > cutoff).slice(-100)))
+  } catch (_) {}
+}
+
+function getPrePayRecs() {
+  try {
+    const h = JSON.parse(localStorage.getItem(PREPAY_KEY) || '[]')
+    const counts = {}
+    h.forEach(x => { counts[x.category] = (counts[x.category] || 0) + 1 })
+    return Object.entries(counts)
+      .filter(([, n]) => n >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([category, count]) => ({ category, count }))
+  } catch (_) { return [] }
+}
+
+// ── Helpers ────────────────────────────────────────────────
 function Stars({ r }) {
   return (
-    <span className="sv-stars" aria-label={`Rating ${r}`}>
+    <span className="sv-stars" aria-label={`${r} stars`}>
       <span className="sv-star">★</span>
       <span>{Number(r).toFixed(1)}</span>
     </span>
@@ -36,120 +71,426 @@ function distLabel(p) {
   return ''
 }
 
-function PreferredCard({ p }) {
+// ── Category group browser ─────────────────────────────────
+function CategoryGroupGrid({ onSelect, selected }) {
+  const selectedGroup = CATEGORY_GROUPS.find(g => g.items.includes(selected))
+  const [expanded, setExpanded] = useState(selectedGroup?.id || null)
+
+  useEffect(() => {
+    if (selectedGroup) setExpanded(selectedGroup.id)
+  }, [selected])
+
   return (
-    <div className="sv-pref-card">
-      <div className="sv-pref-badge">PREFERRED</div>
-      <div className="sv-pref-head">
-        {p.thumbnail
-          ? <img className="sv-avatar img" src={p.thumbnail} alt="" />
-          : <div className="sv-avatar">{initialOf(p)}</div>}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="sv-pref-name" title={p.name}>{p.name}</div>
-          <div className="sv-pref-addr">{shortAddr(p)}</div>
+    <div className="sv-cat-groups">
+      <div className="sv-cat-group-row">
+        {CATEGORY_GROUPS.map(grp => (
+          <button
+            key={grp.id}
+            className={`sv-cat-group-btn ${expanded === grp.id ? 'active' : ''} ${grp.items.includes(selected) ? 'has-sel' : ''}`}
+            onClick={() => setExpanded(expanded === grp.id ? null : grp.id)}
+          >
+            <span className="sv-cat-group-icon">{grp.icon}</span>
+            <span className="sv-cat-group-label">{grp.label}</span>
+          </button>
+        ))}
+      </div>
+      {expanded && (
+        <div className="sv-cat-items">
+          {CATEGORY_GROUPS.find(g => g.id === expanded)?.items.map(item => (
+            <button
+              key={item}
+              className={`sv-chip ${selected === item ? 'active' : ''}`}
+              onClick={() => onSelect(item === selected ? null : item)}
+            >
+              {item}
+            </button>
+          ))}
         </div>
-      </div>
-      <div className="sv-pref-meta">
-        {priceLabel(p) && <span className="sv-price">{priceLabel(p)}</span>}
-        {p.rating != null && <Stars r={p.rating} />}
-        {p.reviewsCount != null && <span className="sv-reviews">({p.reviewsCount})</span>}
-        <span className="sv-verified">✓ VERIFIED</span>
-      </div>
-      {(p.description || p.blurb) && <p className="sv-pref-blurb">{p.description || p.blurb}</p>}
+      )}
     </div>
   )
 }
 
-function ProviderRow({ p, onEnrich, enriching }) {
-  const phoneHref = p.phone ? `tel:${String(p.phone).replace(/[^\d+]/g,'')}` : null
-  const mapsHref = p.mapsUrl ||
-    (p.lat && p.lng ? `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}` :
-     p.name ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + (p.address||''))}` : null)
-  const isEnriching = enriching === (p.placeId || p.name)
+// ── Provider card ──────────────────────────────────────────
+function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, onToggleCompare }) {
+  const key = p.placeId || p.name
+  const inCompare = compareSet.has(key)
+  const canAdd = inCompare || compareSet.size < 3
+  const phoneHref = p.phone ? `tel:${String(p.phone).replace(/[^\d+]/g, '')}` : null
+  const mapsHref = p.mapsUrl || (p.lat && p.lng
+    ? `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name || '')}`)
+  const isEnriching = enriching === key
+  const isScraping = scraping === key
   return (
-    <div className="sv-row">
-      <div className="sv-row-left">
+    <div className={`sv-card ${inCompare ? 'sv-card-selected' : ''}`}>
+      <div className="sv-card-left">
         {p.thumbnail
           ? <img className="sv-avatar lg img" src={p.thumbnail} alt="" />
           : <div className="sv-avatar lg">{initialOf(p)}</div>}
-        <div className="sv-row-body">
-          <div className="sv-row-name">{p.name} {p.category && <span className="sv-row-cat">{p.category}</span>}</div>
-          {(p.description || p.blurb) && <div className="sv-row-blurb">{p.description || p.blurb}</div>}
-          <div className="sv-row-meta">
+        <div className="sv-card-body">
+          <div className="sv-card-name">
+            {p.name}
+            {p.category && <span className="sv-row-cat">{p.category}</span>}
+          </div>
+          {(p.description || p.blurb) && (
+            <div className="sv-card-blurb">{p.description || p.blurb}</div>
+          )}
+          <div className="sv-card-meta">
             {p.rating != null && <Stars r={p.rating} />}
-            {p.reviewsCount != null && <span className="sv-reviews">({p.reviewsCount})</span>}
-            {distLabel(p) && <span className="sv-dist">{distLabel(p)}</span>}
+            {p.reviewsCount != null && <span className="sv-reviews">({p.reviewsCount.toLocaleString()})</span>}
+            {distLabel(p) && <span className="sv-dist">📍 {distLabel(p)}</span>}
             {priceLabel(p) && <span className="sv-from">{priceLabel(p)}</span>}
           </div>
-          <div className="sv-row-city">{shortAddr(p)}</div>
+          {shortAddr(p) && <div className="sv-card-city">{shortAddr(p)}</div>}
         </div>
       </div>
-      <div className="sv-row-actions">
-        {p.website
-          ? <a href={p.website} target="_blank" rel="noopener noreferrer"
-               onClick={() => trackProviderClick({ providerId: p.placeId, placeId: p.placeId, name: p.name, category: p.category, type: 'service_click' })}
-               className="sv-btn primary">View &amp; Buy</a>
-          : mapsHref && <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="sv-btn primary">View on Maps</a>}
-        {phoneHref && <a href={phoneHref} className="sv-btn ghost">📞 Call</a>}
-        {onEnrich && (
+      <div className="sv-card-actions">
+        <button
+          className={`sv-compare-toggle ${inCompare ? 'active' : ''} ${!canAdd ? 'sv-compare-toggle-disabled' : ''}`}
+          onClick={() => canAdd && onToggleCompare(p)}
+          title={inCompare ? 'Remove from comparison' : compareSet.size >= 3 ? 'Max 3 providers' : 'Add to comparison'}
+        >
+          {inCompare ? '✓ Comparing' : '⊕ Compare'}
+        </button>
+        <div className="sv-card-btns">
+          {p.website
+            ? <a href={p.website} target="_blank" rel="noopener noreferrer"
+                 onClick={() => trackProviderClick({ placeId: p.placeId, name: p.name, category: p.category, type: 'service_click' })}
+                 className="sv-btn primary">View on Yelp</a>
+            : <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="sv-btn primary">Maps</a>}
+          {phoneHref && <a href={phoneHref} className="sv-btn ghost">📞 Call</a>}
           <button className="sv-btn ghost" disabled={isEnriching} onClick={() => onEnrich(p)}>
-            {isEnriching ? '… Loading' : '✨ Details'}
+            {isEnriching ? '…' : '✨ Details'}
           </button>
-        )}
+          {p.website && (
+            <button className="sv-btn ghost sv-btn-firecrawl" disabled={isScraping} onClick={() => onScrape(p)}>
+              {isScraping ? '…' : '🌐 Pricing'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-export default function Services() {
-  const [cat, setCat] = useState('All')
-  const [view, setView] = useState('list')
-  const [q, setQ] = useState('')
-  const [budget, setBudget] = useState('')
-  const [sort, setSort] = useState('rating')
-  const [quick, setQuick] = useState(null) // 'budget' | 'top' | 'close'
-  const [radiusKm, setRadiusKm] = useState(25)
+// ── Floating compare bar ───────────────────────────────────
+function CompareBar({ compareSet, providers, onClear, onOpen }) {
+  if (compareSet.size === 0) return null
+  const selected = providers.filter(p => compareSet.has(p.placeId || p.name))
+  return (
+    <div className="sv-compare-bar">
+      <div className="sv-compare-bar-items">
+        {selected.map(p => (
+          <span key={p.placeId || p.name} className="sv-compare-chip">
+            {p.thumbnail
+              ? <img src={p.thumbnail} alt="" className="sv-compare-chip-img" />
+              : <span className="sv-compare-chip-init">{initialOf(p)}</span>}
+            <span>{p.name.split(' ').slice(0, 2).join(' ')}</span>
+          </span>
+        ))}
+        {compareSet.size < 3 && (
+          <span className="sv-compare-chip ghost">+ Add {3 - compareSet.size} more</span>
+        )}
+      </div>
+      <div className="sv-compare-bar-actions">
+        {compareSet.size >= 2 && (
+          <button className="sv-btn primary" onClick={onOpen}>Compare Now →</button>
+        )}
+        <button className="sv-btn ghost" onClick={onClear}>Clear</button>
+      </div>
+    </div>
+  )
+}
 
-  // Live backend state
-  const [geo, setGeo] = useState({ lat: null, lng: null, city: '', source: 'none' })
-  const [providers, setProviders] = useState([])     // real, fetched from SerpAPI Google Maps
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [enriching, setEnriching] = useState(null)   // placeId being enriched
-  const [enriched, setEnriched] = useState(null)     // last enrichment result
+// ── Side-by-side compare modal ─────────────────────────────
+function CompareModal({ compareSet, providers, onClose }) {
+  const selected = providers.filter(p => compareSet.has(p.placeId || p.name))
+  const rows = [
+    { label: 'Rating',     fn: p => p.rating != null ? <><Stars r={p.rating} /> <span className="sv-reviews">({(p.reviewsCount || 0).toLocaleString()})</span></> : '—' },
+    { label: 'Price Range',fn: p => p.price || '—' },
+    { label: 'Est. Cost',  fn: p => p.priceValue ? `$${p.priceValue}` : '—' },
+    { label: 'Distance',   fn: p => distLabel(p) || '—' },
+    { label: 'Category',   fn: p => p.category || '—' },
+    { label: 'Address',    fn: p => shortAddr(p) || '—' },
+    { label: 'Phone',      fn: p => p.phone ? <a href={`tel:${p.phone}`} className="sv-btn ghost" style={{fontSize:12,padding:'4px 10px'}}>{p.phone}</a> : '—' },
+    { label: 'Profile',    fn: p => p.website ? <a href={p.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary" style={{fontSize:12,padding:'4px 14px'}}>View →</a> : '—' },
+  ]
+  return (
+    <div className="sv-modal" onClick={onClose}>
+      <div className="sv-modal-card sv-cmp-modal" onClick={e => e.stopPropagation()}>
+        <button className="sv-modal-close" onClick={onClose}>✕</button>
+        <div className="sv-modal-body">
+          <h3 style={{ marginBottom: 20 }}>Side-by-Side Comparison</h3>
+          <div className="sv-cmp-wrap">
+            <table className="sv-cmp-table">
+              <thead>
+                <tr>
+                  <th className="sv-cmp-attr-col">Attribute</th>
+                  {selected.map(p => (
+                    <th key={p.placeId || p.name}>
+                      <div className="sv-cmp-th">
+                        {p.thumbnail
+                          ? <img src={p.thumbnail} alt="" className="sv-cmp-th-img" />
+                          : <div className="sv-avatar" style={{width:40,height:40,fontSize:16}}>{initialOf(p)}</div>}
+                        <span className="sv-cmp-th-name">{p.name}</span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(row => (
+                  <tr key={row.label}>
+                    <td className="sv-cmp-label">{row.label}</td>
+                    {selected.map(p => (
+                      <td key={p.placeId || p.name} className="sv-cmp-cell">{row.fn(p)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Pre Pay AI widget (backend-powered) ───────────────────
+function PrePayWidget({ currentQuery, onCategoryClick }) {
+  const [data, setData]         = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [prompt, setPrompt]     = useState(null)
+  const [dismissed, setDismissed] = useState(new Set())
+
+  // Load spending patterns from backend on mount
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getSpendingPatterns()
+      .then(r => { if (!cancelled) setData(r) })
+      .catch(() => { if (!cancelled) setData(null) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // Also merge localStorage patterns as fallback
+  const localRecs = getPrePayRecs()
+
+  if (loading) return (
+    <div className="sv-side-card sv-prepay">
+      <div className="sv-tag-mini">🤖 AI INSIGHTS</div>
+      <div className="sv-prepay-loading">Analyzing your patterns…</div>
+    </div>
+  )
+
+  const hasBackendData = data?.hasData && (data.topCategories?.length > 0 || data.suggestions?.length > 0)
+  const hasLocalData   = localRecs.length > 0
+  if (!hasBackendData && !hasLocalData) return null
+
+  const profile = data?.profile
+  const suggestions = data?.suggestions || []
+  const suggestedDeals = data?.suggestedDeals || []
+  const topCategories = data?.topCategories || []
+
+  // Merge backend + local recs for pre-book prompts
+  const prebook = [
+    ...(topCategories.slice(0, 2).map(tc => ({ category: tc.cat, count: tc.count, source: 'ai' }))),
+    ...localRecs.filter(lr => !topCategories.some(tc => tc.cat === lr.category)).slice(0, 1)
+  ].filter(r => !dismissed.has(r.category))
+
+  return (
+    <div className="sv-side-card sv-prepay">
+      <div className="sv-tag-mini">🤖 AI INSIGHTS</div>
+
+      {profile && (
+        <div className="sv-prepay-profile">
+          <span className="sv-prepay-profile-icon">{profile.icon}</span>
+          <div>
+            <div className="sv-prepay-profile-label">{profile.label}</div>
+            <div className="sv-prepay-profile-desc">{profile.desc}</div>
+          </div>
+        </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <div className="sv-prepay-suggestions">
+          {suggestions.slice(0, 2).map((s, i) => (
+            <div key={i} className={`sv-prepay-insight sv-prepay-insight-${s.type}`}>
+              <p className="sv-prepay-insight-text">{s.text}</p>
+              {s.cta && s.type === 'prepay' && (
+                <button className="sv-btn primary" style={{fontSize:12,padding:'5px 12px',marginTop:6}}
+                  onClick={() => setPrompt(s.category)}>
+                  {s.cta}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {topCategories.length > 0 && (
+        <div className="sv-prepay-cats">
+          <div className="sv-prepay-cats-label">Your top categories</div>
+          <div className="sv-prepay-cats-list">
+            {topCategories.slice(0, 4).map(tc => (
+              <button key={tc.cat} className="sv-prepay-cat-chip"
+                onClick={() => onCategoryClick && onCategoryClick(tc.cat)}>
+                {tc.cat.replace(/_/g, ' ')}
+                <span className="sv-prepay-cat-count">{tc.count}×</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {suggestedDeals.length > 0 && (
+        <div className="sv-prepay-deals">
+          <div className="sv-prepay-cats-label">Deals matching your habits</div>
+          {suggestedDeals.slice(0, 3).map((d, i) => (
+            <a key={i} href={d.url || '#'} target="_blank" rel="noopener noreferrer"
+               className="sv-prepay-deal-row">
+              <div className="sv-prepay-deal-info">
+                <span className="sv-prepay-deal-title">{d.title?.slice(0, 42)}{d.title?.length > 42 ? '…' : ''}</span>
+                <span className="sv-prepay-deal-store">{d.source || d.brand}</span>
+              </div>
+              {d.discountPercent && (
+                <span className="sv-prepay-deal-badge">{d.discountPercent}% off</span>
+              )}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {prebook.length > 0 && (
+        <div className="sv-prepay-recs">
+          <div className="sv-prepay-cats-label">Pre-book suggestions</div>
+          {prebook.map(rec => (
+            <div key={rec.category} className="sv-prepay-rec">
+              <div className="sv-prepay-rec-info">
+                <span className="sv-prepay-cat">{rec.category.replace(/_/g, ' ')}</span>
+                <span className="sv-prepay-freq">{rec.count}× searched</span>
+              </div>
+              <div className="sv-prepay-rec-actions">
+                <button className="sv-btn primary" style={{fontSize:12,padding:'5px 12px'}}
+                  onClick={() => setPrompt(rec.category)}>Pre-book</button>
+                <button className="sv-btn ghost" style={{fontSize:12,padding:'5px 8px'}}
+                  onClick={() => setDismissed(d => new Set([...d, rec.category]))}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {prompt && (
+        <div className="sv-modal" onClick={() => setPrompt(null)}>
+          <div className="sv-modal-card" style={{maxWidth:440}} onClick={e => e.stopPropagation()}>
+            <button className="sv-modal-close" onClick={() => setPrompt(null)}>✕</button>
+            <div className="sv-modal-body">
+              <div style={{fontSize:36,marginBottom:8}}>💳</div>
+              <h3>Pre-Pay for {prompt.replace(/_/g, ' ')}</h3>
+              <p style={{color:'var(--muted-foreground)',marginBottom:16,fontSize:14,lineHeight:1.6}}>
+                Our AI detected you search for <strong>{prompt.replace(/_/g, ' ')}</strong> frequently.
+                Lock in today's rates with a subscription and save up to 20%.
+              </p>
+              <div className="sv-prepay-options">
+                {[
+                  { label: 'Monthly',   desc: '1 booking/month, flexible scheduling',  save: '10%' },
+                  { label: 'Quarterly', desc: '3 bookings, priority scheduling',        save: '15%' },
+                  { label: 'Annual',    desc: '12 bookings, best rate guaranteed',       save: '20%' },
+                ].map(opt => (
+                  <div key={opt.label} className="sv-prepay-opt">
+                    <div className="sv-prepay-opt-head">
+                      <span className="sv-prepay-opt-label">{opt.label}</span>
+                      <span className="sv-prepay-opt-save">Save {opt.save}</span>
+                    </div>
+                    <p className="sv-prepay-opt-desc">{opt.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <button className="sv-btn primary block" style={{marginTop:16}} onClick={() => setPrompt(null)}>
+                Get Started
+              </button>
+              <p style={{fontSize:12,color:'var(--muted-foreground)',marginTop:10,textAlign:'center'}}>
+                Subscription management coming soon.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main page ──────────────────────────────────────────────
+export default function Services() {
+  const [cat, setCat]         = useState(null)
+  const [view, setView]       = useState('list')
+  const [q, setQ]             = useState('')
+  const [budget, setBudget]   = useState('')
+  const [minRating, setMinRating] = useState('')
+  const [sort, setSort]       = useState('rating')
+  const [quick, setQuick]     = useState(null)
+  const [radiusKm, setRadiusKm] = useState(10)
+
+  const [geo, setGeo]           = useState({ lat: null, lng: null, city: '', source: 'none' })
+  const [providers, setProviders] = useState([])
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+  const [enriching, setEnriching] = useState(null)
+  const [enriched, setEnriched]   = useState(null)
+  const [scraping, setScraping]   = useState(null)
+  const [websiteData, setWebsiteData] = useState(null)
+
+  const [compareSet, setCompareSet] = useState(new Set())
+  const [showCompare, setShowCompare] = useState(false)
+
+  // AI tracking opt-out
+  const [trackingEnabled, setTrackingEnabled] = useState(() => {
+    try { return localStorage.getItem('pk_tracking_opt_out') !== '1' } catch { return true }
+  })
+
+  function toggleTracking() {
+    const next = !trackingEnabled
+    setTrackingEnabled(next)
+    try { localStorage.setItem('pk_tracking_opt_out', next ? '0' : '1') } catch {}
+  }
+
   const debounceRef = useRef(null)
 
-  // Resolve user location once on mount (GPS → fallback to IP)
   useEffect(() => {
     let cancelled = false
     resolveUserLocation().then(g => { if (!cancelled) setGeo(g) }).catch(() => {})
     return () => { cancelled = true }
   }, [])
 
-  // The effective query: typed search OR the selected category OR a sensible default
   const effectiveQuery = useMemo(() => {
     const typed = q.trim()
     if (typed) return typed
-    if (cat && cat !== 'All') return cat.toLowerCase()
+    if (cat) return cat.toLowerCase()
     return 'local services'
   }, [q, cat])
 
-  // Fire backend search (debounced) whenever inputs change
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setLoading(true); setError('')
+      if (trackingEnabled) {
+        trackSearch(effectiveQuery)
+        trackActivity({ type: 'service_search', query: effectiveQuery, category: cat || undefined })
+      }
       try {
         const maxPrice = parseFloat(budget) || (quick === 'budget' ? 50 : undefined)
-        const minRating = quick === 'top' ? 4.5 : undefined
+        const minR = parseFloat(minRating) || (quick === 'top' ? 4.5 : undefined)
         const data = await searchServices({
           query: effectiveQuery,
           lat: geo.lat ?? undefined,
           lng: geo.lng ?? undefined,
           radiusKm,
           maxPrice,
-          minRating,
-          limit: 25
+          minRating: minR,
+          limit: 30
         })
         if (!data.ok) {
           setError(data.message || data.error || 'Search failed')
@@ -165,41 +506,33 @@ export default function Services() {
       }
     }, 400)
     return () => debounceRef.current && clearTimeout(debounceRef.current)
-  }, [effectiveQuery, geo.lat, geo.lng, radiusKm, budget, quick])
+  }, [effectiveQuery, geo.lat, geo.lng, radiusKm, budget, minRating, quick, trackingEnabled])
 
-  // Local sort + quick-distance toggle (data is already filtered server-side)
-  const sortedByRating = useMemo(() => {
+  const sortedProviders = useMemo(() => {
     const arr = [...providers]
-    const dist = p => (typeof p.distanceKm === 'number' ? p.distanceKm : Infinity)
-    const priceN = p => (typeof p.priceValue === 'number' ? p.priceValue : Infinity)
-    if (sort === 'price-asc') arr.sort((a, b) => priceN(a) - priceN(b))
+    const dist = p => typeof p.distanceKm === 'number' ? p.distanceKm : Infinity
+    const priceN = p => typeof p.priceValue === 'number' ? p.priceValue : Infinity
+    if (sort === 'price-asc' || quick === 'budget') arr.sort((a, b) => priceN(a) - priceN(b))
     else if (sort === 'price-desc') arr.sort((a, b) => priceN(b) - priceN(a))
     else if (sort === 'distance' || quick === 'close') arr.sort((a, b) => dist(a) - dist(b))
     else arr.sort((a, b) => (b.rating || 0) - (a.rating || 0))
     return arr
   }, [providers, sort, quick])
 
-  // Group one preferred (highest-rated) provider per category for the Preferred section
-  const preferredByCat = useMemo(() => {
-    const map = {}
-    const sorted = [...providers].sort((a, b) => (b.rating || 0) - (a.rating || 0))
-    for (const p of sorted) {
-      const key = p.category || cat
-      if (key && !map[key]) map[key] = p
-    }
-    return map
-  }, [providers, cat])
+  function toggleCompare(p) {
+    const key = p.placeId || p.name
+    setCompareSet(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else if (next.size < 3) next.add(key)
+      return next
+    })
+  }
 
-  // Enrich a provider via Apify (Google Places full data: photos, reviews, hours, socials)
   async function handleEnrich(prov) {
-    if (!prov) return
     setEnriching(prov.placeId || prov.name)
     try {
-      const r = await enrichProvider({
-        placeId: prov.placeId,
-        name: prov.name,
-        address: prov.address
-      })
+      const r = await enrichProvider({ placeId: prov.placeId, name: prov.name, address: prov.address })
       setEnriched(r)
     } catch (e) {
       setEnriched({ ok: false, error: e.message })
@@ -207,22 +540,52 @@ export default function Services() {
       setEnriching(null)
     }
   }
+
+  async function handleWebsiteScrape(prov) {
+    if (!prov?.website) return
+    setScraping(prov.placeId || prov.name)
+    try {
+      const r = await scrapeProviderWebsite({ url: prov.website, name: prov.name })
+      setWebsiteData({ ...r, providerName: prov.name, providerUrl: prov.website })
+    } catch (e) {
+      setWebsiteData({ ok: false, error: e.message, providerName: prov.name })
+    } finally {
+      setScraping(null)
+    }
+  }
+
+  function clearAll() {
+    setCat(null); setQ(''); setBudget(''); setMinRating(''); setQuick(null); setRadiusKm(10)
+  }
+
+  const hasFilters = !!(budget || minRating || cat || q)
+
   return (
     <div className="sv-page">
       <div className="sv-bg" />
 
+      {/* ── Search engine hero ── */}
       <section className="container sv-hero-v2">
         <div className="sv-util-row">
           <Link to="/vendor" className="sv-util-link">🏪 For Vendors</Link>
           <span className="sv-util-dot">·</span>
           <Link to="/promote" className="sv-util-link">📣 Promote My Listing</Link>
           <span className="sv-util-dot">·</span>
-          <Link to="/network" className="sv-util-link">🚀 Join the PriceKlick Network</Link>
+          <Link to="/network" className="sv-util-link">🚀 Join the Network</Link>
+          <span className="sv-util-dot">·</span>
+          <button
+            className={`sv-util-link sv-tracking-toggle ${trackingEnabled ? '' : 'off'}`}
+            onClick={toggleTracking}
+            title={trackingEnabled ? 'AI search tracking is ON — click to opt out' : 'AI search tracking is OFF — click to enable'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            {trackingEnabled ? '🤖 AI Tracking: On' : '🚫 AI Tracking: Off'}
+          </button>
         </div>
 
         <div className="sv-hero-center">
           <h1 className="sv-brand-title">PriceKlick</h1>
-          <p className="sv-brand-sub">Scroll less, save more.</p>
+          <p className="sv-brand-sub">Find any service. Compare prices. Book smarter.</p>
           <Link to="/smart-compare" className="sv-compare-btn">
             <span className="sv-compare-icon">✨</span>
             <span className="sv-compare-label">Smart Compare Advisor</span>
@@ -231,252 +594,322 @@ export default function Services() {
           </Link>
         </div>
 
-        <div className="sv-hero-grid">
-          <div className="sv-hero-left">
-            <div className="sv-search-wrap">
-              <span className="sv-search-icon" aria-hidden>🔍</span>
-              <input
-                type="text"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search plumber, electrician, tutor, cleaner..."
-                className="sv-search-input"
-              />
-            </div>
-
-            <div className="sv-chips">
-              <button className={`sv-chip ${cat==='All' ? 'active' : ''}`} onClick={()=>setCat('All')}>All</button>
-              {CATEGORIES.map(c => (
-                <button key={c} className={`sv-chip ${cat===c ? 'active' : ''}`} onClick={()=>setCat(c)}>{c}</button>
-              ))}
-            </div>
-
-            <div className="sv-filter-bar">
-              <div className="sv-filter-cell"><span>⦾</span> Near me</div>
-              <div className="sv-filter-cell">
-                <span>Within</span>
-                <select className="sv-filter-select" value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))}>
-                  <option value="5">5 km</option>
-                  <option value="10">10 km</option>
-                  <option value="25">25 km</option>
-                  <option value="50">50 km</option>
-                </select>
-              </div>
-              <div className="sv-filter-cell">
-                <span>$</span>
-                <input
-                  type="number"
-                  className="sv-filter-input"
-                  placeholder="Max budget"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                  min="0"
-                />
-              </div>
-              <div className="sv-filter-cell">
-                <span>≅</span>
-                <select className="sv-filter-select" value={sort} onChange={(e) => setSort(e.target.value)}>
-                  <option value="rating">Top Rated</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="distance">Closest First</option>
-                </select>
-              </div>
-              <div className="sv-filter-view">
-                <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={()=>setView('list')}>☰ List</button>
-                <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={()=>setView('map')}>🗺 Map</button>
-              </div>
-            </div>
-          </div>
-
-          <aside className="sv-hero-trend">
-            <div className="sv-trend-head">🔥 <span>Trending near you</span></div>
-            <div className="sv-trending">
-              {TRENDING.map(t => (
-                <button key={t} className="sv-trend" onClick={() => setQ(t)}>{t}</button>
-              ))}
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <section className="container sv-section">
-        <div className="sv-section-head">
-          <span className="sv-tag">✦ TRUSTED PARTNERS</span>
-          <h2>PriceKlick Preferred Vendors</h2>
-          <p>Top-rated, verified providers in <strong>{geo.city || 'your area'}</strong> {geo.source !== 'none' ? `(· ${geo.source.toUpperCase()})` : ''}.</p>
-        </div>
-
-        {cat === 'All' ? (
-          <div className="sv-pref-grid">
-            {CATEGORIES.map(c => (
-              <button key={c} className="sv-pref-col sv-pref-cta" onClick={() => setCat(c)}>
-                <div className="sv-pref-cat">{c}</div>
-                <div className="sv-pref-hint">Tap to find top-rated {c.toLowerCase()} near you</div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="sv-pref-grid">
-            {sortedByRating.slice(0, 6).map(p => (
-              <div key={p.placeId || p.name} className="sv-pref-col">
-                <div className="sv-pref-cat">{cat}</div>
-                <PreferredCard p={p} />
-              </div>
-            ))}
-            {sortedByRating.length === 0 && !loading && (
-              <div className="sv-pref-col" style={{ gridColumn: '1 / -1' }}>
-                <div className="sv-empty">
-                  <div className="sv-empty-icon">🔍</div>
-                  <h3>No {cat.toLowerCase()} providers found nearby</h3>
-                  <p>Try a different category or widen the radius.</p>
-                </div>
-              </div>
+        {/* Main search bar */}
+        <div className="sv-engine-bar">
+          <div className="sv-search-wrap">
+            <span className="sv-search-icon">🔍</span>
+            <input
+              type="text"
+              value={q}
+              onChange={e => { setQ(e.target.value); setCat(null) }}
+              placeholder="Search any service — plumber, restaurant, doctor, hotel, tutor..."
+              className="sv-search-input"
+            />
+            {q && (
+              <button className="sv-search-x" onClick={() => setQ('')} aria-label="Clear search">✕</button>
             )}
           </div>
-        )}
+          <div className="sv-engine-meta">
+            {geo.city && <><span>📍 Near <strong>{geo.city}</strong></span><span className="sv-util-dot">·</span></>}
+            <span>Within
+              <select className="sv-inline-sel" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))}>
+                <option value="5">5 km</option>
+                <option value="10">10 km</option>
+                <option value="25">25 km</option>
+                <option value="50">50 km</option>
+                <option value="100">100 km</option>
+              </select>
+            </span>
+          </div>
+        </div>
+
+        {/* Category group browser */}
+        <CategoryGroupGrid
+          onSelect={item => { setCat(item); setQ('') }}
+          selected={cat}
+        />
+
+        {/* Trending row */}
+        <div className="sv-trending-row">
+          <span className="sv-trending-lbl">🔥 Trending:</span>
+          <div className="sv-trending">
+            {TRENDING.map(t => (
+              <button key={t} className="sv-trend" onClick={() => { setQ(t); setCat(null) }}>{t}</button>
+            ))}
+          </div>
+        </div>
       </section>
 
+      {/* ── Results section ── */}
       <section className="container sv-section sv-providers">
         <div className="sv-providers-grid">
           <div>
-            <div className="sv-providers-head">
-              <h2>All Providers</h2>
-              <span className="sv-count">
-                {loading ? 'Searching…' :
-                  `${sortedByRating.length} ${sortedByRating.length === 1 ? 'provider' : 'providers'} found within ${radiusKm} km`}
-              </span>
+            {/* Results header */}
+            <div className="sv-res-head">
+              <div className="sv-res-title-row">
+                <h2 className="sv-res-title">
+                  {loading ? 'Searching…' : cat || q || 'All Services'}
+                </h2>
+                {!loading && (
+                  <span className="sv-count">{sortedProviders.length} providers · {radiusKm} km radius</span>
+                )}
+              </div>
+
+              {/* Filter strip */}
+              <div className="sv-filter-bar">
+                <div className="sv-filter-cell">
+                  <span>$</span>
+                  <input type="number" className="sv-filter-input" placeholder="Max budget"
+                    value={budget} onChange={e => setBudget(e.target.value)} min="0" />
+                </div>
+                <div className="sv-filter-cell">
+                  <span>★</span>
+                  <input type="number" className="sv-filter-input" placeholder="Min rating"
+                    value={minRating} onChange={e => setMinRating(e.target.value)}
+                    min="1" max="5" step="0.5" style={{maxWidth:90}} />
+                </div>
+                <div className="sv-filter-cell">
+                  <span>≅</span>
+                  <select className="sv-filter-select" value={sort} onChange={e => setSort(e.target.value)}>
+                    <option value="rating">Top Rated</option>
+                    <option value="price-asc">Price: Low → High</option>
+                    <option value="price-desc">Price: High → Low</option>
+                    <option value="distance">Closest First</option>
+                  </select>
+                </div>
+                <div className="sv-filter-view">
+                  <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={() => setView('list')}>☰ List</button>
+                  <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={() => setView('map')}>🗺 Map</button>
+                </div>
+                {hasFilters && (
+                  <button className="sv-clear-all" onClick={clearAll}>✕ Clear</button>
+                )}
+              </div>
+
+              {/* Quick pills */}
+              <div className="sv-quick-pills">
+                {[
+                  { key: 'budget', label: '💰 Under $50' },
+                  { key: 'top',    label: '⭐ 4.5+ Rating' },
+                  { key: 'close',  label: '📍 Closest First' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    className={`sv-quick-pill ${quick === f.key ? 'active' : ''}`}
+                    onClick={() => setQuick(quick === f.key ? null : f.key)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {loading && <div className="sv-loading-bar"><div className="sv-loading-inner" /></div>}
+
             {error && (
-              <div className="sv-empty" style={{ borderColor: 'oklch(70% .18 25 / .4)' }}>
+              <div className="sv-empty" style={{borderColor:'oklch(70% .18 25 / .4)',marginBottom:16}}>
                 <div className="sv-empty-icon">⚠️</div>
-                <h3>Search failed</h3>
-                <p>{error}</p>
+                <h3>Search failed</h3><p>{error}</p>
               </div>
             )}
-            {!error && sortedByRating.length === 0 && !loading ? (
+
+            {!error && !loading && sortedProviders.length === 0 ? (
               <div className="sv-empty">
                 <div className="sv-empty-icon">🔍</div>
                 <h3>No providers found</h3>
-                <p>Try adjusting your filters.</p>
-                <button className="sv-btn ghost" onClick={() => { setCat('All'); setQ(''); setBudget(''); setQuick(null); setRadiusKm(25); }}>
-                  Clear all filters
-                </button>
+                <p>Try a different service, wider radius, or clear filters.</p>
+                <button className="sv-btn ghost" onClick={clearAll}>Clear all filters</button>
               </div>
+            ) : view === 'map' ? (
+              <ServiceMap providers={sortedProviders} userLat={geo.lat} userLng={geo.lng} />
             ) : (
-              <div className="sv-rows">
-                {sortedByRating.map(p => (
-                  <ProviderRow key={p.placeId || p.name} p={p} onEnrich={handleEnrich} enriching={enriching} />
+              <div className="sv-cards">
+                {sortedProviders.map(p => (
+                  <ProviderCard
+                    key={p.placeId || p.name}
+                    p={p}
+                    onEnrich={handleEnrich}
+                    enriching={enriching}
+                    onScrape={handleWebsiteScrape}
+                    scraping={scraping}
+                    compareSet={compareSet}
+                    onToggleCompare={toggleCompare}
+                  />
                 ))}
               </div>
             )}
           </div>
+
+          {/* ── Sidebar ── */}
           <aside className="sv-side">
-            <aside className="sv-hero-trend sv-side-trend">
-              <div className="sv-trend-head">🔥 <span>Trending near you</span></div>
-              <div className="sv-trending">
-                {TRENDING.map(t => (
-                  <button key={t} className="sv-trend" onClick={() => setQ(t)}>{t}</button>
-                ))}
-              </div>
-            </aside>
+            <PrePayWidget
+              currentQuery={effectiveQuery}
+              onCategoryClick={item => { setQ(item); setCat(null) }}
+            />
 
             <div className="sv-side-card sv-quick">
               <div className="sv-tag-mini">QUICK FILTERS</div>
-              <button className={`sv-quick-card ${quick==='budget' ? 'active' : ''}`} onClick={() => setQuick(quick==='budget' ? null : 'budget')}>
-                <span className="sv-quick-ic" style={{background:'oklch(74% .18 155 / .15)', color:'oklch(70% .18 155)'}}>$</span>
-                <span className="sv-quick-body"><strong>Under $50</strong></span>
-                <span className="sv-quick-meta">Budget</span>
-              </button>
-              <button className={`sv-quick-card ${quick==='top' ? 'active' : ''}`} onClick={() => setQuick(quick==='top' ? null : 'top')}>
-                <span className="sv-quick-ic" style={{background:'oklch(85% .15 90 / .2)', color:'oklch(70% .15 80)'}}>★</span>
-                <span className="sv-quick-body"><strong>Top rated</strong></span>
-                <span className="sv-quick-meta">4.5+</span>
-              </button>
-              <button className={`sv-quick-card ${quick==='close' ? 'active' : ''}`} onClick={() => setQuick(quick==='close' ? null : 'close')}>
-                <span className="sv-quick-ic" style={{background:'oklch(82% .16 200 / .2)', color:'oklch(70% .16 200)'}}>◷</span>
-                <span className="sv-quick-body"><strong>Closest first</strong></span>
-                <span className="sv-quick-meta">Distance</span>
-              </button>
+              {[
+                { key:'budget', icon:'$', label:'Under $50',    meta:'Budget',   hue:'155' },
+                { key:'top',    icon:'★', label:'Top Rated',    meta:'4.5+',     hue:'80'  },
+                { key:'close',  icon:'◷', label:'Closest First',meta:'Distance', hue:'200' },
+              ].map(f => (
+                <button key={f.key} className={`sv-quick-card ${quick===f.key ? 'active' : ''}`}
+                  onClick={() => setQuick(quick===f.key ? null : f.key)}>
+                  <span className="sv-quick-ic" style={{background:`oklch(80% .15 ${f.hue} / .15)`,color:`oklch(70% .18 ${f.hue})`}}>{f.icon}</span>
+                  <span className="sv-quick-body"><strong>{f.label}</strong></span>
+                  <span className="sv-quick-meta">{f.meta}</span>
+                </button>
+              ))}
             </div>
 
-            {sortedByRating[0] && (
-              <div className="sv-side-card sv-deal">
-                <div className="sv-tag-mini">📈 TOP RATED NEARBY</div>
-                <div className="sv-deal-row">
-                  {sortedByRating[0].rating != null && <Stars r={sortedByRating[0].rating} />}
-                </div>
-                <div className="sv-deal-name">
-                  {sortedByRating[0].thumbnail
-                    ? <img className="sv-avatar img" src={sortedByRating[0].thumbnail} alt="" />
-                    : <div className="sv-avatar">{initialOf(sortedByRating[0])}</div>}
-                  <div style={{ minWidth: 0 }}>
-                    <div className="sv-pref-name" title={sortedByRating[0].name}>{sortedByRating[0].name}</div>
-                    <div className="sv-pref-addr">{shortAddr(sortedByRating[0])}</div>
-                  </div>
-                </div>
-                <div className="sv-deal-foot">
-                  {priceLabel(sortedByRating[0]) && <span className="sv-from">{priceLabel(sortedByRating[0])}</span>}
-                  <span className="sv-verified">✓ Verified</span>
-                </div>
-              </div>
-            )}
+            {/* PriceKlick Preferred Vendors — title only until vendors register */}
+            <div className="sv-side-card sv-preferred-vendors">
+              <div className="sv-tag-mini">⭐ PRICEKLICK PREFERRED VENDORS</div>
+              <p style={{color:'var(--muted-foreground)',fontSize:13,margin:'8px 0 0',lineHeight:1.5}}>
+                Preferred vendor listings coming soon. Are you a business?
+              </p>
+              <Link to="/vendor" className="sv-btn ghost" style={{marginTop:10,display:'inline-flex',fontSize:13}}>
+                Apply to be a Preferred Vendor →
+              </Link>
+            </div>
 
             <div className="sv-side-card sv-vendors-cta">
               <div className="sv-tag-mini">📣 FOR VENDORS</div>
-              <h3>Grow your business with us</h3>
-              <p>Reach thousands of local customers actively searching for your services.</p>
-              <Link to="/vendor" className="sv-btn primary block">Get started — Free</Link>
+              <h3>Grow your business</h3>
+              <p>Reach thousands of customers searching for your services.</p>
+              <Link to="/vendor" className="sv-btn primary block">Get Started — Free</Link>
             </div>
           </aside>
         </div>
       </section>
 
+      {/* ── Floating compare bar ── */}
+      <CompareBar
+        compareSet={compareSet}
+        providers={sortedProviders}
+        onClear={() => setCompareSet(new Set())}
+        onOpen={() => setShowCompare(true)}
+      />
+
+      {/* ── Compare modal ── */}
+      {showCompare && (
+        <CompareModal
+          compareSet={compareSet}
+          providers={sortedProviders}
+          onClose={() => setShowCompare(false)}
+        />
+      )}
+
+      {/* ── Enrich details modal ── */}
       {enriched && (
-        <div className="sv-modal" role="dialog" aria-modal="true" onClick={() => setEnriched(null)}>
-          <div className="sv-modal-card" onClick={(e) => e.stopPropagation()}>
-            <button className="sv-modal-close" onClick={() => setEnriched(null)} aria-label="Close">✕</button>
+        <div className="sv-modal" onClick={() => setEnriched(null)}>
+          <div className="sv-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="sv-modal-close" onClick={() => setEnriched(null)}>✕</button>
             {!enriched.ok ? (
-              <div style={{ padding: 24 }}>
-                <h3>Couldn't load extra details</h3>
-                <p style={{ color: 'var(--muted-foreground)' }}>{enriched.error || enriched.message || 'Unknown error.'}</p>
-                <p style={{ fontSize: 13, opacity: .75 }}>Tip: set <code>APIFY_TOKEN</code> in <code>server/.env</code> to enable Google Places enrichment (photos, hours, reviews).</p>
+              <div style={{padding:24}}>
+                <h3>Couldn't load details</h3>
+                <p style={{color:'var(--muted-foreground)'}}>{enriched.error || 'Unknown error.'}</p>
               </div>
             ) : (
               <div className="sv-modal-body">
-                <h3>{enriched.provider?.name || enriched.name}</h3>
+                <h3>{enriched.provider?.name}</h3>
                 <p className="sv-pref-addr">{enriched.provider?.address}</p>
-                <div className="sv-pref-meta" style={{ margin: '10px 0' }}>
+                <div className="sv-pref-meta" style={{margin:'10px 0'}}>
                   {enriched.provider?.rating != null && <Stars r={enriched.provider.rating} />}
-                  {enriched.provider?.reviewsCount != null && <span className="sv-reviews">({enriched.provider.reviewsCount} reviews)</span>}
-                  {enriched.provider?.phone && <a href={`tel:${enriched.provider.phone}`} className="sv-btn ghost">📞 {enriched.provider.phone}</a>}
-                  {enriched.provider?.website && <a href={enriched.provider.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary">Visit site</a>}
+                  {enriched.provider?.reviewsCount != null && (
+                    <span className="sv-reviews">({enriched.provider.reviewsCount.toLocaleString()} reviews)</span>
+                  )}
+                  {enriched.provider?.phone && (
+                    <a href={`tel:${enriched.provider.phone}`} className="sv-btn ghost">📞 {enriched.provider.phone}</a>
+                  )}
+                  {enriched.provider?.website && (
+                    <a href={enriched.provider.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary">View on Yelp</a>
+                  )}
                 </div>
                 {enriched.provider?.photos?.length > 0 && (
                   <div className="sv-photos">
-                    {enriched.provider.photos.slice(0, 8).map((src, i) => (
-                      <img key={i} src={src} alt="" />
-                    ))}
+                    {enriched.provider.photos.slice(0, 8).map((src, i) => <img key={i} src={src} alt="" />)}
                   </div>
                 )}
                 {enriched.provider?.openingHours && (
-                  <div style={{ marginTop: 12 }}>
-                    <strong>Opening hours</strong>
-                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, margin: '6px 0 0' }}>
-                      {typeof enriched.provider.openingHours === 'string'
-                        ? enriched.provider.openingHours
-                        : JSON.stringify(enriched.provider.openingHours, null, 2)}
+                  <div style={{marginTop:12}}>
+                    <strong>Opening Hours</strong>
+                    <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:13,margin:'6px 0 0',color:'var(--muted-foreground)'}}>
+                      {enriched.provider.openingHours}
                     </pre>
-                  </div>
-                )}
-                {enriched.provider?.reviewsSummary && (
-                  <div style={{ marginTop: 12 }}>
-                    <strong>What customers say</strong>
-                    <p style={{ marginTop: 6 }}>{enriched.provider.reviewsSummary}</p>
                   </div>
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Firecrawl website pricing modal ── */}
+      {websiteData && (
+        <div className="sv-modal" onClick={() => setWebsiteData(null)}>
+          <div className="sv-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="sv-modal-close" onClick={() => setWebsiteData(null)}>✕</button>
+            <div className="sv-modal-body">
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                <span style={{fontSize:22}}>🌐</span>
+                <h3 style={{margin:0}}>{websiteData.providerName}</h3>
+                <span className="sv-tag-mini" style={{marginLeft:'auto'}}>Firecrawl</span>
+              </div>
+              {!websiteData.ok ? (
+                <p style={{color:'var(--muted-foreground)'}}>{websiteData.error || 'Could not scrape website.'}</p>
+              ) : (() => {
+                const d = websiteData.extract
+                if (!d) return <p style={{color:'var(--muted-foreground)'}}>No structured data found.</p>
+                return (
+                  <>
+                    {d.about && <p style={{color:'var(--muted-foreground)',fontSize:14,marginBottom:14}}>{d.about}</p>}
+                    {d.services?.length > 0 && (
+                      <div style={{marginBottom:16}}>
+                        <strong>Services &amp; Pricing</strong>
+                        <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
+                          {d.services.map((s, i) => (
+                            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
+                              padding:'8px 12px',borderRadius:10,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)'}}>
+                              <span style={{fontWeight:600}}>{s.name}</span>
+                              <span style={{display:'flex',gap:12}}>
+                                {s.price && <span className="sv-from">{s.price}</span>}
+                                {s.description && <span style={{color:'var(--muted-foreground)',fontSize:12}}>{s.description}</span>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {d.specialOffers?.length > 0 && (
+                      <div style={{marginBottom:14}}>
+                        <strong>Special Offers</strong>
+                        <ul style={{margin:'8px 0 0',paddingLeft:18,color:'oklch(82% .18 155)',fontSize:14}}>
+                          {d.specialOffers.map((o, i) => <li key={i}>{o}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {d.businessHours && (
+                      <div style={{marginBottom:14}}>
+                        <strong>Hours</strong>
+                        <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:13,margin:'6px 0 0',color:'var(--muted-foreground)'}}>{d.businessHours}</pre>
+                      </div>
+                    )}
+                    {d.contact && Object.values(d.contact).some(Boolean) && (
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:8}}>
+                        {d.contact.phone && <a href={`tel:${d.contact.phone}`} className="sv-btn ghost">📞 {d.contact.phone}</a>}
+                        {d.contact.email && <a href={`mailto:${d.contact.email}`} className="sv-btn ghost">✉ {d.contact.email}</a>}
+                      </div>
+                    )}
+                    <a href={websiteData.providerUrl} target="_blank" rel="noopener noreferrer"
+                       className="sv-btn primary" style={{marginTop:14,display:'inline-flex'}}>
+                      Visit Website →
+                    </a>
+                  </>
+                )
+              })()}
+            </div>
           </div>
         </div>
       )}
