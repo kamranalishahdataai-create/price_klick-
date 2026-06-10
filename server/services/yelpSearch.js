@@ -136,7 +136,8 @@ export async function searchServiceProviders(opts = {}) {
     return { ok: false, error: 'yelp_not_configured', message: 'Set YELP_API_KEY in server/.env', providers: [] };
   }
 
-  // Map dollar budget to Yelp price tier(s): 1=$, 2=$$, 3=$$$, 4=$$$$
+  // Map dollar budget to Yelp price tier(s): 1=$, 2=$$, 3=$$$, 4=$$$$.
+  // Yelp's $ tier for restaurants ≈ "under $11", $$ ≈ "$11–30", etc.
   function budgetToPriceTiers(budget) {
     if (!budget || isNaN(budget)) return null;
     if (budget <= 15)  return '1';
@@ -145,15 +146,25 @@ export async function searchServiceProviders(opts = {}) {
     return null; // all tiers when budget is large
   }
 
+  // Yelp populates price tiers reliably only for consumer-facing categories
+  // (food, beauty, hospitality). For trades/professional services the price
+  // field is usually empty — applying it there would exclude everyone.
+  function usesYelpPriceTier(q) {
+    const s = (q || '').toLowerCase();
+    return /(restaurant|burger|pizza|sushi|italian|chinese|mexican|indian|thai|steak|seafood|vegan|bbq|breakfast|brunch|lunch|dinner|food|diner|coffee|cafe|café|tea|boba|bubble tea|juice|bakery|cake|pastry|donut|bar|pub|brewery|cocktail|wine|catering|salon|barber|nail|spa|massage|wax|tanning|lash|hair|makeup|hotel|motel|resort|hostel|b&b|bed (and|&) breakfast)/.test(s);
+  }
+
   const params = new URLSearchParams({
     term: query.trim(),
     limit: String(Math.min(Number(limit) || 20, 50)),
     sort_by: 'best_match'
   });
 
-  // Apply Yelp price tier filter when budget is set
+  // Apply Yelp's native price-tier filter only for consumer categories where it's
+  // reliable. This is what makes "Burgers under $10" return real $-tier spots.
   const priceTiers = budgetToPriceTiers(maxPrice);
-  if (priceTiers) params.set('price', priceTiers);
+  const applyTier = priceTiers && usesYelpPriceTier(query);
+  if (applyTier) params.set('price', priceTiers);
 
   if (typeof lat === 'number' && typeof lng === 'number') {
     params.set('latitude', String(lat));
@@ -196,6 +207,9 @@ export async function searchServiceProviders(opts = {}) {
       reviewsCount: b.review_count ?? null,
       price: b.price || null,
       priceValue: yelpPriceToValue(b.price, query),
+      // True when priceValue came from Yelp's real $ tier; false when it's our
+      // category-based estimate (trades). Estimates must not hard-exclude on budget.
+      priceIsEstimate: !b.price,
       address: addr || null,
       phone: b.display_phone || b.phone || null,
       website: b.url || null,
@@ -216,7 +230,18 @@ export async function searchServiceProviders(opts = {}) {
     providers = providers.filter(p => (p.rating || 0) >= minRating);
   }
   if (typeof maxPrice === 'number') {
-    providers = providers.filter(p => p.priceValue == null || p.priceValue <= maxPrice);
+    if (applyTier) {
+      // Yelp already restricted by price tier — that's authoritative for the
+      // budget. Don't re-filter on our rough dollar estimate (which would wrongly
+      // drop valid $-tier spots, e.g. a $10 burger budget vs an estimate of $12).
+    } else {
+      // No tier filter (trades/professional): only exclude on a REAL Yelp price.
+      // Category estimates are not actual quotes, so they never hard-exclude —
+      // otherwise a $60 plumber budget (avg job ~$110) would wrongly show zero.
+      providers = providers.filter(p =>
+        p.priceIsEstimate || p.priceValue == null || p.priceValue <= maxPrice
+      );
+    }
   }
 
   providers = providers.slice(0, limit);

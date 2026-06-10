@@ -1307,3 +1307,46 @@
 .sv-tracking-toggle { font-size: 12px !important; opacity: .85; }
 .sv-tracking-toggle:hover { opacity: 1; }
 .sv-tracking-toggle.off { color: oklch(65% .1 25) !important; }
+
+/* ── Subcategory drill-down row ── */
+.sv-chip-caret { opacity: .55; font-size: 11px; }
+.sv-subcat-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: oklch(78% .18 295 / .07);
+  border: 1px solid oklch(78% .18 295 / .18);
+}
+.sv-subcat-lbl {
+  font-size: 12px;
+  font-weight: 700;
+  color: oklch(78% .18 295);
+  margin-right: 4px;
+  text-transform: none;
+}
+.sv-subchip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  color: var(--foreground, #f7f5ff);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, border-color .15s;
+}
+.sv-subchip:hover { background: rgba(255,255,255,.09); }
+.sv-subchip.active {
+  background: oklch(78% .18 295);
+  border-color: oklch(78% .18 295);
+  color: #fff;
+}
+
+/* ── Results title parent/budget badges ── */
+.sv-res-parent { font-weight: 500; color: var(--muted-foreground, #9a92b8); font-size: .8em; }
+.sv-res-budget { font-weight: 700; color: oklch(82% .18 155); font-size: .8em; }

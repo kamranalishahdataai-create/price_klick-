@@ -4,20 +4,118 @@ import { searchServices, enrichProvider, scrapeProviderWebsite, trackProviderCli
 import ServiceMap from '../components/ServiceMap'
 import './Services.css'
 
-// ── Category taxonomy (all service types) ─────────────────
+// ── Category taxonomy (two levels: broad category → subcategories) ─────────────
+// Every broad category that has natural subdivisions carries a `subs` array, so
+// e.g. Auto Repair → Tires / Oil Change, Restaurants → Burgers / Pizza, etc.
 const CATEGORY_GROUPS = [
-  { id: 'food',        icon: '🍽️', label: 'Food & Dining',    items: ['Restaurants','Catering','Coffee & Tea','Bakeries','Bars','Food Trucks','Pizza','Sushi','Burgers','Meal Prep'] },
-  { id: 'home',        icon: '🏠', label: 'Home Services',    items: ['Plumbing','Electrical','HVAC','House Cleaning','Landscaping','Pest Control','Roofing','Painting','Moving','Handyman'] },
-  { id: 'auto',        icon: '🚗', label: 'Auto & Transport', items: ['Auto Repair','Car Wash','Towing','Oil Change','Tire Shop','Body Shop','Auto Detailing','Mechanics'] },
-  { id: 'health',      icon: '🏥', label: 'Health & Medical', items: ['Doctors','Dentists','Therapists','Gyms','Massage','Optometrists','Chiropractors','Pharmacies','Acupuncture'] },
-  { id: 'beauty',      icon: '💇', label: 'Beauty & Care',    items: ['Hair Salons','Barbers','Nail Salons','Spas','Makeup Artists','Tanning','Waxing','Eyelash Extensions'] },
-  { id: 'education',   icon: '📚', label: 'Education',        items: ['Tutoring','Music Lessons','Language Classes','Test Prep','Driving School','Dance Classes','Coding Classes','Personal Training'] },
-  { id: 'professional',icon: '💼', label: 'Professional',     items: ['Accountants','Lawyers','IT Support','Photography','Marketing','Real Estate','Financial Advisors','Bookkeeping'] },
-  { id: 'events',      icon: '🎉', label: 'Events',           items: ['Event Planning','DJs','Venues','Florists','Wedding Planners','Photo Booths','Entertainment','Party Supplies'] },
-  { id: 'pet',         icon: '🐾', label: 'Pet Services',     items: ['Vets','Pet Grooming','Dog Walking','Pet Boarding','Pet Training','Pet Supplies'] },
-  { id: 'contractor',  icon: '🔨', label: 'Contractors',      items: ['General Contractors','Flooring','Carpentry','Masonry','Drywall','Remodeling','Insulation','Windows & Doors'] },
-  { id: 'hospitality', icon: '🏨', label: 'Hospitality',      items: ['Hotels','Bed & Breakfast','Vacation Rentals','Resorts','Motels','Hostels'] },
-  { id: 'childcare',   icon: '👶', label: 'Child & Family',   items: ['Childcare','Daycare','Nannies','Kids Activities','Family Counseling','Pediatrics'] },
+  { id: 'food', icon: '🍽️', label: 'Food & Dining', items: [
+    { name: 'Restaurants', subs: ['Burgers','Pizza','Sushi','Italian','Chinese','Mexican','Indian','Thai','Steakhouse','Seafood','Vegan','BBQ','Breakfast','Fast Food'] },
+    { name: 'Coffee & Tea', subs: ['Cafés','Espresso Bars','Bubble Tea','Juice Bars'] },
+    { name: 'Bakeries', subs: ['Cakes','Pastries','Bread','Donuts','Cupcakes'] },
+    { name: 'Bars', subs: ['Sports Bars','Wine Bars','Pubs','Cocktail Bars','Breweries'] },
+    { name: 'Catering', subs: ['Wedding Catering','Corporate Catering','Event Catering','Drop-off Catering'] },
+    { name: 'Food Trucks' },
+    { name: 'Meal Prep' },
+  ]},
+  { id: 'home', icon: '🏠', label: 'Home Services', items: [
+    { name: 'Plumbing', subs: ['Leak Repair','Drain Cleaning','Water Heater','Toilet Repair','Pipe Installation'] },
+    { name: 'Electrical', subs: ['Wiring','Panel Upgrade','Lighting','EV Charger','Outlet Repair'] },
+    { name: 'HVAC', subs: ['AC Repair','Furnace Repair','Duct Cleaning','Thermostat','Heat Pump'] },
+    { name: 'House Cleaning', subs: ['Deep Cleaning','Move-out Cleaning','Recurring Cleaning','Carpet Cleaning','Window Cleaning'] },
+    { name: 'Landscaping', subs: ['Lawn Care','Tree Service','Snow Removal','Garden Design','Irrigation'] },
+    { name: 'Pest Control', subs: ['Rodents','Insects','Termites','Bed Bugs'] },
+    { name: 'Roofing', subs: ['Roof Repair','Roof Replacement','Gutters','Shingles'] },
+    { name: 'Painting', subs: ['Interior','Exterior','Cabinet Painting'] },
+    { name: 'Moving', subs: ['Local Movers','Long Distance','Packing','Storage'] },
+    { name: 'Handyman' },
+  ]},
+  { id: 'auto', icon: '🚗', label: 'Auto & Transport', items: [
+    { name: 'Auto Repair', subs: ['Oil Change','Tires','Brakes','Transmission','Engine Repair','Battery','Muffler & Exhaust','Wheel Alignment','AC Repair','Diagnostics'] },
+    { name: 'Car Wash', subs: ['Hand Wash','Auto Detailing','Interior Cleaning','Ceramic Coating'] },
+    { name: 'Body Shop', subs: ['Collision Repair','Dent Removal','Auto Painting','Windshield'] },
+    { name: 'Tire Shop', subs: ['New Tires','Tire Rotation','Wheel Alignment','Flat Repair'] },
+    { name: 'Towing' },
+    { name: 'Mechanics' },
+  ]},
+  { id: 'health', icon: '🏥', label: 'Health & Medical', items: [
+    { name: 'Doctors', subs: ['Family Doctor','Walk-in Clinic','Pediatrician','Dermatologist','Cardiologist'] },
+    { name: 'Dentists', subs: ['Cleaning','Braces','Implants','Whitening','Emergency Dentist'] },
+    { name: 'Therapists', subs: ['Counseling','Physiotherapy','Occupational Therapy','Speech Therapy'] },
+    { name: 'Gyms', subs: ['Fitness Center','CrossFit','Yoga Studio','Pilates','Boxing'] },
+    { name: 'Massage', subs: ['Deep Tissue','Swedish','Sports Massage','Thai Massage'] },
+    { name: 'Optometrists' },
+    { name: 'Chiropractors' },
+    { name: 'Pharmacies' },
+  ]},
+  { id: 'beauty', icon: '💇', label: 'Beauty & Care', items: [
+    { name: 'Hair Salons', subs: ['Haircut','Coloring','Balayage','Extensions','Blowout'] },
+    { name: 'Barbers', subs: ['Haircut','Beard Trim','Hot Shave','Kids Cut'] },
+    { name: 'Nail Salons', subs: ['Manicure','Pedicure','Gel Nails','Acrylics'] },
+    { name: 'Spas', subs: ['Facials','Body Treatments','Couples Spa','Sauna'] },
+    { name: 'Makeup Artists', subs: ['Bridal','Special Event','Lessons'] },
+    { name: 'Waxing' },
+    { name: 'Eyelash Extensions' },
+    { name: 'Tanning' },
+  ]},
+  { id: 'education', icon: '📚', label: 'Education', items: [
+    { name: 'Tutoring', subs: ['Math','Science','English','Languages','Exam Prep'] },
+    { name: 'Music Lessons', subs: ['Piano','Guitar','Violin','Singing','Drums'] },
+    { name: 'Language Classes', subs: ['English (ESL)','French','Spanish','Mandarin'] },
+    { name: 'Driving School' },
+    { name: 'Dance Classes', subs: ['Ballet','Hip Hop','Salsa','Contemporary'] },
+    { name: 'Coding Classes' },
+    { name: 'Test Prep' },
+    { name: 'Personal Training' },
+  ]},
+  { id: 'professional', icon: '💼', label: 'Professional', items: [
+    { name: 'Accountants', subs: ['Tax Prep','Bookkeeping','Payroll','Audit'] },
+    { name: 'Lawyers', subs: ['Family Law','Real Estate Law','Immigration','Criminal','Business Law'] },
+    { name: 'IT Support', subs: ['Computer Repair','Network Setup','Data Recovery','Managed IT'] },
+    { name: 'Photography', subs: ['Wedding','Portrait','Product','Real Estate','Events'] },
+    { name: 'Marketing', subs: ['SEO','Social Media','Web Design','Branding'] },
+    { name: 'Real Estate' },
+    { name: 'Financial Advisors' },
+  ]},
+  { id: 'events', icon: '🎉', label: 'Events', items: [
+    { name: 'Event Planning', subs: ['Weddings','Corporate','Birthdays','Conferences'] },
+    { name: 'DJs', subs: ['Wedding DJ','Club DJ','Party DJ'] },
+    { name: 'Venues', subs: ['Banquet Halls','Wedding Venues','Conference Rooms','Outdoor'] },
+    { name: 'Florists', subs: ['Wedding Flowers','Bouquets','Event Arrangements'] },
+    { name: 'Photo Booths' },
+    { name: 'Entertainment' },
+  ]},
+  { id: 'pet', icon: '🐾', label: 'Pet Services', items: [
+    { name: 'Vets', subs: ['Checkups','Vaccinations','Surgery','Emergency Vet','Dental'] },
+    { name: 'Pet Grooming', subs: ['Bath & Brush','Full Groom','Nail Trim','De-shedding'] },
+    { name: 'Dog Walking' },
+    { name: 'Pet Boarding', subs: ['Overnight','Daycare','Cat Boarding'] },
+    { name: 'Pet Training' },
+  ]},
+  { id: 'contractor', icon: '🔨', label: 'Contractors', items: [
+    { name: 'General Contractors', subs: ['Home Additions','Renovations','New Builds'] },
+    { name: 'Flooring', subs: ['Hardwood','Tile','Laminate','Carpet','Vinyl'] },
+    { name: 'Carpentry', subs: ['Custom Cabinets','Trim & Molding','Decks','Framing'] },
+    { name: 'Remodeling', subs: ['Kitchen','Bathroom','Basement'] },
+    { name: 'Masonry', subs: ['Brick','Stone','Concrete','Pavers'] },
+    { name: 'Drywall' },
+    { name: 'Windows & Doors' },
+  ]},
+  { id: 'hospitality', icon: '🏨', label: 'Hospitality', items: [
+    { name: 'Hotels', subs: ['Luxury','Budget','Boutique','Business'] },
+    { name: 'Bed & Breakfast' },
+    { name: 'Vacation Rentals' },
+    { name: 'Resorts' },
+    { name: 'Motels' },
+    { name: 'Hostels' },
+  ]},
+  { id: 'childcare', icon: '👶', label: 'Child & Family', items: [
+    { name: 'Childcare', subs: ['Infant Care','Toddler Care','After School'] },
+    { name: 'Daycare' },
+    { name: 'Nannies' },
+    { name: 'Kids Activities', subs: ['Sports','Art Classes','Camps'] },
+    { name: 'Family Counseling' },
+    { name: 'Pediatrics' },
+  ]},
 ]
 
 const TRENDING = ['Plumber','Electrician','House Cleaner','Restaurant','Mechanic','Personal Trainer','Dog Walker','Tutor','Hair Salon','Massage']
@@ -71,14 +169,17 @@ function distLabel(p) {
   return ''
 }
 
-// ── Category group browser ─────────────────────────────────
-function CategoryGroupGrid({ onSelect, selected }) {
-  const selectedGroup = CATEGORY_GROUPS.find(g => g.items.includes(selected))
+// ── Category group browser (two-level: group → category → subcategory) ────────
+function CategoryGroupGrid({ selectedCat, selectedSub, onSelectCat, onSelectSub }) {
+  const selectedGroup = CATEGORY_GROUPS.find(g => g.items.some(it => it.name === selectedCat))
   const [expanded, setExpanded] = useState(selectedGroup?.id || null)
 
   useEffect(() => {
     if (selectedGroup) setExpanded(selectedGroup.id)
-  }, [selected])
+  }, [selectedCat])
+
+  const activeGroup = CATEGORY_GROUPS.find(g => g.id === expanded)
+  const activeItem = activeGroup?.items.find(it => it.name === selectedCat)
 
   return (
     <div className="sv-cat-groups">
@@ -86,7 +187,7 @@ function CategoryGroupGrid({ onSelect, selected }) {
         {CATEGORY_GROUPS.map(grp => (
           <button
             key={grp.id}
-            className={`sv-cat-group-btn ${expanded === grp.id ? 'active' : ''} ${grp.items.includes(selected) ? 'has-sel' : ''}`}
+            className={`sv-cat-group-btn ${expanded === grp.id ? 'active' : ''} ${grp.items.some(it => it.name === selectedCat) ? 'has-sel' : ''}`}
             onClick={() => setExpanded(expanded === grp.id ? null : grp.id)}
           >
             <span className="sv-cat-group-icon">{grp.icon}</span>
@@ -94,15 +195,34 @@ function CategoryGroupGrid({ onSelect, selected }) {
           </button>
         ))}
       </div>
-      {expanded && (
+
+      {/* Level 2 — broad categories */}
+      {activeGroup && (
         <div className="sv-cat-items">
-          {CATEGORY_GROUPS.find(g => g.id === expanded)?.items.map(item => (
+          {activeGroup.items.map(item => (
             <button
-              key={item}
-              className={`sv-chip ${selected === item ? 'active' : ''}`}
-              onClick={() => onSelect(item === selected ? null : item)}
+              key={item.name}
+              className={`sv-chip ${selectedCat === item.name ? 'active' : ''}`}
+              onClick={() => onSelectCat(item.name === selectedCat ? null : item.name)}
             >
-              {item}
+              {item.name}
+              {item.subs?.length ? <span className="sv-chip-caret"> ▾</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Level 3 — subcategories of the selected broad category */}
+      {activeItem?.subs?.length > 0 && (
+        <div className="sv-subcat-row">
+          <span className="sv-subcat-lbl">{activeItem.name}:</span>
+          {activeItem.subs.map(sub => (
+            <button
+              key={sub}
+              className={`sv-subchip ${selectedSub === sub ? 'active' : ''}`}
+              onClick={() => onSelectSub(sub === selectedSub ? null : sub)}
+            >
+              {sub}
             </button>
           ))}
         </div>
@@ -165,7 +285,7 @@ function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, 
           </button>
           {p.website && (
             <button className="sv-btn ghost sv-btn-firecrawl" disabled={isScraping} onClick={() => onScrape(p)}>
-              {isScraping ? '…' : '🌐 Pricing'}
+              {isScraping ? '…' : '📋 Menu / Pricing'}
             </button>
           )}
         </div>
@@ -426,6 +546,7 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
 // ── Main page ──────────────────────────────────────────────
 export default function Services() {
   const [cat, setCat]         = useState(null)
+  const [sub, setSub]         = useState(null)
   const [view, setView]       = useState('list')
   const [q, setQ]             = useState('')
   const [budget, setBudget]   = useState('')
@@ -468,9 +589,12 @@ export default function Services() {
   const effectiveQuery = useMemo(() => {
     const typed = q.trim()
     if (typed) return typed
+    // Most specific wins: subcategory (e.g. "Burgers") → broad category → default.
+    // Yelp maps a specific term like "Burgers" / "Oil Change" to the right businesses.
+    if (sub) return sub.toLowerCase()
     if (cat) return cat.toLowerCase()
     return 'local services'
-  }, [q, cat])
+  }, [q, cat, sub])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -478,7 +602,7 @@ export default function Services() {
       setLoading(true); setError('')
       if (trackingEnabled) {
         trackSearch(effectiveQuery)
-        trackActivity({ type: 'service_search', query: effectiveQuery, category: cat || undefined })
+        trackActivity({ type: 'service_search', query: effectiveQuery, category: sub || cat || undefined })
       }
       try {
         const maxPrice = parseFloat(budget) || (quick === 'budget' ? 50 : undefined)
@@ -555,10 +679,10 @@ export default function Services() {
   }
 
   function clearAll() {
-    setCat(null); setQ(''); setBudget(''); setMinRating(''); setQuick(null); setRadiusKm(10)
+    setCat(null); setSub(null); setQ(''); setBudget(''); setMinRating(''); setQuick(null); setRadiusKm(10)
   }
 
-  const hasFilters = !!(budget || minRating || cat || q)
+  const hasFilters = !!(budget || minRating || cat || sub || q)
 
   return (
     <div className="sv-page">
@@ -601,7 +725,7 @@ export default function Services() {
             <input
               type="text"
               value={q}
-              onChange={e => { setQ(e.target.value); setCat(null) }}
+              onChange={e => { setQ(e.target.value); setCat(null); setSub(null) }}
               placeholder="Search any service — plumber, restaurant, doctor, hotel, tutor..."
               className="sv-search-input"
             />
@@ -625,8 +749,10 @@ export default function Services() {
 
         {/* Category group browser */}
         <CategoryGroupGrid
-          onSelect={item => { setCat(item); setQ('') }}
-          selected={cat}
+          selectedCat={cat}
+          selectedSub={sub}
+          onSelectCat={c => { setCat(c); setSub(null); setQ('') }}
+          onSelectSub={s => { setSub(s); setQ('') }}
         />
 
         {/* Trending row */}
@@ -634,7 +760,7 @@ export default function Services() {
           <span className="sv-trending-lbl">🔥 Trending:</span>
           <div className="sv-trending">
             {TRENDING.map(t => (
-              <button key={t} className="sv-trend" onClick={() => { setQ(t); setCat(null) }}>{t}</button>
+              <button key={t} className="sv-trend" onClick={() => { setQ(t); setCat(null); setSub(null) }}>{t}</button>
             ))}
           </div>
         </div>
@@ -648,7 +774,9 @@ export default function Services() {
             <div className="sv-res-head">
               <div className="sv-res-title-row">
                 <h2 className="sv-res-title">
-                  {loading ? 'Searching…' : cat || q || 'All Services'}
+                  {loading ? 'Searching…' : sub || q || cat || 'All Services'}
+                  {!loading && sub && cat && <span className="sv-res-parent"> in {cat}</span>}
+                  {!loading && budget && <span className="sv-res-budget"> · under ${budget}</span>}
                 </h2>
                 {!loading && (
                   <span className="sv-count">{sortedProviders.length} providers · {radiusKm} km radius</span>
@@ -744,7 +872,7 @@ export default function Services() {
           <aside className="sv-side">
             <PrePayWidget
               currentQuery={effectiveQuery}
-              onCategoryClick={item => { setQ(item); setCat(null) }}
+              onCategoryClick={item => { setQ(item); setCat(null); setSub(null) }}
             />
 
             <div className="sv-side-card sv-quick">
