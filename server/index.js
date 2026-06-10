@@ -1151,6 +1151,9 @@ app.post('/api/prices/scrape', async (req, res) => {
     if (!data) return res.status(404).json({ ok: false, error: 'no_price_found' });
     res.json({ ok: true, url, ...data });
   } catch (e) {
+    if (e.code === 'firecrawl_out_of_credits') {
+      return res.status(503).json({ ok: false, error: 'price_check_unavailable', message: 'Live price check is temporarily unavailable.' });
+    }
     console.error('prices/scrape error', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }

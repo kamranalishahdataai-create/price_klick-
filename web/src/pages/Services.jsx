@@ -858,7 +858,15 @@ export default function Services() {
                 <span className="sv-tag-mini" style={{marginLeft:'auto'}}>Firecrawl</span>
               </div>
               {!websiteData.ok ? (
-                <p style={{color:'var(--muted-foreground)'}}>{websiteData.error || 'Could not scrape website.'}</p>
+                <div>
+                  <p style={{color:'var(--muted-foreground)'}}>{websiteData.message || websiteData.error || 'Could not scrape website.'}</p>
+                  {websiteData.providerUrl && (
+                    <a href={websiteData.providerUrl} target="_blank" rel="noopener noreferrer"
+                       className="sv-btn primary" style={{marginTop:12,display:'inline-flex'}}>
+                      Visit Website →
+                    </a>
+                  )}
+                </div>
               ) : (() => {
                 const d = websiteData.extract
                 if (!d) return <p style={{color:'var(--muted-foreground)'}}>No structured data found.</p>

@@ -157,6 +157,13 @@ router.post('/scrape-website', optionalAuth, async (req, res) => {
     const result = await enrichServiceWebsite(url, name || '');
     res.json({ ok: true, ...result });
   } catch (e) {
+    if (e.code === 'firecrawl_out_of_credits') {
+      return res.status(503).json({
+        ok: false,
+        error: 'menu_unavailable',
+        message: 'Live menu & pricing is temporarily unavailable. Visit the business website for full details.'
+      });
+    }
     console.error('services/scrape-website', e);
     res.status(500).json({ ok: false, error: e.message });
   }

@@ -22,7 +22,13 @@ async function post(path, body) {
 
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
-    throw new Error(`Firecrawl ${res.status}: ${txt.slice(0, 200)}`);
+    const err = new Error(`Firecrawl ${res.status}: ${txt.slice(0, 200)}`);
+    err.status = res.status;
+    // 402 = insufficient credits; treat as a soft "unavailable" signal
+    if (res.status === 402 || /insufficient credits/i.test(txt)) {
+      err.code = 'firecrawl_out_of_credits';
+    }
+    throw err;
   }
   return res.json();
 }

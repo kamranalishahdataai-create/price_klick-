@@ -7,8 +7,10 @@ import { optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
-const MODEL = process.env.SMART_COMPARE_MODEL || 'gpt-4o-mini';
+// Read env at request time (not module-load time) so values populated by dotenv
+// after this module is imported are always picked up.
+const getOpenAiKey = () => process.env.OPENAI_API_KEY;
+const getModel = () => process.env.SMART_COMPARE_MODEL || 'gpt-4o-mini';
 
 const SYSTEM_PROMPT = `You are PriceKlick Smart Compare Advisor, an expert AI shopping & finance assistant.
 Given a buyer's natural-language request plus optional budget, location, and category, produce a high-quality
@@ -66,6 +68,8 @@ function buildUserPrompt({ query, budget, location, category }) {
 
 router.post('/', optionalAuth, async (req, res) => {
   try {
+    const OPENAI_KEY = getOpenAiKey();
+    const MODEL = getModel();
     if (!OPENAI_KEY) {
       return res.status(503).json({ ok: false, error: 'OPENAI_API_KEY missing on server' });
     }

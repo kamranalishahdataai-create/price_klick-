@@ -53,8 +53,10 @@ export async function scrapeProviderWebsite(body = {}) {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body)
   })
-  if (!res.ok) throw new Error(`scrape-website failed ${res.status}`)
-  return res.json()
+  const data = await res.json().catch(() => ({}))
+  // 503 carries a friendly `message` (e.g. scraping quota reached) — surface it
+  if (!res.ok && !data.message) throw new Error(`scrape-website failed ${res.status}`)
+  return data
 }
 
 /**
@@ -67,8 +69,9 @@ export async function scrapeProductPrice(url) {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ url })
   })
-  if (!res.ok) throw new Error(`prices/scrape failed ${res.status}`)
-  return res.json()
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok && !data.message) throw new Error(`prices/scrape failed ${res.status}`)
+  return data
 }
 
 /**
