@@ -312,3 +312,23 @@
   .sc-card { padding: 20px }
   .sc-sample-title, .sc-result-title { font-size: 24px }
 }
+
+/* ── Clickable promo cards ── */
+.sc-promo { transition: transform .12s, border-color .12s, background .12s; }
+.sc-promo:hover { transform: translateY(-2px); border-color: oklch(78% .18 295 / .5); background: oklch(78% .18 295 / .06); }
+.sc-promo-cta { margin-top: 6px; font-size: 12px; font-weight: 700; color: oklch(78% .18 295); }
+
+/* ── Live sources (Perplexity citations) ── */
+.sc-sources { display: flex; flex-wrap: wrap; gap: 8px; }
+.sc-source {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+  color: var(--foreground, #f7f5ff); text-decoration: none;
+  font-size: 12.5px; font-weight: 600; transition: background .12s, border-color .12s;
+}
+.sc-source:hover { background: oklch(78% .18 295 / .12); border-color: oklch(78% .18 295 / .5); }
+.sc-source-n {
+  display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  background: oklch(78% .18 295); color: #fff; font-size: 10px; font-weight: 800;
+}

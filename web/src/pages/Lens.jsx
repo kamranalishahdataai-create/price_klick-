@@ -194,7 +194,11 @@ export default function Lens() {
       setResult(data)
       setResultTab('compare')
       const best = pickCheapestNearby(buildOptions(data), geo.country)
-      const url = best?.url || data.productUrl || data.redirectUrl || data.checkoutUrl
+      // Redirect priority: 1) promotion if one was detected, 2) the same/similar
+      // product on any site, 3) cheapest nearby match, 4) checkout/home as last resort.
+      const hasPromo = !!(data.discountAmount || (data.coupons && data.coupons.length) || data.promotionTitle)
+      const promoUrl = hasPromo ? (data.redirectUrl || data.productUrl) : null
+      const url = promoUrl || data.productUrl || best?.url || data.redirectUrl || data.checkoutUrl
       if (autoRedirect && url) {
         setCountdown(3)
         let t = 3
@@ -546,9 +550,19 @@ export default function Lens() {
                     </>
                   ) : (
                     <>
-                      {(result.productUrl || result.redirectUrl) && (
-                        <a className="lens-btn primary" href={result.productUrl || result.redirectUrl} target="_blank" rel="noopener noreferrer">🛒 Buy Now</a>
-                      )}
+                      {(() => {
+                        const hasPromo = !!(result.discountAmount || result.coupons?.length || result.promotionTitle)
+                        // 1st: promotion. 2nd: same/similar product on any site.
+                        const primaryUrl = hasPromo
+                          ? (result.redirectUrl || result.productUrl)
+                          : (result.productUrl || result.redirectUrl)
+                        if (!primaryUrl) return null
+                        return (
+                          <a className="lens-btn primary" href={primaryUrl} target="_blank" rel="noopener noreferrer">
+                            {hasPromo ? '🎟️ Get This Deal' : '🛒 Buy Now'}
+                          </a>
+                        )
+                      })()}
                       <button className="lens-btn ghost" onClick={webSearch}>🌐 Search on the web</button>
                     </>
                   )}

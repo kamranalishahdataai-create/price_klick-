@@ -11,6 +11,89 @@ const router = express.Router();
 // after this module is imported are always picked up.
 const getOpenAiKey = () => process.env.OPENAI_API_KEY;
 const getModel = () => process.env.SMART_COMPARE_MODEL || 'gpt-4o-mini';
+// Perplexity (optional). When PERPLEXITY_API_KEY is set we use it as the primary
+// engine — it has live web access, so it returns REAL current promotions and
+// REAL working URLs + citations. Falls back to OpenAI when unset or on error.
+const getPerplexityKey = () => process.env.PERPLEXITY_API_KEY;
+const getPplxModel = () => process.env.SMART_COMPARE_PPLX_MODEL || 'sonar-pro';
+
+// Tolerant JSON extraction — strips ```json fences / stray prose around the object.
+function extractJson(content) {
+  if (!content) return null;
+  let s = String(content).trim();
+  s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  try { return JSON.parse(s); } catch {}
+  const start = s.indexOf('{'); const end = s.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(s.slice(start, end + 1)); } catch {}
+  }
+  return null;
+}
+
+async function callPerplexity({ query, budget, location, category }) {
+  const KEY = getPerplexityKey();
+  if (!KEY) return null;
+  try {
+    const r = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: getPplxModel(),
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT + '\n\nYou have LIVE web access. Populate every "url" field with a REAL, working product/offer page you actually found, and make "promotions" reflect REAL current offers. Output ONLY the JSON object.' },
+          { role: 'user', content: buildUserPrompt({ query, budget, location, category }) },
+        ],
+      }),
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('SMART_COMPARE perplexity_error', r.status, txt.slice(0, 200));
+      return null;
+    }
+    const j = await r.json();
+    const parsed = extractJson(j?.choices?.[0]?.message?.content);
+    if (!parsed) return null;
+    if (Array.isArray(j.citations) && j.citations.length) parsed.citations = j.citations;
+    parsed.engine = 'perplexity';
+    return parsed;
+  } catch (e) {
+    console.error('SMART_COMPARE perplexity_exception', e.message);
+    return null;
+  }
+}
+
+async function callOpenAI({ query, budget, location, category }) {
+  const OPENAI_KEY = getOpenAiKey();
+  if (!OPENAI_KEY) return null;
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: getModel(),
+        temperature: 0.4,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: buildUserPrompt({ query, budget, location, category }) },
+        ],
+      }),
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('SMART_COMPARE openai_error', r.status, txt.slice(0, 300));
+      return null;
+    }
+    const j = await r.json();
+    const parsed = extractJson(j?.choices?.[0]?.message?.content);
+    if (parsed) parsed.engine = 'openai';
+    return parsed;
+  } catch (e) {
+    console.error('SMART_COMPARE openai_exception', e.message);
+    return null;
+  }
+}
 
 const SYSTEM_PROMPT = `You are PriceKlick Smart Compare Advisor, an expert AI shopping & finance assistant.
 Given a buyer's natural-language request plus optional budget, location, and category, produce a high-quality
@@ -68,44 +151,21 @@ function buildUserPrompt({ query, budget, location, category }) {
 
 router.post('/', optionalAuth, async (req, res) => {
   try {
-    const OPENAI_KEY = getOpenAiKey();
-    const MODEL = getModel();
-    if (!OPENAI_KEY) {
-      return res.status(503).json({ ok: false, error: 'OPENAI_API_KEY missing on server' });
+    if (!getOpenAiKey() && !getPerplexityKey()) {
+      return res.status(503).json({ ok: false, error: 'No AI key configured (set PERPLEXITY_API_KEY or OPENAI_API_KEY).' });
     }
     const { query, budget, location, category } = req.body || {};
     if (!query || String(query).trim().length < 3) {
       return res.status(400).json({ ok: false, error: 'Please describe what you want (at least a few words).' });
     }
 
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.4,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildUserPrompt({ query, budget, location, category }) },
-        ],
-      }),
-    });
+    const args = { query, budget, location, category };
+    // Prefer Perplexity (live web + real URLs); fall back to OpenAI on miss.
+    let parsed = await callPerplexity(args);
+    if (!parsed) parsed = await callOpenAI(args);
 
-    if (!r.ok) {
-      const txt = await r.text().catch(() => '');
-      console.error('SMART_COMPARE openai_error', r.status, txt.slice(0, 300));
+    if (!parsed) {
       return res.status(502).json({ ok: false, error: 'AI service unavailable. Please try again shortly.' });
-    }
-    const j = await r.json();
-    const content = j?.choices?.[0]?.message?.content;
-    if (!content) return res.status(502).json({ ok: false, error: 'Empty AI response.' });
-
-    let parsed;
-    try { parsed = JSON.parse(content); }
-    catch (e) {
-      console.error('SMART_COMPARE parse_error', e.message);
-      return res.status(502).json({ ok: false, error: 'AI returned malformed data. Please retry.' });
     }
 
     // Defensive normalisation

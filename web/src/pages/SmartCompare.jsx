@@ -60,6 +60,13 @@ function brandLogo(brand) {
   return { initial, bg: colors[initial] || '#5b21b6' }
 }
 
+// Build a guaranteed-working URL for any item: prefer a real URL, otherwise a
+// Google search so every card is clickable and "leads somewhere".
+function searchUrl(...parts) {
+  const q = parts.filter(Boolean).join(' ').trim()
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`
+}
+
 function FitBadge({ score }) {
   const cls = score >= 90 ? 'top' : score >= 85 ? 'good' : 'ok'
   return <div className={`sc-fit ${cls}`}>{score}%<span>Fit Score</span></div>
@@ -132,7 +139,10 @@ function OptionCard({ o }) {
         </div>
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}>
-        {o.url && <a className="sc-view-details" href={o.url} target="_blank" rel="noopener noreferrer">View Details →</a>}
+        {/* Always clickable — real URL if the AI gave one, else a smart web search */}
+        <a className="sc-view-details" href={o.url || searchUrl(o.brand, o.model, o.price ? '' : 'price', 'buy')} target="_blank" rel="noopener noreferrer">
+          {o.url ? 'View Details →' : 'Search this option →'}
+        </a>
         {o.url && !livePrice && (
           <button onClick={checkLivePrice} disabled={checking}
             style={{ fontSize:12, padding:'5px 11px', borderRadius:999, border:'1px solid rgba(255,255,255,.15)',
@@ -147,16 +157,18 @@ function OptionCard({ o }) {
 
 function PromoCard({ p }) {
   const lg = brandLogo(p.brand)
+  const href = p.url || searchUrl(p.brand, p.title, 'promotion offer')
   return (
-    <div className="sc-promo">
+    <a className="sc-promo" href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
       <div className="sc-promo-logo" style={{ background: lg.bg }}>{lg.initial}</div>
       <div className="sc-promo-body">
         <div className="sc-promo-brand">{p.brand}</div>
         <div className="sc-promo-title">{p.title}</div>
         {p.expiry && <div className="sc-promo-meta">🕒 {p.expiry}</div>}
         {p.detail && !p.expiry && <div className="sc-promo-meta">{p.detail}</div>}
+        <div className="sc-promo-cta">View offer →</div>
       </div>
-    </div>
+    </a>
   )
 }
 
@@ -246,6 +258,26 @@ function ResultDashboard({ data, sample = false }) {
       {data.options?.length > 0 && (
         <div className="sc-dash-section sc-dash-options">
           {data.options.slice(0, 4).map((o, i) => <OptionCard key={i} o={o} />)}
+        </div>
+      )}
+
+      {/* Live sources (Perplexity citations) — clickable, real, current */}
+      {Array.isArray(data.citations) && data.citations.length > 0 && (
+        <div className="sc-dash-section">
+          <div className="sc-dash-h">🔗 Live Sources <span className="sc-dash-view">{data.engine === 'perplexity' ? 'web-verified' : ''}</span></div>
+          <div className="sc-sources">
+            {data.citations.slice(0, 8).map((c, i) => {
+              const url = typeof c === 'string' ? c : (c?.url || c?.link)
+              if (!url) return null
+              let host = url
+              try { host = new URL(url).hostname.replace(/^www\./, '') } catch {}
+              return (
+                <a key={i} className="sc-source" href={url} target="_blank" rel="noopener noreferrer">
+                  <span className="sc-source-n">{i + 1}</span>{host} →
+                </a>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

@@ -17,11 +17,13 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 
 function yelpPriceToValue(priceStr, category) {
   if (priceStr) {
+    // Yelp tiers, per-person: $ ≈ under $10, $$ ≈ $11–30, $$$ ≈ $31–60, $$$$ ≈ $61+.
+    // Use the low end of each tier so a "$" spot reads as ~$10 (matches a $10 budget).
     const dollars = (priceStr.match(/\$/g) || []).length;
-    if (dollars === 1) return 20;
-    if (dollars === 2) return 60;
-    if (dollars === 3) return 130;
-    if (dollars === 4) return 250;
+    if (dollars === 1) return 10;
+    if (dollars === 2) return 25;
+    if (dollars === 3) return 50;
+    if (dollars === 4) return 100;
   }
   const cat = (category || '').toLowerCase();
   // Home services
@@ -230,18 +232,13 @@ export async function searchServiceProviders(opts = {}) {
     providers = providers.filter(p => (p.rating || 0) >= minRating);
   }
   if (typeof maxPrice === 'number') {
-    if (applyTier) {
-      // Yelp already restricted by price tier — that's authoritative for the
-      // budget. Don't re-filter on our rough dollar estimate (which would wrongly
-      // drop valid $-tier spots, e.g. a $10 burger budget vs an estimate of $12).
-    } else {
-      // No tier filter (trades/professional): only exclude on a REAL Yelp price.
-      // Category estimates are not actual quotes, so they never hard-exclude —
-      // otherwise a $60 plumber budget (avg job ~$110) would wrongly show zero.
-      providers = providers.filter(p =>
-        p.priceIsEstimate || p.priceValue == null || p.priceValue <= maxPrice
-      );
-    }
+    // Hard-filter on REAL Yelp prices only: a "$10" search must never surface a
+    // place that reads as $20+. Category estimates (trades, where Yelp has no
+    // price) are not real quotes, so they stay — otherwise a $60 plumber budget
+    // (avg job ~$110) would wrongly return zero results.
+    providers = providers.filter(p =>
+      p.priceIsEstimate || p.priceValue == null || p.priceValue <= maxPrice
+    );
   }
 
   providers = providers.slice(0, limit);

@@ -1350,3 +1350,15 @@
 /* ── Results title parent/budget badges ── */
 .sv-res-parent { font-weight: 500; color: var(--muted-foreground, #9a92b8); font-size: .8em; }
 .sv-res-budget { font-weight: 700; color: oklch(82% .18 155); font-size: .8em; }
+
+/* ── Dropdown option visibility (native <option> popups) ── */
+.sv-inline-sel,
+.sv-filter-select { color: #f3f0ff; }
+.sv-inline-sel option,
+.sv-filter-select option {
+  background: #1b1430;
+  color: #f3f0ff;
+}
+/* The radius selector sits on the hero gradient — keep its label readable */
+.sv-engine-meta { color: #e8e3ff; }
+.sv-engine-meta .sv-inline-sel { color: #fff; font-weight: 700; }
