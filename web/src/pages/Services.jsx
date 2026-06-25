@@ -796,15 +796,6 @@ export default function Services() {
                     value={minRating} onChange={e => setMinRating(e.target.value)}
                     min="1" max="5" step="0.5" style={{maxWidth:90}} />
                 </div>
-                <div className="sv-filter-cell">
-                  <span>≅</span>
-                  <select className="sv-filter-select" value={sort} onChange={e => setSort(e.target.value)}>
-                    <option value="best">Best Match</option>
-                    <option value="price-asc">Price: Low → High</option>
-                    <option value="price-desc">Price: High → Low</option>
-                    <option value="distance">Closest First</option>
-                  </select>
-                </div>
                 <div className="sv-filter-view">
                   <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={() => setView('list')}>☰ List</button>
                   <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={() => setView('map')}>🗺 Map</button>
