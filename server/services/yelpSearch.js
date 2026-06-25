@@ -125,6 +125,107 @@ function yelpHeaders() {
   };
 }
 
+// Map our taxonomy labels (lowercased) → Yelp category aliases. When a selection
+// matches, we pass Yelp's `categories` param, which is a HARD filter — so
+// "Coffee & Tea" returns only coffee/tea businesses, never noodle shops that
+// merely mention "tea". Falls back to free-text `term` search when no match.
+const YELP_CATEGORY_ALIASES = {
+  // ── Food & Dining ──
+  'restaurants': 'restaurants',
+  'restaurant': 'restaurants',
+  'burgers': 'burgers',
+  'pizza': 'pizza',
+  'sushi': 'sushi,japanese',
+  'italian': 'italian',
+  'chinese': 'chinese',
+  'mexican': 'mexican',
+  'indian': 'indpak',
+  'thai': 'thai',
+  'steakhouse': 'steak',
+  'seafood': 'seafood',
+  'vegan': 'vegan',
+  'bbq': 'bbq',
+  'breakfast': 'breakfast_brunch',
+  'fast food': 'hotdogs,tradamerican',
+  'coffee & tea': 'coffee',
+  'coffee and tea': 'coffee',
+  'coffee': 'coffee',
+  'cafés': 'cafes',
+  'cafes': 'cafes',
+  'café': 'cafes',
+  'espresso bars': 'coffee',
+  'bubble tea': 'bubbletea',
+  'juice bars': 'juicebars',
+  'bakeries': 'bakeries',
+  'bars': 'bars',
+  'sports bars': 'sportsbars',
+  'wine bars': 'wine_bars',
+  'pubs': 'pubs',
+  'cocktail bars': 'cocktailbars',
+  'breweries': 'breweries',
+  'catering': 'catering',
+  'food trucks': 'foodtrucks',
+  // ── Home Services ──
+  'plumbing': 'plumbing',
+  'electrical': 'electricians',
+  'hvac': 'hvac',
+  'house cleaning': 'homecleaning',
+  'landscaping': 'landscaping',
+  'pest control': 'pestcontrol',
+  'roofing': 'roofing',
+  'painting': 'painters',
+  'moving': 'movers',
+  'handyman': 'handyman',
+  // ── Auto ──
+  'auto repair': 'autorepair',
+  'car wash': 'carwash',
+  'towing': 'towing',
+  'oil change': 'oilchange',
+  'tires': 'tires',
+  'tire shop': 'tires',
+  'body shop': 'bodyshops',
+  'auto detailing': 'autodetailing',
+  'mechanics': 'autorepair',
+  // ── Health & Medical ──
+  'doctors': 'physicians',
+  'dentists': 'dentists',
+  'therapists': 'therapists',
+  'gyms': 'gyms',
+  'massage': 'massage',
+  'optometrists': 'optometrists',
+  'chiropractors': 'chiropractors',
+  'pharmacies': 'pharmacy',
+  // ── Beauty ──
+  'hair salons': 'hair',
+  'barbers': 'barbers',
+  'nail salons': 'nailsalons',
+  'spas': 'dayspas',
+  'makeup artists': 'makeupartists',
+  'waxing': 'waxing',
+  'eyelash extensions': 'eyelashservice',
+  'tanning': 'tanning',
+  // ── Pet ──
+  'vets': 'veterinarians',
+  'pet grooming': 'petgroomers',
+  'dog walking': 'dogwalkers',
+  'pet boarding': 'petboarding',
+  'pet training': 'pettraining',
+  // ── Hospitality ──
+  'hotels': 'hotels',
+  'bed & breakfast': 'bedbreakfast',
+  'vacation rentals': 'vacation_rentals',
+  'resorts': 'resorts',
+  'motels': 'hotels',
+  'hostels': 'hostels',
+  // ── Professional ──
+  'accountants': 'accountants',
+  'lawyers': 'lawyers',
+  'it support': 'itservices',
+  'photography': 'photographers',
+  'real estate': 'realestate',
+  'financial advisors': 'financialadvising',
+};
+
 /**
  * Search Yelp for local service providers.
  */
@@ -161,6 +262,11 @@ export async function searchServiceProviders(opts = {}) {
     limit: String(Math.min(Number(limit) || 20, 50)),
     sort_by: 'best_match'
   });
+
+  // Precise category filtering: when the query maps to a Yelp category, pass it as
+  // a hard `categories` filter so results stay on-topic (e.g. coffee, not noodles).
+  const catAlias = YELP_CATEGORY_ALIASES[query.trim().toLowerCase()];
+  if (catAlias) params.set('categories', catAlias);
 
   // Apply Yelp's native price-tier filter only for consumer categories where it's
   // reliable. This is what makes "Burgers under $10" return real $-tier spots.

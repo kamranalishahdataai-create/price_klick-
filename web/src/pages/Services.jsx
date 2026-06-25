@@ -551,7 +551,7 @@ export default function Services() {
   const [q, setQ]             = useState('')
   const [budget, setBudget]   = useState('')
   const [minRating, setMinRating] = useState('')
-  const [sort, setSort]       = useState('rating')
+  const [sort, setSort]       = useState('best')
   const [quick, setQuick]     = useState(null)
   const [radiusKm, setRadiusKm] = useState(10)
 
@@ -639,7 +639,7 @@ export default function Services() {
     if (sort === 'price-asc' || quick === 'budget') arr.sort((a, b) => priceN(a) - priceN(b))
     else if (sort === 'price-desc') arr.sort((a, b) => priceN(b) - priceN(a))
     else if (sort === 'distance' || quick === 'close') arr.sort((a, b) => dist(a) - dist(b))
-    else arr.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    // 'best' (default): keep Yelp's best_match relevance order
     return arr
   }, [providers, sort, quick])
 
@@ -799,7 +799,7 @@ export default function Services() {
                 <div className="sv-filter-cell">
                   <span>≅</span>
                   <select className="sv-filter-select" value={sort} onChange={e => setSort(e.target.value)}>
-                    <option value="rating">Top Rated</option>
+                    <option value="best">Best Match</option>
                     <option value="price-asc">Price: Low → High</option>
                     <option value="price-desc">Price: High → Low</option>
                     <option value="distance">Closest First</option>
