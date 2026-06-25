@@ -58,6 +58,22 @@ function hostOf(url) {
   try { return new URL(url).hostname.toLowerCase() } catch { return '' }
 }
 
+// Social / login-wall / non-shoppable hosts we must never auto-open. These show a
+// login prompt or are unrelated to buying the product (the Market Basket Facebook
+// redirect bug). Manual buttons may still link to them, but auto-redirect won't.
+const UNSAFE_REDIRECT_HOSTS = [
+  'facebook.com', 'm.facebook.com', 'fb.com', 'instagram.com', 'twitter.com',
+  'x.com', 'tiktok.com', 'pinterest.com', 'youtube.com', 'youtu.be',
+  'linkedin.com', 'reddit.com', 'threads.net', 'snapchat.com',
+]
+function isSafeRedirect(url) {
+  if (!url || typeof url !== 'string') return false
+  if (!/^https?:\/\//i.test(url)) return false
+  const host = hostOf(url)
+  if (!host) return false
+  return !UNSAFE_REDIRECT_HOSTS.some(bad => host === bad || host.endsWith('.' + bad))
+}
+
 function matchesCountry(url, country) {
   if (!country) return false
   const host = hostOf(url)
@@ -117,7 +133,7 @@ export default function Lens() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [dragOver, setDragOver] = useState(false)
-  const [autoRedirect, setAutoRedirect] = useState(true)
+  const [autoRedirect, setAutoRedirect] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [demo, setDemo] = useState(false)
   const [demoStep, setDemoStep] = useState(0)
@@ -196,9 +212,17 @@ export default function Lens() {
       const best = pickCheapestNearby(buildOptions(data), geo.country)
       // Redirect priority: 1) promotion if one was detected, 2) the same/similar
       // product on any site, 3) cheapest nearby match, 4) checkout/home as last resort.
+      // Pick the first SAFE candidate (skips Facebook/login-wall URLs) so we never
+      // auto-open a junk page like the Market Basket FB post.
       const hasPromo = !!(data.discountAmount || (data.coupons && data.coupons.length) || data.promotionTitle)
-      const promoUrl = hasPromo ? (data.redirectUrl || data.productUrl) : null
-      const url = promoUrl || data.productUrl || best?.url || data.redirectUrl || data.checkoutUrl
+      const candidates = [
+        hasPromo ? (data.redirectUrl || data.productUrl) : null,
+        data.productUrl,
+        best?.url,
+        data.redirectUrl,
+        data.checkoutUrl,
+      ].filter(Boolean)
+      const url = candidates.find(isSafeRedirect) || null
       if (autoRedirect && url) {
         setCountdown(3)
         let t = 3
@@ -309,9 +333,9 @@ export default function Lens() {
                   {preview && !loading && (
                     <button className="lens-btn ghost" onClick={reset}>✕ Clear</button>
                   )}
-                  <label className="lens-toggle">
+                  <label className="lens-toggle" title="Off by default — when on, we auto-open the best verified product/offer link after analysis">
                     <input type="checkbox" checked={autoRedirect} onChange={() => setAutoRedirect(!autoRedirect)} />
-                    <span>Auto-open checkout</span>
+                    <span>Auto-open best link</span>
                   </label>
                 </div>
 
@@ -553,9 +577,11 @@ export default function Lens() {
                       {(() => {
                         const hasPromo = !!(result.discountAmount || result.coupons?.length || result.promotionTitle)
                         // 1st: promotion. 2nd: same/similar product on any site.
-                        const primaryUrl = hasPromo
-                          ? (result.redirectUrl || result.productUrl)
-                          : (result.productUrl || result.redirectUrl)
+                        // Skip junk/social URLs so the button never lands on a login wall.
+                        const ordered = hasPromo
+                          ? [result.redirectUrl, result.productUrl, cheapest?.url]
+                          : [result.productUrl, cheapest?.url, result.redirectUrl]
+                        const primaryUrl = ordered.filter(Boolean).find(isSafeRedirect)
                         if (!primaryUrl) return null
                         return (
                           <a className="lens-btn primary" href={primaryUrl} target="_blank" rel="noopener noreferrer">
