@@ -16,6 +16,13 @@ const getModel = () => process.env.SMART_COMPARE_MODEL || 'gpt-4o-mini';
 // REAL working URLs + citations. Falls back to OpenAI when unset or on error.
 const getPerplexityKey = () => process.env.PERPLEXITY_API_KEY;
 const getPplxModel = () => process.env.SMART_COMPARE_PPLX_MODEL || 'sonar-pro';
+// Claude (Anthropic) — best reasoning engine. Selected as primary via
+// SMART_COMPARE_PROVIDER=claude. No live web, so URLs come from the client-side
+// brand resolver; pair with Perplexity if exact live promo URLs are needed.
+const getClaudeKey = () => process.env.ANTHROPIC_API_KEY;
+const getClaudeModel = () => process.env.SMART_COMPARE_CLAUDE_MODEL || 'claude-opus-4-8';
+// Which engine to try first: 'claude' | 'perplexity' | 'openai' (default: perplexity).
+const getProvider = () => (process.env.SMART_COMPARE_PROVIDER || 'perplexity').toLowerCase();
 
 // Tolerant JSON extraction — strips ```json fences / stray prose around the object.
 function extractJson(content) {
@@ -95,6 +102,41 @@ async function callOpenAI({ query, budget, location, category }) {
   }
 }
 
+async function callClaude({ query, budget, location, category }) {
+  const KEY = getClaudeKey();
+  if (!KEY) return null;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: getClaudeModel(),
+        max_tokens: 4096,
+        // NB: Claude Opus 4.8 deprecates `temperature` — omit it.
+        system: SYSTEM_PROMPT + '\n\nReturn ONLY the JSON object — no markdown fences, no prose before or after.',
+        messages: [{ role: 'user', content: buildUserPrompt({ query, budget, location, category }) }],
+      }),
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('SMART_COMPARE claude_error', r.status, txt.slice(0, 300));
+      return null;
+    }
+    const j = await r.json();
+    const text = Array.isArray(j.content) ? j.content.map(c => c.text || '').join('') : '';
+    const parsed = extractJson(text);
+    if (parsed) parsed.engine = 'claude';
+    return parsed;
+  } catch (e) {
+    console.error('SMART_COMPARE claude_exception', e.message);
+    return null;
+  }
+}
+
 const SYSTEM_PROMPT = `You are PriceKlick Smart Compare Advisor, an expert AI shopping & finance assistant.
 Given a buyer's natural-language request plus optional budget, location, and category, produce a high-quality
 side-by-side comparison the user can act on immediately.
@@ -151,8 +193,8 @@ function buildUserPrompt({ query, budget, location, category }) {
 
 router.post('/', optionalAuth, async (req, res) => {
   try {
-    if (!getOpenAiKey() && !getPerplexityKey()) {
-      return res.status(503).json({ ok: false, error: 'No AI key configured (set PERPLEXITY_API_KEY or OPENAI_API_KEY).' });
+    if (!getClaudeKey() && !getPerplexityKey() && !getOpenAiKey()) {
+      return res.status(503).json({ ok: false, error: 'No AI key configured (set ANTHROPIC_API_KEY, PERPLEXITY_API_KEY or OPENAI_API_KEY).' });
     }
     const { query, budget, location, category } = req.body || {};
     if (!query || String(query).trim().length < 3) {
@@ -160,9 +202,21 @@ router.post('/', optionalAuth, async (req, res) => {
     }
 
     const args = { query, budget, location, category };
-    // Prefer Perplexity (live web + real URLs); fall back to OpenAI on miss.
-    let parsed = await callPerplexity(args);
-    if (!parsed) parsed = await callOpenAI(args);
+    // Engine order depends on SMART_COMPARE_PROVIDER. Each falls back to the next.
+    //  - claude:     Claude Opus (best reasoning) → Perplexity → OpenAI
+    //  - perplexity: live web + real URLs → Claude → OpenAI
+    //  - openai:     OpenAI → Claude → Perplexity
+    const provider = getProvider();
+    const order =
+      provider === 'claude'     ? [callClaude, callPerplexity, callOpenAI] :
+      provider === 'openai'     ? [callOpenAI, callClaude, callPerplexity] :
+                                  [callPerplexity, callClaude, callOpenAI];
+
+    let parsed = null;
+    for (const engine of order) {
+      parsed = await engine(args);
+      if (parsed) break;
+    }
 
     if (!parsed) {
       return res.status(502).json({ ok: false, error: 'AI service unavailable. Please try again shortly.' });
