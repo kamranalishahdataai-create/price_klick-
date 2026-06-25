@@ -70,6 +70,69 @@ async function callPerplexity({ query, budget, location, category }) {
   }
 }
 
+// Hybrid enrichment: take a comparison produced by Claude/OpenAI (great reasoning
+// but no live web) and use Perplexity's live web access to fill in REAL, current
+// URLs for each promotion + option, plus attach source citations. Best-effort —
+// returns the original object unchanged on any failure.
+async function enrichUrlsWithPerplexity(parsed, { location } = {}) {
+  const KEY = getPerplexityKey();
+  if (!KEY || !parsed) return parsed;
+
+  const promos = Array.isArray(parsed.promotions) ? parsed.promotions : [];
+  const options = Array.isArray(parsed.options) ? parsed.options : [];
+
+  // Flat list of items needing a real URL (cap to keep the prompt tight).
+  const items = [];
+  promos.slice(0, 5).forEach((p, idx) =>
+    items.push({ kind: 'promo', idx, label: `${p.brand || ''} — ${p.title || ''} (promotion/offer page)` }));
+  options.slice(0, 5).forEach((o, idx) => {
+    if (!o.url) items.push({ kind: 'option', idx, label: `${o.brand || ''} ${o.model || ''} (official product page)` });
+  });
+  if (items.length === 0) return parsed;
+
+  const list = items.map((it, i) => `${i + 1}. ${it.label}`).join('\n');
+  const prompt =
+    `Find the EXACT current official URL for each item below. For promotions link to the brand's specific offers/deals page; for products link to the official product page. Use ONLY real, working URLs you can verify right now${location ? ` for the ${location} region` : ''}.\n\nItems:\n${list}\n\nRespond with ONLY this JSON: {"items":[{"n":<item number>,"url":"<exact url>"}]}`;
+
+  try {
+    const r = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: getPplxModel(),
+        temperature: 0.1,
+        messages: [
+          { role: 'system', content: 'You are a precise web research assistant with live web access. Return only real, current, working URLs. Output ONLY the requested JSON.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('SMART_COMPARE enrich_error', r.status, txt.slice(0, 200));
+      return parsed;
+    }
+    const j = await r.json();
+    const data = extractJson(j?.choices?.[0]?.message?.content);
+    const found = (data && Array.isArray(data.items)) ? data.items : [];
+    let applied = 0;
+    found.forEach(u => {
+      const n = Number(u.n);
+      const url = typeof u.url === 'string' ? u.url.trim() : '';
+      if (!n || !/^https?:\/\//i.test(url)) return;
+      const it = items[n - 1];
+      if (!it) return;
+      if (it.kind === 'promo' && promos[it.idx]) { promos[it.idx].url = url; applied++; }
+      if (it.kind === 'option' && options[it.idx]) { options[it.idx].url = url; applied++; }
+    });
+    if (Array.isArray(j.citations) && j.citations.length) parsed.citations = j.citations;
+    if (applied > 0) parsed.urlsEnrichedBy = 'perplexity';
+  } catch (e) {
+    console.error('SMART_COMPARE enrich_exception', e.message);
+  }
+  return parsed;
+}
+
 async function callOpenAI({ query, budget, location, category }) {
   const OPENAI_KEY = getOpenAiKey();
   if (!OPENAI_KEY) return null;
@@ -227,6 +290,13 @@ router.post('/', optionalAuth, async (req, res) => {
     parsed.updatedAt = new Date().toISOString();
     parsed.options = Array.isArray(parsed.options) ? parsed.options : [];
     parsed.promotions = Array.isArray(parsed.promotions) ? parsed.promotions : [];
+
+    // Hybrid step: when the comparison came from Claude/OpenAI (no live web),
+    // use Perplexity to fill in REAL current promo/product URLs + citations.
+    // Perplexity results already carry live URLs, so skip enrichment for them.
+    if (parsed.engine !== 'perplexity' && getPerplexityKey()) {
+      await enrichUrlsWithPerplexity(parsed, { location });
+    }
 
     // Best-effort log activity (non-blocking)
     if (req.user?._id) {
