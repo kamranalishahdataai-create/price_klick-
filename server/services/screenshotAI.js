@@ -267,6 +267,132 @@ For a product photo with NO promotion:
   }
 }
 
+// Shared Lens vision prompt — identical instructions for Claude & OpenAI so the
+// two engines return the same JSON shape and the rest of the pipeline is agnostic.
+const PROMO_LENS_SYSTEM = `You are a visual product and promotion recognition assistant. You can identify products, brands, and promotional offers from ANY image — whether it's a promotional flyer, a store ad, a product photo, a screenshot of a product page, or even a physical product in someone's hand.
+
+Your job is to identify WHAT the product is and WHERE to buy it.
+
+Analyze the image and extract ALL of these details:
+1. Brand/Store name — the company, retailer, or product brand
+2. Website/Domain — any visible URL, domain, or if you recognize the brand, provide their main website
+3. Promotion title — the headline or main offer text (null if no promotion visible)
+4. Promotion description — full details of the offer (null if no promotion)
+5. Product names — specific product names/models shown (VERY IMPORTANT — be as specific as possible, include model numbers, sizes, colors if visible)
+6. Product category — e.g., "coffee maker", "running shoes", "laptop", "slow cooker"
+7. Product price — any visible prices (sale price AND original price if shown)
+8. Coupon/Promo codes — any visible discount codes
+9. Discount amount — percentage or dollar amount off
+10. Expiry date — when the promotion ends
+11. Promotion type — sale, clearance, BOGO, flash deal, seasonal, product_photo
+12. Official promotion URL — your best guess for the DIRECT URL to this exact product/deal on the store's website
+13. Product search query — a precise query that finds this exact product (e.g., "Keurig K-Supreme Plus" or "Nike Air Max 90 white")
+14. Image type — "promo", "product_page", "product_photo", or "other"
+
+IMPORTANT: Even if there is NO promotion, discount, or coupon, you MUST still identify the product.
+- If it's a photo of a product, identify the brand and product name
+- If you recognize the brand, provide their main website domain
+- Set hasPromotion to false but still fill in brand, domain, products, productCategory, and productSearchQuery
+- For product photos, guess the most likely retailer (Amazon, Walmart, etc.) if no store branding is visible
+
+For officialPromoUrl, construct the most likely DIRECT PRODUCT PAGE URL (not a search page) using known retailer URL patterns (Amazon /dp/ASIN, Walmart /ip/, Target /p/-/A-, Best Buy /site/...skuId=, Canadian Tire /en/pdp/, Home Depot /p/). Only fall back to a search URL if you can't determine the exact product page.
+For productSearchUrl, ALWAYS construct a search URL as a fallback.
+For exactProductUrl, provide the DIRECT product page URL only if a specific model number/SKU/product ID is visible; else null.
+
+Return ONLY valid JSON with exactly these keys:
+{
+  "brand": "Canadian Tire",
+  "domain": "canadiantire.ca",
+  "websiteUrl": "https://www.canadiantire.ca",
+  "officialPromoUrl": "https://www.canadiantire.ca/en/pdp/keurig-k-supreme-plus-coffee-maker-0430120p.html",
+  "exactProductUrl": null,
+  "productSearchUrl": "https://www.canadiantire.ca/en/search-results.html?q=keurig+k-supreme+plus",
+  "promotionTitle": "Save $70 on Keurig K-Supreme Plus",
+  "promotionDescription": "Keurig K-Supreme Plus Coffee Maker on sale, save $70",
+  "products": ["Keurig K-Supreme Plus Coffee Maker"],
+  "productCategory": "coffee maker",
+  "productPrice": {"sale": "$149.99", "original": "$219.99"},
+  "productSearchQuery": "Keurig K-Supreme Plus Coffee Maker",
+  "coupons": [{"code": "SAVE70", "description": "$70 off", "confidence": "high"}],
+  "discountAmount": "$70",
+  "expiryDate": null,
+  "promoType": "product_sale",
+  "imageType": "promo",
+  "visibleUrls": ["canadiantire.ca"],
+  "confidence": "high",
+  "hasPromotion": true
+}
+For a product photo with NO promotion, use the same keys with promotion fields null, coupons [], hasPromotion false, promoType "product_photo", imageType "product_photo".`;
+
+const PROMO_LENS_USER = "Analyze this image. It could be a promotional screenshot, a product page, OR just a photo of a product. Identify the brand and specific product(s) — I need the EXACT product name and model number to find it online. If it's a promo, extract all deal details. If it's just a product photo, identify what it is so I can search for it. Construct the DIRECT product page URL if possible, and a search URL as a fallback. Look for any product IDs, SKUs, or model numbers visible in the image.";
+
+// Detect image media type from base64 magic bytes (Anthropic needs the right media_type).
+function detectImageMediaType(base64) {
+  const head = (base64 || '').slice(0, 16);
+  if (head.startsWith('/9j/')) return 'image/jpeg';
+  if (head.startsWith('iVBORw0KGgo')) return 'image/png';
+  if (head.startsWith('R0lGOD')) return 'image/gif';
+  if (head.startsWith('UklGR')) return 'image/webp';
+  return 'image/png';
+}
+
+/**
+ * Claude vision promo/product detection — primary Lens engine.
+ * High-resolution vision; strongest on dense flyers, packaging, and screenshots.
+ * Returns the same shape as extractPromoDetailsWithOpenAI.
+ */
+async function extractPromoDetailsWithClaude(base64Image, apiKey) {
+  try {
+    const model = process.env.LENS_CLAUDE_MODEL || 'claude-opus-4-8';
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1500,
+        system: PROMO_LENS_SYSTEM,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: PROMO_LENS_USER },
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: detectImageMediaType(base64Image), data: base64Image }
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Claude Promo Detection API error: ${response.status} - ${error.slice(0, 300)}`);
+    }
+
+    const data = await response.json();
+    const content = Array.isArray(data.content) ? data.content.map(c => c.text || '').join('') : '';
+    if (!content) throw new Error('No response from Claude promo detection');
+
+    let jsonStr = content;
+    const fence = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence) jsonStr = fence[1];
+    const start = jsonStr.indexOf('{'); const end = jsonStr.lastIndexOf('}');
+    if (start >= 0 && end > start) jsonStr = jsonStr.slice(start, end + 1);
+
+    const result = JSON.parse(jsonStr.trim());
+    return { success: true, provider: 'claude_promo_lens', ...result };
+  } catch (error) {
+    console.error('Claude promo detection failed:', error.message);
+    return { success: false, error: error.message, provider: 'claude_promo_lens' };
+  }
+}
+
 /**
  * Extract URLs and brand info from Google Vision text output
  */
@@ -1421,22 +1547,45 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
 
   let promoDetails = null;
 
-  // Step 1: Try OpenAI Vision for full promo/product analysis
+  // Step 1: Vision analysis. Claude (high-resolution; best on dense flyers,
+  // packaging, and screenshots) is the primary engine; OpenAI is the automatic
+  // fallback. Both return the same JSON shape, so the rest of the pipeline is
+  // engine-agnostic.
   let openaiError = null;
-  if (openaiKey) {
+  const claudeKey = options.claudeKey || process.env.ANTHROPIC_API_KEY;
+  const isUseful = (d) => !!(d && d.success && (d.hasPromotion || (d.products && d.products.length > 0) || d.brand));
+
+  // 1a. Claude vision (primary)
+  if (claudeKey) {
+    console.log('  → Claude vision promo/product analysis...');
+    const claudeResult = await extractPromoDetailsWithClaude(base64Image, claudeKey);
+    if (isUseful(claudeResult)) {
+      promoDetails = claudeResult;
+    } else if (!claudeResult.success) {
+      console.log(`  ✗ Claude vision unavailable (${claudeResult.error || 'unknown'}); falling back to OpenAI`);
+    }
+  }
+
+  // 1b. OpenAI vision (fallback)
+  if (!isUseful(promoDetails) && openaiKey) {
     console.log('  → OpenAI promo/product analysis...');
-    promoDetails = await extractPromoDetailsWithOpenAI(base64Image, openaiKey);
-    if (promoDetails.success && (promoDetails.hasPromotion || (promoDetails.products && promoDetails.products.length > 0) || promoDetails.brand)) {
-      const imageType = promoDetails.imageType || (promoDetails.hasPromotion ? 'promo' : 'product_photo');
-      console.log(`  ✓ Detected [${imageType}] brand: ${promoDetails.brand}, domain: ${promoDetails.domain}, products: ${(promoDetails.products || []).join(', ')}`);
-      // For product photos without a promo, mark hasPromotion true so the pipeline continues
-      // (the pipeline uses hasPromotion as a "did we detect anything useful" flag)
-      if (!promoDetails.hasPromotion && (promoDetails.products?.length > 0 || promoDetails.brand)) {
-        promoDetails.hasPromotion = true;
-        promoDetails.isProductPhoto = true;
-      }
-    } else if (!promoDetails.success) {
-      openaiError = promoDetails.error || 'unknown';
+    const openaiResult = await extractPromoDetailsWithOpenAI(base64Image, openaiKey);
+    if (isUseful(openaiResult)) {
+      promoDetails = openaiResult;
+    } else if (!openaiResult.success) {
+      openaiError = openaiResult.error || 'unknown';
+    }
+  }
+
+  // Shared post-processing for whichever engine succeeded
+  if (isUseful(promoDetails)) {
+    const imageType = promoDetails.imageType || (promoDetails.hasPromotion ? 'promo' : 'product_photo');
+    console.log(`  ✓ Detected via ${promoDetails.provider} [${imageType}] brand: ${promoDetails.brand}, domain: ${promoDetails.domain}, products: ${(promoDetails.products || []).join(', ')}`);
+    // For product photos without a promo, mark hasPromotion true so the pipeline continues
+    // (the pipeline uses hasPromotion as a "did we detect anything useful" flag)
+    if (!promoDetails.hasPromotion && (promoDetails.products?.length > 0 || promoDetails.brand)) {
+      promoDetails.hasPromotion = true;
+      promoDetails.isProductPhoto = true;
     }
   }
 
