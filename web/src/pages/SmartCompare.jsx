@@ -67,6 +67,76 @@ function searchUrl(...parts) {
   return `https://www.google.com/search?q=${encodeURIComponent(q)}`
 }
 
+// Known brand → official offers/deals page. Lets us send users straight to the
+// brand's real promotion page instead of a Google search when the AI engine
+// (without live web access) didn't return an exact URL.
+const BRAND_SITES = {
+  toyota: 'https://www.toyota.com/deals/',
+  honda: 'https://automobiles.honda.com/specials-offers',
+  ford: 'https://www.ford.com/finance/offers/',
+  tesla: 'https://www.tesla.com/',
+  hyundai: 'https://www.hyundaiusa.com/us/en/local-offers',
+  kia: 'https://www.kia.com/us/en/offers',
+  nissan: 'https://www.nissanusa.com/shopping-tools/current-offers-deals.html',
+  chevrolet: 'https://www.chevrolet.com/deals-incentives',
+  chevy: 'https://www.chevrolet.com/deals-incentives',
+  gmc: 'https://www.gmc.com/current-deals-offers',
+  buick: 'https://www.buick.com/current-offers',
+  bmw: 'https://www.bmwusa.com/deals-and-incentives.html',
+  mercedes: 'https://www.mbusa.com/en/special-offers',
+  'mercedes-benz': 'https://www.mbusa.com/en/special-offers',
+  audi: 'https://www.audiusa.com/en/special-offers/',
+  volkswagen: 'https://www.vw.com/en/deals.html',
+  vw: 'https://www.vw.com/en/deals.html',
+  mazda: 'https://www.mazdausa.com/shopping-tools/current-offers',
+  subaru: 'https://www.subaru.com/deals.html',
+  jeep: 'https://www.jeep.com/bmo.html',
+  ram: 'https://www.ramtrucks.com/bmo.html',
+  dodge: 'https://www.dodge.com/bmo.html',
+  chrysler: 'https://www.chrysler.com/bmo.html',
+  lexus: 'https://www.lexus.com/offers',
+  acura: 'https://www.acura.com/current-offers',
+  infiniti: 'https://www.infinitiusa.com/shopping-tools/special-offers.html',
+  volvo: 'https://www.volvocars.com/us/shopping-tools/offers/',
+  porsche: 'https://www.porsche.com/usa/',
+  genesis: 'https://www.genesis.com/us/en/genesis-offers.html',
+  mitsubishi: 'https://www.mitsubishicars.com/offers',
+  // common retailers
+  bestbuy: 'https://www.bestbuy.com/site/misc/deal-of-the-day/pcmcat248000050016.c',
+  walmart: 'https://www.walmart.com/shop/deals',
+  target: 'https://www.target.com/c/top-deals/-/N-4tah6',
+  amazon: 'https://www.amazon.com/deals',
+  costco: 'https://www.costco.com/online-offers.html',
+  samsung: 'https://www.samsung.com/us/specialoffers/',
+  lg: 'https://www.lg.com/us/promotions',
+  sony: 'https://electronics.sony.com/deals',
+  apple: 'https://www.apple.com/shop/refurbished',
+}
+
+function brandSlug(brand) {
+  return (brand || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+}
+
+// Resolve the best non-Google destination for a brand: real offers page if known,
+// else the brand's own homepage, else a search as the very last resort.
+function brandDestination(brand, fallbackQuery) {
+  const slug = brandSlug(brand)
+  if (BRAND_SITES[slug]) return BRAND_SITES[slug]
+  const compact = (brand || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (compact.length >= 2) return `https://www.${compact}.com`
+  return searchUrl(fallbackQuery || brand)
+}
+
+// Promotion → its real offer page (AI url) or the brand's offers/homepage.
+function promoHref(p) {
+  return p.url || brandDestination(p.brand, `${p.brand || ''} ${p.title || ''} offer`)
+}
+
+// Option → its real product page (AI url) or the brand's site.
+function optionHref(o) {
+  return o.url || brandDestination(o.brand, `${o.brand || ''} ${o.model || ''}`)
+}
+
 function FitBadge({ score }) {
   const cls = score >= 90 ? 'top' : score >= 85 ? 'good' : 'ok'
   return <div className={`sc-fit ${cls}`}>{score}%<span>Fit Score</span></div>
@@ -139,9 +209,9 @@ function OptionCard({ o }) {
         </div>
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}>
-        {/* Always clickable — real URL if the AI gave one, else a smart web search */}
-        <a className="sc-view-details" href={o.url || searchUrl(o.brand, o.model, o.price ? '' : 'price', 'buy')} target="_blank" rel="noopener noreferrer">
-          {o.url ? 'View Details →' : 'Search this option →'}
+        {/* Always clickable — real URL if the AI gave one, else the brand's site */}
+        <a className="sc-view-details" href={optionHref(o)} target="_blank" rel="noopener noreferrer">
+          {o.url ? 'View Details →' : `View at ${o.brand || 'brand'} →`}
         </a>
         {o.url && !livePrice && (
           <button onClick={checkLivePrice} disabled={checking}
@@ -157,7 +227,7 @@ function OptionCard({ o }) {
 
 function PromoCard({ p }) {
   const lg = brandLogo(p.brand)
-  const href = p.url || searchUrl(p.brand, p.title, 'promotion offer')
+  const href = promoHref(p)
   return (
     <a className="sc-promo" href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
       <div className="sc-promo-logo" style={{ background: lg.bg }}>{lg.initial}</div>
