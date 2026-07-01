@@ -277,7 +277,7 @@ function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, 
           {p.website
             ? <a href={p.website} target="_blank" rel="noopener noreferrer"
                  onClick={() => trackProviderClick({ placeId: p.placeId, name: p.name, category: p.category, type: 'service_click' })}
-                 className="sv-btn primary">View on Yelp</a>
+                 className="sv-btn primary">🌐 Website</a>
             : <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="sv-btn primary">Maps</a>}
           {phoneHref && <a href={phoneHref} className="sv-btn ghost">📞 Call</a>}
           <button className="sv-btn ghost" disabled={isEnriching} onClick={() => onEnrich(p)}>
@@ -943,7 +943,7 @@ export default function Services() {
                     <a href={`tel:${enriched.provider.phone}`} className="sv-btn ghost">📞 {enriched.provider.phone}</a>
                   )}
                   {enriched.provider?.website && (
-                    <a href={enriched.provider.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary">View on Yelp</a>
+                    <a href={enriched.provider.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary">🌐 Website</a>
                   )}
                 </div>
                 {enriched.provider?.photos?.length > 0 && (

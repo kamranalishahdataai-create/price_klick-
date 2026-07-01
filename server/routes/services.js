@@ -1,5 +1,6 @@
 import express from 'express';
-import { searchServiceProviders, enrichYelpBusiness } from '../services/yelpSearch.js';
+import { searchServiceProviders as fsqSearch, enrichServiceProvider as fsqEnrich } from '../services/foursquareSearch.js';
+import { searchServiceProviders as yelpSearch, enrichYelpBusiness as yelpEnrich } from '../services/yelpSearch.js';
 import { enrichServiceWebsite, isConfigured as firecrawlReady } from '../services/firecrawl.js';
 import ServiceProvider from '../models/ServiceProvider.js';
 import Favorite from '../models/Favorite.js';
@@ -7,6 +8,32 @@ import UserActivity from '../models/UserActivity.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Provider selection: SERVICE_SEARCH_PROVIDER = 'foursquare' | 'yelp' (default yelp).
+// Whichever is primary, the other is an automatic fallback — so if the primary is
+// out of credits / errors / returns nothing, results still come from the backup.
+const primaryProvider = () => (process.env.SERVICE_SEARCH_PROVIDER || 'yelp').toLowerCase();
+
+async function searchServiceProviders(opts) {
+  const useFsqFirst = primaryProvider() === 'foursquare';
+  const first = useFsqFirst ? fsqSearch : yelpSearch;
+  const second = useFsqFirst ? yelpSearch : fsqSearch;
+  const r1 = await first(opts);
+  if (r1.ok && (r1.count || 0) > 0) return r1;
+  const r2 = await second(opts);
+  if (r2.ok) return r2;         // backup succeeded (even if 0 results)
+  return r1.ok ? r1 : r2;       // both failed — surface whichever error
+}
+
+async function enrichYelpBusiness(args) {
+  const useFsqFirst = primaryProvider() === 'foursquare';
+  const first = useFsqFirst ? fsqEnrich : yelpEnrich;
+  const second = useFsqFirst ? yelpEnrich : fsqEnrich;
+  const r1 = await first(args);
+  if (r1.ok) return r1;
+  const r2 = await second(args);
+  return r2.ok ? r2 : r1;
+}
 
 // Search providers — public (with optional auth so we can track logged-in users)
 router.get('/search', optionalAuth, async (req, res) => {
