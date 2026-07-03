@@ -1362,3 +1362,49 @@
 /* The radius selector sits on the hero gradient — keep its label readable */
 .sv-engine-meta { color: #e8e3ff; }
 .sv-engine-meta .sv-inline-sel { color: #fff; font-weight: 700; }
+
+/* ── Live budget deals ── */
+.sv-card-deal { border-color: oklch(78% .18 145 / .5) !important; box-shadow: 0 0 0 1px oklch(78% .18 145 / .25); }
+.sv-deal-ribbon {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: -4px -4px 12px; padding: 8px 12px; border-radius: 12px;
+  background: linear-gradient(90deg, oklch(78% .18 145 / .16), oklch(78% .18 145 / .05));
+  border: 1px solid oklch(78% .18 145 / .35);
+}
+.sv-deal-ribbon-tag {
+  font-size: 11px; font-weight: 800; letter-spacing: .03em;
+  color: oklch(15% .05 145); background: oklch(80% .18 145);
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.sv-deal-ribbon-text { font-size: 13px; font-weight: 600; color: var(--foreground, #f7f5ff); flex: 1; min-width: 0; }
+.sv-deal-ribbon-link {
+  font-size: 12.5px; font-weight: 700; color: oklch(82% .18 145);
+  text-decoration: none; white-space: nowrap;
+}
+.sv-deal-ribbon-link:hover { text-decoration: underline; }
+
+.sv-deals-strip {
+  margin-bottom: 16px; padding: 14px 16px; border-radius: 16px;
+  background: linear-gradient(135deg, oklch(78% .18 145 / .12), oklch(70% .16 200 / .08));
+  border: 1px solid oklch(78% .18 145 / .3);
+}
+.sv-deals-strip-head { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--foreground, #f7f5ff); }
+.sv-deals-strip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.sv-deal-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 999px; text-decoration: none;
+  background: rgba(255,255,255,.05); border: 1px solid oklch(78% .18 145 / .3);
+  color: var(--foreground, #f7f5ff); transition: background .12s, border-color .12s;
+}
+.sv-deal-pill:hover { background: oklch(78% .18 145 / .12); border-color: oklch(78% .18 145 / .6); }
+.sv-deal-pill-price { font-weight: 800; color: oklch(84% .18 145); font-size: 13px; }
+.sv-deal-pill-title { font-weight: 600; font-size: 12.5px; }
+.sv-deal-pill-store { font-size: 11.5px; color: var(--muted-foreground, #9a92b8); }
+.sv-deals-strip-note { font-size: 11px; color: var(--muted-foreground, #9a92b8); opacity: .8; margin-top: 8px; }
+.sv-deals-strip-loading { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--foreground, #f7f5ff); font-weight: 600; }
+.sv-deals-spinner {
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid oklch(78% .18 145 / .3); border-top-color: oklch(80% .18 145);
+  animation: sv-spin .7s linear infinite; display: inline-block;
+}
+@keyframes sv-spin { to { transform: rotate(360deg); } }

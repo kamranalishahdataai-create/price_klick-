@@ -130,6 +130,24 @@ export async function getSuggestedDeals(categories = [], limit = 8) {
   return res.json()
 }
 
+/**
+ * Find real current deals at/below the user's budget for the given providers.
+ * @param {{ providers: Array<{name,city,address}>, budget: number|string, category?: string, location?: string }} opts
+ */
+export async function findServiceDeals({ providers = [], budget, category, location } = {}) {
+  try {
+    const res = await fetch(`${API}/api/services/deals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ providers, budget, category, location }),
+    })
+    if (!res.ok) return { ok: false, deals: [] }
+    return res.json()
+  } catch (_) {
+    return { ok: false, deals: [] }
+  }
+}
+
 export async function trackProviderClick(payload = {}) {
   try {
     await fetch(`${API}/api/services/track-click`, {

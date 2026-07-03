@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { searchServices, enrichProvider, scrapeProviderWebsite, trackProviderClick, resolveUserLocation, getSpendingPatterns, trackActivity } from '../api/services'
+import { searchServices, enrichProvider, scrapeProviderWebsite, trackProviderClick, resolveUserLocation, getSpendingPatterns, trackActivity, findServiceDeals } from '../api/services'
 import ServiceMap from '../components/ServiceMap'
 import './Services.css'
 
@@ -232,7 +232,7 @@ function CategoryGroupGrid({ selectedCat, selectedSub, onSelectCat, onSelectSub 
 }
 
 // ── Provider card ──────────────────────────────────────────
-function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, onToggleCompare }) {
+function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, onToggleCompare, deal, budget }) {
   const key = p.placeId || p.name
   const inCompare = compareSet.has(key)
   const canAdd = inCompare || compareSet.size < 3
@@ -243,7 +243,18 @@ function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, 
   const isEnriching = enriching === key
   const isScraping = scraping === key
   return (
-    <div className={`sv-card ${inCompare ? 'sv-card-selected' : ''}`}>
+    <div className={`sv-card ${inCompare ? 'sv-card-selected' : ''} ${deal ? 'sv-card-deal' : ''}`}>
+      {deal && (
+        <div className="sv-deal-ribbon">
+          <span className="sv-deal-ribbon-tag">🎉 DEAL{deal.price ? ` · ${deal.price}` : ''}</span>
+          <span className="sv-deal-ribbon-text">
+            {deal.title || 'Special offer'}{budget ? ` — under your $${budget} budget` : ''}
+          </span>
+          {deal.url && (
+            <a className="sv-deal-ribbon-link" href={deal.url} target="_blank" rel="noopener noreferrer">View deal →</a>
+          )}
+        </div>
+      )}
       <div className="sv-card-left">
         {p.thumbnail
           ? <img className="sv-avatar lg img" src={p.thumbnail} alt="" />
@@ -564,6 +575,10 @@ export default function Services() {
   const [scraping, setScraping]   = useState(null)
   const [websiteData, setWebsiteData] = useState(null)
 
+  // Live budget deals (real deals ≤ budget found via web search)
+  const [deals, setDeals]         = useState([])
+  const [dealsLoading, setDealsLoading] = useState(false)
+
   const [compareSet, setCompareSet] = useState(new Set())
   const [showCompare, setShowCompare] = useState(false)
 
@@ -642,6 +657,43 @@ export default function Services() {
     // 'best' (default): keep Yelp's best_match relevance order
     return arr
   }, [providers, sort, quick])
+
+  // ── Live budget deals ──────────────────────────────────────
+  // When a budget is set, look up REAL current deals ≤ budget for the top
+  // providers (web search) and surface them as "deal under $X" ribbons.
+  const dealBudget = budget || (quick === 'budget' ? 50 : '')
+  useEffect(() => {
+    setDeals([])
+    if (!dealBudget || providers.length === 0) return
+    let cancelled = false
+    setDealsLoading(true)
+    const top = providers.slice(0, 8).map(p => ({
+      name: p.name, city: geo.city || undefined, address: p.address || undefined,
+    }))
+    findServiceDeals({
+      providers: top,
+      budget: dealBudget,
+      category: sub || cat || effectiveQuery,
+      location: geo.city || undefined,
+    })
+      .then(r => { if (!cancelled) setDeals(r?.deals || []) })
+      .catch(() => { if (!cancelled) setDeals([]) })
+      .finally(() => { if (!cancelled) setDealsLoading(false) })
+    return () => { cancelled = true }
+    // Re-run when the result set or budget changes (providers identity changes on new search)
+  }, [providers, dealBudget, geo.city])
+
+  // Match a deal to a provider by normalized name.
+  const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const dealFor = useMemo(() => {
+    const byName = deals.map(d => ({ key: norm(d.name), deal: d })).filter(x => x.key)
+    return (p) => {
+      const pk = norm(p.name)
+      if (!pk) return null
+      const hit = byName.find(x => x.key === pk || x.key.includes(pk) || pk.includes(x.key))
+      return hit ? hit.deal : null
+    }
+  }, [deals])
 
   function toggleCompare(p) {
     const key = p.placeId || p.name
@@ -842,20 +894,52 @@ export default function Services() {
             ) : view === 'map' ? (
               <ServiceMap providers={sortedProviders} userLat={geo.lat} userLng={geo.lng} />
             ) : (
-              <div className="sv-cards">
-                {sortedProviders.map(p => (
-                  <ProviderCard
-                    key={p.placeId || p.name}
-                    p={p}
-                    onEnrich={handleEnrich}
-                    enriching={enriching}
-                    onScrape={handleWebsiteScrape}
-                    scraping={scraping}
-                    compareSet={compareSet}
-                    onToggleCompare={toggleCompare}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Live budget-deals strip */}
+                {dealBudget && (dealsLoading || deals.length > 0) && (
+                  <div className="sv-deals-strip">
+                    {dealsLoading ? (
+                      <div className="sv-deals-strip-loading">
+                        <span className="sv-deals-spinner" /> Finding real deals under ${dealBudget} near you…
+                      </div>
+                    ) : (
+                      <>
+                        <div className="sv-deals-strip-head">
+                          💸 {deals.length} deal{deals.length > 1 ? 's' : ''} under <strong>${dealBudget}</strong> near you
+                        </div>
+                        <div className="sv-deals-strip-list">
+                          {deals.slice(0, 6).map((d, i) => (
+                            <a key={i} className="sv-deal-pill"
+                               href={d.url || '#'} target={d.url ? '_blank' : undefined} rel="noopener noreferrer">
+                              {d.price && <span className="sv-deal-pill-price">{d.price}</span>}
+                              <span className="sv-deal-pill-title">{d.title || 'Deal'}</span>
+                              <span className="sv-deal-pill-store">@ {d.name}</span>
+                            </a>
+                          ))}
+                        </div>
+                        <div className="sv-deals-strip-note">🔎 Live web-verified · deals can change — confirm with the business</div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="sv-cards">
+                  {sortedProviders.map(p => (
+                    <ProviderCard
+                      key={p.placeId || p.name}
+                      p={p}
+                      deal={dealFor(p)}
+                      budget={dealBudget}
+                      onEnrich={handleEnrich}
+                      enriching={enriching}
+                      onScrape={handleWebsiteScrape}
+                      scraping={scraping}
+                      compareSet={compareSet}
+                      onToggleCompare={toggleCompare}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </div>
 

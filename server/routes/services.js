@@ -2,6 +2,7 @@ import express from 'express';
 import { searchServiceProviders as fsqSearch, enrichServiceProvider as fsqEnrich } from '../services/foursquareSearch.js';
 import { searchServiceProviders as yelpSearch, enrichYelpBusiness as yelpEnrich } from '../services/yelpSearch.js';
 import { enrichServiceWebsite, isConfigured as firecrawlReady } from '../services/firecrawl.js';
+import { findLocalDeals, isConfigured as dealsReady } from '../services/localDeals.js';
 import ServiceProvider from '../models/ServiceProvider.js';
 import Favorite from '../models/Favorite.js';
 import UserActivity from '../models/UserActivity.js';
@@ -69,6 +70,20 @@ router.get('/search', optionalAuth, async (req, res) => {
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: 'server_error', message: e.message });
+  }
+});
+
+// Live budget deals — for the businesses in the results, find REAL current deals
+// at/below the user's budget (Perplexity web search). Powers the "this place also
+// has a deal under $X" ribbons.
+router.post('/deals', optionalAuth, async (req, res) => {
+  try {
+    if (!dealsReady()) return res.json({ ok: true, deals: [], disabled: true });
+    const { providers = [], budget, category, location } = req.body || {};
+    const result = await findLocalDeals({ providers, budget, category, location });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message, deals: [] });
   }
 });
 
