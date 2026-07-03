@@ -578,6 +578,7 @@ export default function Services() {
   // Live budget deals (real deals ≤ budget found via web search)
   const [deals, setDeals]         = useState([])
   const [dealsLoading, setDealsLoading] = useState(false)
+  const [dealsSearched, setDealsSearched] = useState(false)
 
   const [compareSet, setCompareSet] = useState(new Set())
   const [showCompare, setShowCompare] = useState(false)
@@ -664,6 +665,7 @@ export default function Services() {
   const dealBudget = budget || (quick === 'budget' ? 50 : '')
   useEffect(() => {
     setDeals([])
+    setDealsSearched(false)
     if (!dealBudget || providers.length === 0) return
     let cancelled = false
     setDealsLoading(true)
@@ -678,7 +680,7 @@ export default function Services() {
     })
       .then(r => { if (!cancelled) setDeals(r?.deals || []) })
       .catch(() => { if (!cancelled) setDeals([]) })
-      .finally(() => { if (!cancelled) setDealsLoading(false) })
+      .finally(() => { if (!cancelled) { setDealsLoading(false); setDealsSearched(true) } })
     return () => { cancelled = true }
     // Re-run when the result set or budget changes (providers identity changes on new search)
   }, [providers, dealBudget, geo.city])
@@ -896,11 +898,15 @@ export default function Services() {
             ) : (
               <>
                 {/* Live budget-deals strip */}
-                {dealBudget && (dealsLoading || deals.length > 0) && (
+                {dealBudget && (dealsLoading || deals.length > 0 || dealsSearched) && (
                   <div className="sv-deals-strip">
                     {dealsLoading ? (
                       <div className="sv-deals-strip-loading">
                         <span className="sv-deals-spinner" /> Finding real deals under ${dealBudget} near you…
+                      </div>
+                    ) : deals.length === 0 ? (
+                      <div className="sv-deals-strip-empty">
+                        💸 We checked the web — no published deals under ${dealBudget} found for these businesses right now. Prices shown are still within your budget.
                       </div>
                     ) : (
                       <>
