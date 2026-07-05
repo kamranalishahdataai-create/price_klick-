@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { searchServices, enrichProvider, scrapeProviderWebsite, trackProviderClick, resolveUserLocation, getSpendingPatterns, trackActivity, findServiceDeals } from '../api/services'
+import { searchServices, enrichProvider, trackProviderClick, resolveUserLocation, getSpendingPatterns, trackActivity, findServiceDeals, getProviderMenu } from '../api/services'
 import ServiceMap from '../components/ServiceMap'
 import './Services.css'
 
@@ -294,11 +294,9 @@ function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, 
           <button className="sv-btn ghost" disabled={isEnriching} onClick={() => onEnrich(p)}>
             {isEnriching ? '…' : '✨ Details'}
           </button>
-          {p.website && (
-            <button className="sv-btn ghost sv-btn-firecrawl" disabled={isScraping} onClick={() => onScrape(p)}>
-              {isScraping ? '…' : '📋 Menu / Pricing'}
-            </button>
-          )}
+          <button className="sv-btn ghost sv-btn-firecrawl" disabled={isScraping} onClick={() => onScrape(p)}>
+            {isScraping ? '…' : '📋 Menu / Pricing'}
+          </button>
         </div>
       </div>
     </div>
@@ -554,6 +552,47 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
   )
 }
 
+// ── Menu matches strip (scraped menu items ≤ budget, under a provider card) ──
+function MenuMatchesStrip({ menu, budget, provider }) {
+  if (menu.loading) {
+    return (
+      <div className="sv-menu-strip sv-menu-strip-loading">
+        <span className="sv-deals-spinner" /> Reading {provider.name}&rsquo;s menu…
+      </div>
+    )
+  }
+  const d = menu.data
+  if (!d?.ok || !d.matches?.length) return null
+  const site = d.website || null
+  let host = null
+  try { host = site ? new URL(site).hostname.replace(/^www\./, '').toUpperCase() : null } catch {}
+  return (
+    <div className="sv-menu-strip">
+      <div className="sv-menu-strip-head">
+        <span className="sv-menu-strip-title">
+          🏷️ MENU MATCHES UNDER ${budget}{host ? <> · <span className="sv-menu-strip-host">{host}</span></> : null}
+        </span>
+        {site && (
+          <a href={site} target="_blank" rel="noopener noreferrer" className="sv-menu-visit">Visit site ↗</a>
+        )}
+      </div>
+      <div className="sv-menu-cards">
+        {d.matches.slice(0, 8).map((it, i) => (
+          <div key={i} className="sv-menu-card">
+            <div className="sv-menu-card-top">
+              <span className="sv-menu-card-name">{it.name}</span>
+              <span className="sv-menu-card-price">{it.priceDisplay}</span>
+            </div>
+            {it.section && <div className="sv-menu-card-section">{it.section}</div>}
+            {it.description && <div className="sv-menu-card-desc">{it.description}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="sv-deals-strip-note">🔎 Prices read live from the business&rsquo;s published menu · confirm before ordering</div>
+    </div>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────
 export default function Services() {
   const [cat, setCat]         = useState(null)
@@ -573,7 +612,8 @@ export default function Services() {
   const [enriching, setEnriching] = useState(null)
   const [enriched, setEnriched]   = useState(null)
   const [scraping, setScraping]   = useState(null)
-  const [websiteData, setWebsiteData] = useState(null)
+  const [menuModal, setMenuModal] = useState(null)   // full-menu modal (bucketed)
+  const [menus, setMenus] = useState({})             // key -> {loading, data} auto strips
 
   // Live budget deals (real deals ≤ budget found via web search)
   const [deals, setDeals]         = useState([])
@@ -719,18 +759,48 @@ export default function Services() {
     }
   }
 
-  async function handleWebsiteScrape(prov) {
-    if (!prov?.website) return
-    setScraping(prov.placeId || prov.name)
+  // Yelp "website" is the listing URL, not the business site — don't feed it to
+  // the scraper as an official-site hint.
+  const realSiteOf = (p) => (p?.website && !/yelp\.com/i.test(p.website)) ? p.website : undefined
+
+  // Open the full scraped menu / price list for one provider (bucket chips + budget highlight)
+  async function handleMenuOpen(prov) {
+    const key = prov.placeId || prov.name
+    setScraping(key)
+    setMenuModal({ providerName: prov.name, loading: true, bucket: null })
     try {
-      const r = await scrapeProviderWebsite({ url: prov.website, name: prov.name })
-      setWebsiteData({ ...r, providerName: prov.name, providerUrl: prov.website })
+      const r = await getProviderMenu({
+        provider: { placeId: prov.placeId, name: prov.name, website: realSiteOf(prov), city: geo.city || undefined },
+        category: sub || cat || effectiveQuery,
+        budget: dealBudget || undefined,
+      })
+      setMenuModal({ providerName: prov.name, loading: false, data: r, bucket: null })
     } catch (e) {
-      setWebsiteData({ ok: false, error: e.message, providerName: prov.name })
+      setMenuModal({ providerName: prov.name, loading: false, error: e.message, bucket: null })
     } finally {
       setScraping(null)
     }
   }
+
+  // Auto-load scraped menus for the top providers when a budget is set, powering
+  // the "MENU MATCHES UNDER $X" strips (results are cached server-side for 7 days).
+  useEffect(() => {
+    setMenus({})
+    if (!dealBudget || providers.length === 0) return
+    let cancelled = false
+    providers.slice(0, 2).forEach(p => {
+      const key = p.placeId || p.name
+      setMenus(m => ({ ...m, [key]: { loading: true } }))
+      getProviderMenu({
+        provider: { placeId: p.placeId, name: p.name, website: realSiteOf(p), city: geo.city || undefined },
+        category: sub || cat || effectiveQuery,
+        budget: dealBudget,
+      })
+        .then(r => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false, data: r } })) })
+        .catch(() => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false } })) })
+    })
+    return () => { cancelled = true }
+  }, [providers, dealBudget, geo.city])
 
   function clearAll() {
     setCat(null); setSub(null); setQ(''); setBudget(''); setMinRating(''); setQuick(null); setRadiusKm(10)
@@ -930,20 +1000,28 @@ export default function Services() {
                 )}
 
                 <div className="sv-cards">
-                  {sortedProviders.map(p => (
-                    <ProviderCard
-                      key={p.placeId || p.name}
-                      p={p}
-                      deal={dealFor(p)}
-                      budget={dealBudget}
-                      onEnrich={handleEnrich}
-                      enriching={enriching}
-                      onScrape={handleWebsiteScrape}
-                      scraping={scraping}
-                      compareSet={compareSet}
-                      onToggleCompare={toggleCompare}
-                    />
-                  ))}
+                  {sortedProviders.map(p => {
+                    const key = p.placeId || p.name
+                    const menu = menus[key]
+                    return (
+                      <React.Fragment key={key}>
+                        <ProviderCard
+                          p={p}
+                          deal={dealFor(p)}
+                          budget={dealBudget}
+                          onEnrich={handleEnrich}
+                          enriching={enriching}
+                          onScrape={handleMenuOpen}
+                          scraping={scraping}
+                          compareSet={compareSet}
+                          onToggleCompare={toggleCompare}
+                        />
+                        {menu && dealBudget && (
+                          <MenuMatchesStrip menu={menu} budget={dealBudget} provider={p} />
+                        )}
+                      </React.Fragment>
+                    )
+                  })}
                 </div>
               </>
             )}
@@ -1055,77 +1133,76 @@ export default function Services() {
         </div>
       )}
 
-      {/* ── Firecrawl website pricing modal ── */}
-      {websiteData && (
-        <div className="sv-modal" onClick={() => setWebsiteData(null)}>
+      {/* ── Scraped menu / price-list modal (bucketed) ── */}
+      {menuModal && (
+        <div className="sv-modal" onClick={() => setMenuModal(null)}>
           <div className="sv-modal-card" onClick={e => e.stopPropagation()}>
-            <button className="sv-modal-close" onClick={() => setWebsiteData(null)}>✕</button>
+            <button className="sv-modal-close" onClick={() => setMenuModal(null)}>✕</button>
             <div className="sv-modal-body">
-              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                <span style={{fontSize:22}}>🌐</span>
-                <h3 style={{margin:0}}>{websiteData.providerName}</h3>
-                <span className="sv-tag-mini" style={{marginLeft:'auto'}}>Firecrawl</span>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                <span style={{fontSize:22}}>📋</span>
+                <h3 style={{margin:0}}>{menuModal.providerName}</h3>
+                {menuModal.data?.website && (
+                  <a href={menuModal.data.website} target="_blank" rel="noopener noreferrer"
+                     className="sv-btn ghost" style={{marginLeft:'auto',fontSize:12}}>Visit site ↗</a>
+                )}
               </div>
-              {!websiteData.ok ? (
-                <div>
-                  <p style={{color:'var(--muted-foreground)'}}>{websiteData.message || websiteData.error || 'Could not scrape website.'}</p>
-                  {websiteData.providerUrl && (
-                    <a href={websiteData.providerUrl} target="_blank" rel="noopener noreferrer"
-                       className="sv-btn primary" style={{marginTop:12,display:'inline-flex'}}>
-                      Visit Website →
-                    </a>
-                  )}
+
+              {menuModal.loading ? (
+                <div className="sv-menu-strip-loading" style={{padding:'18px 0'}}>
+                  <span className="sv-deals-spinner" /> Reading the published menu / price list from the web…
                 </div>
-              ) : (() => {
-                const d = websiteData.extract
-                if (!d) return <p style={{color:'var(--muted-foreground)'}}>No structured data found.</p>
-                return (
-                  <>
-                    {d.about && <p style={{color:'var(--muted-foreground)',fontSize:14,marginBottom:14}}>{d.about}</p>}
-                    {d.services?.length > 0 && (
-                      <div style={{marginBottom:16}}>
-                        <strong>Services &amp; Pricing</strong>
-                        <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
-                          {d.services.map((s, i) => (
-                            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
-                              padding:'8px 12px',borderRadius:10,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)'}}>
-                              <span style={{fontWeight:600}}>{s.name}</span>
-                              <span style={{display:'flex',gap:12}}>
-                                {s.price && <span className="sv-from">{s.price}</span>}
-                                {s.description && <span style={{color:'var(--muted-foreground)',fontSize:12}}>{s.description}</span>}
+              ) : !menuModal.data?.ok || !menuModal.data.items?.length ? (
+                <p style={{color:'var(--muted-foreground)'}}>
+                  {menuModal.error || 'No published prices found online for this business yet. Try their website or call for pricing.'}
+                </p>
+              ) : (
+                <>
+                  {/* Price-bucket chips */}
+                  <div className="sv-menu-buckets">
+                    <button
+                      className={`sv-subchip ${!menuModal.bucket ? 'active' : ''}`}
+                      onClick={() => setMenuModal(m => ({ ...m, bucket: null }))}
+                    >
+                      All ({menuModal.data.items.length})
+                    </button>
+                    {Object.entries(menuModal.data.bucketCounts || {})
+                      .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+                      .map(([b, n]) => (
+                        <button key={b}
+                          className={`sv-subchip ${menuModal.bucket === b ? 'active' : ''}`}
+                          onClick={() => setMenuModal(m => ({ ...m, bucket: m.bucket === b ? null : b }))}
+                        >
+                          ${b} ({n})
+                        </button>
+                      ))}
+                  </div>
+
+                  <div className="sv-menu-list">
+                    {menuModal.data.items
+                      .filter(it => !menuModal.bucket || it.bucket === menuModal.bucket)
+                      .map((it, i) => {
+                        const inBudget = dealBudget && it.price != null && it.price <= parseFloat(dealBudget)
+                        return (
+                          <div key={i} className={`sv-menu-row ${inBudget ? 'in-budget' : ''}`}>
+                            <div className="sv-menu-row-main">
+                              <span className="sv-menu-row-name">
+                                {it.name}
+                                {inBudget && <span className="sv-menu-row-flag">≤ ${dealBudget}</span>}
                               </span>
+                              {it.section && <span className="sv-menu-row-section">{it.section}</span>}
+                              {it.description && <div className="sv-menu-row-desc">{it.description}</div>}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {d.specialOffers?.length > 0 && (
-                      <div style={{marginBottom:14}}>
-                        <strong>Special Offers</strong>
-                        <ul style={{margin:'8px 0 0',paddingLeft:18,color:'oklch(82% .18 155)',fontSize:14}}>
-                          {d.specialOffers.map((o, i) => <li key={i}>{o}</li>)}
-                        </ul>
-                      </div>
-                    )}
-                    {d.businessHours && (
-                      <div style={{marginBottom:14}}>
-                        <strong>Hours</strong>
-                        <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:13,margin:'6px 0 0',color:'var(--muted-foreground)'}}>{d.businessHours}</pre>
-                      </div>
-                    )}
-                    {d.contact && Object.values(d.contact).some(Boolean) && (
-                      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:8}}>
-                        {d.contact.phone && <a href={`tel:${d.contact.phone}`} className="sv-btn ghost">📞 {d.contact.phone}</a>}
-                        {d.contact.email && <a href={`mailto:${d.contact.email}`} className="sv-btn ghost">✉ {d.contact.email}</a>}
-                      </div>
-                    )}
-                    <a href={websiteData.providerUrl} target="_blank" rel="noopener noreferrer"
-                       className="sv-btn primary" style={{marginTop:14,display:'inline-flex'}}>
-                      Visit Website →
-                    </a>
-                  </>
-                )
-              })()}
+                            <span className="sv-menu-row-price">{it.priceDisplay}</span>
+                          </div>
+                        )
+                      })}
+                  </div>
+                  <div className="sv-deals-strip-note" style={{marginTop:10}}>
+                    🔎 Prices read live from the business&rsquo;s published menu · confirm before ordering
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

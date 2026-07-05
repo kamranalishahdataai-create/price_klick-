@@ -1415,3 +1415,79 @@
   color: var(--muted-foreground, #9a92b8);
   line-height: 1.5;
 }
+
+/* ── Menu matches strip (scraped items ≤ budget, under a provider card) ── */
+.sv-menu-strip {
+  margin: -6px 0 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: oklch(82% .18 155 / .05);
+  border: 1px solid oklch(82% .18 155 / .22);
+}
+.sv-menu-strip-loading {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--muted-foreground, #9a92b8); font-weight: 600;
+}
+.sv-menu-strip-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px;
+}
+.sv-menu-strip-title {
+  font-size: 12px; font-weight: 800; letter-spacing: .06em;
+  color: oklch(82% .18 155);
+}
+.sv-menu-strip-host { opacity: .8; }
+.sv-menu-visit {
+  font-size: 12px; font-weight: 700; color: oklch(82% .18 155);
+  text-decoration: none; white-space: nowrap;
+}
+.sv-menu-visit:hover { text-decoration: underline; }
+.sv-menu-cards {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.sv-menu-card {
+  flex: 0 0 210px; min-width: 0;
+  padding: 10px 12px; border-radius: 12px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.09);
+}
+.sv-menu-card-top {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+}
+.sv-menu-card-name {
+  font-size: 13px; font-weight: 700; color: var(--foreground, #f7f5ff);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sv-menu-card-price { font-size: 14px; font-weight: 800; color: oklch(82% .18 155); white-space: nowrap; }
+.sv-menu-card-section {
+  margin-top: 3px; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted-foreground, #9a92b8);
+}
+.sv-menu-card-desc {
+  margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--muted-foreground, #9a92b8);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ── Full-menu modal (bucket chips + rows) ── */
+.sv-menu-buckets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.sv-menu-list { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+.sv-menu-row {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
+  padding: 9px 12px; border-radius: 10px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+}
+.sv-menu-row.in-budget { border-color: oklch(82% .18 155 / .4); background: oklch(82% .18 155 / .06); }
+.sv-menu-row-main { min-width: 0; }
+.sv-menu-row-name { font-size: 13.5px; font-weight: 700; }
+.sv-menu-row-flag {
+  margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 800;
+  background: oklch(82% .18 155); color: oklch(20% .05 155);
+}
+.sv-menu-row-section {
+  display: block; margin-top: 2px; font-size: 10px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted-foreground, #9a92b8);
+}
+.sv-menu-row-desc { margin-top: 3px; font-size: 12px; color: var(--muted-foreground, #9a92b8); line-height: 1.45; }
+.sv-menu-row-price { font-size: 14px; font-weight: 800; color: oklch(82% .18 155); white-space: nowrap; }

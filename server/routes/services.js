@@ -2,6 +2,7 @@ import express from 'express';
 import { searchServiceProviders as fsqSearch, enrichServiceProvider as fsqEnrich } from '../services/foursquareSearch.js';
 import { searchServiceProviders as yelpSearch, enrichYelpBusiness as yelpEnrich } from '../services/yelpSearch.js';
 import { enrichServiceWebsite, isConfigured as firecrawlReady } from '../services/firecrawl.js';
+import { getProviderMenu, isConfigured as menuReady } from '../services/menuScraper.js';
 import { findLocalDeals, isConfigured as dealsReady } from '../services/localDeals.js';
 import ServiceProvider from '../models/ServiceProvider.js';
 import Favorite from '../models/Favorite.js';
@@ -184,6 +185,33 @@ router.post('/enrich', optionalAuth, async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('services/enrich', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Scrape-or-cache a provider's published menu / price list, bucketed by price.
+// Body: { provider: {placeId?, name, website?, city?}, category?, budget?, force? }
+// Returns items (full menu) + matches (≤ budget), served from Mongo when fresh.
+router.post('/menu', optionalAuth, async (req, res) => {
+  try {
+    const { provider = {}, category, budget, force } = req.body || {};
+    if (!provider.name) return res.status(400).json({ ok: false, error: 'provider_name_required' });
+    if (!menuReady()) {
+      return res.status(503).json({ ok: false, error: 'menu_not_configured', message: 'No scraping engine configured.' });
+    }
+    const result = await getProviderMenu({
+      placeId: provider.placeId,
+      name: provider.name,
+      website: provider.website,
+      city: provider.city,
+      location: provider.location,
+      category,
+      budget,
+      force: !!force && req.user?.role === 'admin', // force re-scrape is admin-only
+    });
+    res.json(result);
+  } catch (e) {
+    console.error('services/menu', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

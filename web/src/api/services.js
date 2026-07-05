@@ -63,6 +63,21 @@ export async function scrapeProviderWebsite(body = {}) {
  * Scrape a product page URL for its live price via Firecrawl.
  * @param {string} url
  */
+/**
+ * Get a provider's scraped menu / price list (bucketed; cached server-side).
+ * @param {{ provider: {placeId?, name, website?, city?}, category?, budget? }} body
+ */
+export async function getProviderMenu(body = {}) {
+  const res = await fetch(`${API}/api/services/menu`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body)
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok && !data.message) throw new Error(`menu failed ${res.status}`)
+  return data
+}
+
 export async function scrapeProductPrice(url) {
   const res = await fetch(`${API}/api/prices/scrape`, {
     method: 'POST',
