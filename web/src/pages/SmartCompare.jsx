@@ -127,14 +127,25 @@ function brandDestination(brand, fallbackQuery) {
   return searchUrl(fallbackQuery || brand)
 }
 
+// Search-engine result links are never a destination — the user should land on
+// the car/product page itself, not on Google. Treat them as missing so we
+// resolve the brand's real page instead.
+function isSearchUrl(url) {
+  return typeof url === 'string'
+    && /(google|bing|duckduckgo|yahoo)\.[a-z.]+\/(search|shopping)|google\.[a-z.]+\/url/i.test(url)
+}
+function directUrlOf(u) {
+  return (typeof u === 'string' && /^https?:\/\//i.test(u) && !isSearchUrl(u)) ? u : null
+}
+
 // Promotion → its real offer page (AI url) or the brand's offers/homepage.
 function promoHref(p) {
-  return p.url || brandDestination(p.brand, `${p.brand || ''} ${p.title || ''} offer`)
+  return directUrlOf(p.url) || brandDestination(p.brand, `${p.brand || ''} ${p.title || ''} offer`)
 }
 
 // Option → its real product page (AI url) or the brand's site.
 function optionHref(o) {
-  return o.url || brandDestination(o.brand, `${o.brand || ''} ${o.model || ''}`)
+  return directUrlOf(o.url) || brandDestination(o.brand, `${o.brand || ''} ${o.model || ''}`)
 }
 
 function FitBadge({ score }) {
@@ -160,21 +171,26 @@ function OptionCard({ o }) {
     }
   }
 
+  const href = optionHref(o)
   return (
     <div className="sc-option">
       <div className="sc-option-head">
         <FitBadge score={o.fitScore || 0} />
-        <div className="sc-option-id">
+        <a className="sc-option-id" href={href} target="_blank" rel="noopener noreferrer"
+           style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="sc-option-logo" style={{ background: lg.bg }}>{lg.initial}</div>
           <div>
             <div className="sc-option-brand">{o.brand}</div>
             <div className="sc-option-model">{o.model}</div>
           </div>
-        </div>
+        </a>
       </div>
-      {o.image
-        ? <img className="sc-option-img" src={o.image} alt={`${o.brand} ${o.model}`} loading="lazy" />
-        : <div className="sc-option-img placeholder">{o.brand}</div>}
+      <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'block', cursor: 'pointer' }}
+         title={`Open ${o.brand || ''} ${o.model || ''}`}>
+        {o.image
+          ? <img className="sc-option-img" src={o.image} alt={`${o.brand} ${o.model}`} loading="lazy" />
+          : <div className="sc-option-img placeholder">{o.brand}</div>}
+      </a>
       {o.tag && <span className="sc-option-tag">⚡ {o.tag}</span>}
       <div className="sc-option-price">
         {livePrice && !livePrice.error ? (
@@ -209,9 +225,9 @@ function OptionCard({ o }) {
         </div>
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}>
-        {/* Always clickable — real URL if the AI gave one, else the brand's site */}
-        <a className="sc-view-details" href={optionHref(o)} target="_blank" rel="noopener noreferrer">
-          {o.url ? 'View Details →' : `View at ${o.brand || 'brand'} →`}
+        {/* Always clickable — direct product page if we have one, else the brand's site */}
+        <a className="sc-view-details" href={href} target="_blank" rel="noopener noreferrer">
+          {directUrlOf(o.url) ? 'View Details →' : `View at ${o.brand || 'brand'} →`}
         </a>
         {o.url && !livePrice && (
           <button onClick={checkLivePrice} disabled={checking}

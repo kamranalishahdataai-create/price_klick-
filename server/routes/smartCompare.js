@@ -74,6 +74,11 @@ async function callPerplexity({ query, budget, location, category }) {
 // but no live web) and use Perplexity's live web access to fill in REAL, current
 // URLs for each promotion + option, plus attach source citations. Best-effort —
 // returns the original object unchanged on any failure.
+// A search-engine results link is not a destination — users must land on the
+// product/offer page itself, never on Google.
+const isSearchEngineUrl = (u) =>
+  typeof u === 'string' && /(google|bing|duckduckgo|yahoo)\.[a-z.]+\/(search|shopping)|google\.[a-z.]+\/url/i.test(u);
+
 async function enrichUrlsWithPerplexity(parsed, { location } = {}) {
   const KEY = getPerplexityKey();
   if (!KEY || !parsed) return parsed;
@@ -82,17 +87,23 @@ async function enrichUrlsWithPerplexity(parsed, { location } = {}) {
   const options = Array.isArray(parsed.options) ? parsed.options : [];
 
   // Flat list of items needing a real URL (cap to keep the prompt tight).
+  // An option "needs" a URL when it has none OR when the engine produced a
+  // search-engine link instead of the actual product page.
   const items = [];
   promos.slice(0, 5).forEach((p, idx) =>
     items.push({ kind: 'promo', idx, label: `${p.brand || ''} — ${p.title || ''} (promotion/offer page)` }));
   options.slice(0, 5).forEach((o, idx) => {
-    if (!o.url) items.push({ kind: 'option', idx, label: `${o.brand || ''} ${o.model || ''} (official product page)` });
+    if (!o.url || isSearchEngineUrl(o.url)) {
+      items.push({ kind: 'option', idx, label: `${o.brand || ''} ${o.model || ''} (the official manufacturer product page for this exact model)` });
+    }
   });
   if (items.length === 0) return parsed;
 
   const list = items.map((it, i) => `${i + 1}. ${it.label}`).join('\n');
   const prompt =
-    `Find the EXACT current official URL for each item below. For promotions link to the brand's specific offers/deals page; for products link to the official product page. Use ONLY real, working URLs you can verify right now${location ? ` for the ${location} region` : ''}.\n\nItems:\n${list}\n\nRespond with ONLY this JSON: {"items":[{"n":<item number>,"url":"<exact url>"}]}`;
+    `Find the EXACT current official URL for each item below. For promotions link to the brand's specific offers/deals page; for products link to the official manufacturer product page for that exact model. ` +
+    `Use ONLY real, working URLs you can verify right now${location ? ` for the ${location} region` : ''}. ` +
+    `NEVER return a search-engine results URL (google.com/search, bing.com, etc.) — only the destination page itself.\n\nItems:\n${list}\n\nRespond with ONLY this JSON: {"items":[{"n":<item number>,"url":"<exact url>"}]}`;
 
   try {
     const r = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -119,7 +130,7 @@ async function enrichUrlsWithPerplexity(parsed, { location } = {}) {
     found.forEach(u => {
       const n = Number(u.n);
       const url = typeof u.url === 'string' ? u.url.trim() : '';
-      if (!n || !/^https?:\/\//i.test(url)) return;
+      if (!n || !/^https?:\/\//i.test(url) || isSearchEngineUrl(url)) return;
       const it = items[n - 1];
       if (!it) return;
       if (it.kind === 'promo' && promos[it.idx]) { promos[it.idx].url = url; applied++; }
