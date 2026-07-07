@@ -468,7 +468,6 @@ export default function Services() {
   const [q, setQ]             = useState('')
   const [budget, setBudget]   = useState('')
   const [minRating, setMinRating] = useState('')
-  const [sort, setSort]       = useState('rating')
   const [quick, setQuick]     = useState(null)
   const [radiusKm, setRadiusKm] = useState(25)
 
@@ -559,15 +558,10 @@ export default function Services() {
     return () => debounceRef.current && clearTimeout(debounceRef.current)
   }, [effectiveQuery, geo.lat, geo.lng, radiusKm, budget, minRating, quick, trackingEnabled])
 
+  // Best providers first (rating desc); no user-facing sort control per client.
   const sortedProviders = useMemo(() => {
-    const arr = [...providers]
-    const dist = p => typeof p.distanceKm === 'number' ? p.distanceKm : Infinity
-    const priceN = p => typeof p.priceValue === 'number' ? p.priceValue : Infinity
-    if (sort === 'price-asc') arr.sort((a, b) => priceN(a) - priceN(b))
-    else if (sort === 'distance') arr.sort((a, b) => dist(a) - dist(b))
-    else arr.sort((a, b) => (b.rating || 0) - (a.rating || 0)) // 'rating' (Top Rated)
-    return arr
-  }, [providers, sort])
+    return [...providers].sort((a, b) => (b.rating || 0) - (a.rating || 0))
+  }, [providers])
 
   // ── Live budget deals (real published promos ≤ budget) ────
   const dealBudget = budget || ''
@@ -791,12 +785,6 @@ export default function Services() {
               value={budget} onChange={e => setBudget(e.target.value)}
             />
           </label>
-          <span className="sv-ctl-sep" />
-          <select className="sv-ctl-select sv-ctl-sort" value={sort} onChange={e => setSort(e.target.value)}>
-            <option value="rating">Top Rated</option>
-            <option value="price-asc">Price: Low → High</option>
-            <option value="distance">Closest First</option>
-          </select>
           <div className="sv-viewtoggle">
             <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')}>☰ List</button>
             <button className={view === 'map' ? 'active' : ''} onClick={() => setView('map')}>🗺 Map</button>

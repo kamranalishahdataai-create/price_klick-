@@ -29,6 +29,20 @@
 }
 .sv-shell { max-width: 1200px; margin: 0 auto; }
 
+/* The rest of the site is dark-themed and its global input/select rules can
+   outrank scoped classes — force readable dark text on every field here. */
+.sv-page input,
+.sv-page select,
+.sv-page textarea {
+  color: #1c2333 !important;
+  caret-color: #6d4aff;
+}
+.sv-page input::placeholder,
+.sv-page textarea::placeholder { color: #9aa3b5 !important; }
+.sv-page select option { background: #fff; color: #1c2333; }
+.sv-page input::selection,
+.sv-page textarea::selection { background: rgba(109, 74, 255, .22); color: #1c2333; }
+
 /* ── Utility row ─────────────────────────────────────────── */
 .sv-util-row {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
