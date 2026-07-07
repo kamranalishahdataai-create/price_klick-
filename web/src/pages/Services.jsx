@@ -4,31 +4,121 @@ import { searchServices, enrichProvider, trackProviderClick, resolveUserLocation
 import ServiceMap from '../components/ServiceMap'
 import './Services.css'
 
-// ── Flat service chips (client design) with drill-down subcategories ─────────
-const FLAT_SERVICES = [
-  { label: 'Auto Repair',       subs: ['Oil Change', 'Tires', 'Brakes', 'Transmission', 'Battery', 'Wheel Alignment', 'Diagnostics'] },
-  { label: 'Catering',          subs: ['Wedding Catering', 'Corporate Catering', 'Event Catering'] },
-  { label: 'Cleaning',          subs: ['Deep Cleaning', 'Move-out Cleaning', 'Recurring Cleaning', 'Carpet Cleaning', 'Window Cleaning'] },
-  { label: 'Electrical',        subs: ['Wiring', 'Panel Upgrade', 'Lighting', 'EV Charger'] },
-  { label: 'HVAC',              subs: ['AC Repair', 'Furnace Repair', 'Duct Cleaning', 'Heat Pump'] },
-  { label: 'IT Support',        subs: ['Computer Repair', 'Network Setup', 'Data Recovery'] },
-  { label: 'Landscaping',       subs: ['Lawn Care', 'Tree Service', 'Snow Removal', 'Irrigation'] },
-  { label: 'Moving',            subs: ['Local Movers', 'Long Distance', 'Packing', 'Storage'] },
-  { label: 'Painting',          subs: ['Interior', 'Exterior', 'Cabinet Painting'] },
-  { label: 'Personal Training', subs: [] },
-  { label: 'Pest Control',      subs: ['Rodents', 'Insects', 'Termites', 'Bed Bugs'] },
-  { label: 'Photography',       subs: ['Wedding', 'Portrait', 'Product', 'Events'] },
-  { label: 'Plumbing',          subs: ['Leak Repair', 'Drain Cleaning', 'Water Heater', 'Toilet Repair'] },
-  { label: 'Roofing',           subs: ['Roof Repair', 'Roof Replacement', 'Gutters'] },
-  { label: 'Tutoring',          subs: ['Math', 'Science', 'English', 'Languages', 'Exam Prep'] },
+// ── Category taxonomy (two levels: broad category → subcategories) ─────────────
+// Every broad category that has natural subdivisions carries a `subs` array, so
+// e.g. Auto Repair → Tires / Oil Change, Restaurants → Burgers / Pizza, etc.
+const CATEGORY_GROUPS = [
+  { id: 'food', icon: '🍽️', label: 'Food & Dining', items: [
+    { name: 'Restaurants', subs: ['Burgers','Pizza','Sushi','Italian','Chinese','Mexican','Indian','Thai','Steakhouse','Seafood','Vegan','BBQ','Breakfast','Fast Food'] },
+    { name: 'Coffee & Tea', subs: ['Cafés','Espresso Bars','Bubble Tea','Juice Bars'] },
+    { name: 'Bakeries', subs: ['Cakes','Pastries','Bread','Donuts','Cupcakes'] },
+    { name: 'Bars', subs: ['Sports Bars','Wine Bars','Pubs','Cocktail Bars','Breweries'] },
+    { name: 'Catering', subs: ['Wedding Catering','Corporate Catering','Event Catering','Drop-off Catering'] },
+    { name: 'Food Trucks' },
+    { name: 'Meal Prep' },
+  ]},
+  { id: 'home', icon: '🏠', label: 'Home Services', items: [
+    { name: 'Plumbing', subs: ['Leak Repair','Drain Cleaning','Water Heater','Toilet Repair','Pipe Installation'] },
+    { name: 'Electrical', subs: ['Wiring','Panel Upgrade','Lighting','EV Charger','Outlet Repair'] },
+    { name: 'HVAC', subs: ['AC Repair','Furnace Repair','Duct Cleaning','Thermostat','Heat Pump'] },
+    { name: 'House Cleaning', subs: ['Deep Cleaning','Move-out Cleaning','Recurring Cleaning','Carpet Cleaning','Window Cleaning'] },
+    { name: 'Landscaping', subs: ['Lawn Care','Tree Service','Snow Removal','Garden Design','Irrigation'] },
+    { name: 'Pest Control', subs: ['Rodents','Insects','Termites','Bed Bugs'] },
+    { name: 'Roofing', subs: ['Roof Repair','Roof Replacement','Gutters','Shingles'] },
+    { name: 'Painting', subs: ['Interior','Exterior','Cabinet Painting'] },
+    { name: 'Moving', subs: ['Local Movers','Long Distance','Packing','Storage'] },
+    { name: 'Handyman' },
+  ]},
+  { id: 'auto', icon: '🚗', label: 'Auto & Transport', items: [
+    { name: 'Auto Repair', subs: ['Oil Change','Tires','Brakes','Transmission','Engine Repair','Battery','Muffler & Exhaust','Wheel Alignment','AC Repair','Diagnostics'] },
+    { name: 'Car Wash', subs: ['Hand Wash','Auto Detailing','Interior Cleaning','Ceramic Coating'] },
+    { name: 'Body Shop', subs: ['Collision Repair','Dent Removal','Auto Painting','Windshield'] },
+    { name: 'Tire Shop', subs: ['New Tires','Tire Rotation','Wheel Alignment','Flat Repair'] },
+    { name: 'Towing' },
+    { name: 'Mechanics' },
+  ]},
+  { id: 'health', icon: '🏥', label: 'Health & Medical', items: [
+    { name: 'Doctors', subs: ['Family Doctor','Walk-in Clinic','Pediatrician','Dermatologist','Cardiologist'] },
+    { name: 'Dentists', subs: ['Cleaning','Braces','Implants','Whitening','Emergency Dentist'] },
+    { name: 'Therapists', subs: ['Counseling','Physiotherapy','Occupational Therapy','Speech Therapy'] },
+    { name: 'Gyms', subs: ['Fitness Center','CrossFit','Yoga Studio','Pilates','Boxing'] },
+    { name: 'Massage', subs: ['Deep Tissue','Swedish','Sports Massage','Thai Massage'] },
+    { name: 'Optometrists' },
+    { name: 'Chiropractors' },
+    { name: 'Pharmacies' },
+  ]},
+  { id: 'beauty', icon: '💇', label: 'Beauty & Care', items: [
+    { name: 'Hair Salons', subs: ['Haircut','Coloring','Balayage','Extensions','Blowout'] },
+    { name: 'Barbers', subs: ['Haircut','Beard Trim','Hot Shave','Kids Cut'] },
+    { name: 'Nail Salons', subs: ['Manicure','Pedicure','Gel Nails','Acrylics'] },
+    { name: 'Spas', subs: ['Facials','Body Treatments','Couples Spa','Sauna'] },
+    { name: 'Makeup Artists', subs: ['Bridal','Special Event','Lessons'] },
+    { name: 'Waxing' },
+    { name: 'Eyelash Extensions' },
+    { name: 'Tanning' },
+  ]},
+  { id: 'education', icon: '📚', label: 'Education', items: [
+    { name: 'Tutoring', subs: ['Math','Science','English','Languages','Exam Prep'] },
+    { name: 'Music Lessons', subs: ['Piano','Guitar','Violin','Singing','Drums'] },
+    { name: 'Language Classes', subs: ['English (ESL)','French','Spanish','Mandarin'] },
+    { name: 'Driving School' },
+    { name: 'Dance Classes', subs: ['Ballet','Hip Hop','Salsa','Contemporary'] },
+    { name: 'Coding Classes' },
+    { name: 'Test Prep' },
+    { name: 'Personal Training' },
+  ]},
+  { id: 'professional', icon: '💼', label: 'Professional', items: [
+    { name: 'Accountants', subs: ['Tax Prep','Bookkeeping','Payroll','Audit'] },
+    { name: 'Lawyers', subs: ['Family Law','Real Estate Law','Immigration','Criminal','Business Law'] },
+    { name: 'IT Support', subs: ['Computer Repair','Network Setup','Data Recovery','Managed IT'] },
+    { name: 'Photography', subs: ['Wedding','Portrait','Product','Real Estate','Events'] },
+    { name: 'Marketing', subs: ['SEO','Social Media','Web Design','Branding'] },
+    { name: 'Real Estate' },
+    { name: 'Financial Advisors' },
+  ]},
+  { id: 'events', icon: '🎉', label: 'Events', items: [
+    { name: 'Event Planning', subs: ['Weddings','Corporate','Birthdays','Conferences'] },
+    { name: 'DJs', subs: ['Wedding DJ','Club DJ','Party DJ'] },
+    { name: 'Venues', subs: ['Banquet Halls','Wedding Venues','Conference Rooms','Outdoor'] },
+    { name: 'Florists', subs: ['Wedding Flowers','Bouquets','Event Arrangements'] },
+    { name: 'Photo Booths' },
+    { name: 'Entertainment' },
+  ]},
+  { id: 'pet', icon: '🐾', label: 'Pet Services', items: [
+    { name: 'Vets', subs: ['Checkups','Vaccinations','Surgery','Emergency Vet','Dental'] },
+    { name: 'Pet Grooming', subs: ['Bath & Brush','Full Groom','Nail Trim','De-shedding'] },
+    { name: 'Dog Walking' },
+    { name: 'Pet Boarding', subs: ['Overnight','Daycare','Cat Boarding'] },
+    { name: 'Pet Training' },
+  ]},
+  { id: 'contractor', icon: '🔨', label: 'Contractors', items: [
+    { name: 'General Contractors', subs: ['Home Additions','Renovations','New Builds'] },
+    { name: 'Flooring', subs: ['Hardwood','Tile','Laminate','Carpet','Vinyl'] },
+    { name: 'Carpentry', subs: ['Custom Cabinets','Trim & Molding','Decks','Framing'] },
+    { name: 'Remodeling', subs: ['Kitchen','Bathroom','Basement'] },
+    { name: 'Masonry', subs: ['Brick','Stone','Concrete','Pavers'] },
+    { name: 'Drywall' },
+    { name: 'Windows & Doors' },
+  ]},
+  { id: 'hospitality', icon: '🏨', label: 'Hospitality', items: [
+    { name: 'Hotels', subs: ['Luxury','Budget','Boutique','Business'] },
+    { name: 'Bed & Breakfast' },
+    { name: 'Vacation Rentals' },
+    { name: 'Resorts' },
+    { name: 'Motels' },
+    { name: 'Hostels' },
+  ]},
+  { id: 'childcare', icon: '👶', label: 'Child & Family', items: [
+    { name: 'Childcare', subs: ['Infant Care','Toddler Care','After School'] },
+    { name: 'Daycare' },
+    { name: 'Nannies' },
+    { name: 'Kids Activities', subs: ['Sports','Art Classes','Camps'] },
+    { name: 'Family Counseling' },
+    { name: 'Pediatrics' },
+  ]},
 ]
 
-// "Try a popular search" pills — set query + budget in one click
-const POPULAR = [
-  { icon: '🍕', label: 'Pizza',       q: 'Pizza',       budget: '15' },
-  { icon: '🍔', label: 'Burgers',     q: 'Burgers',     budget: '10' },
-  { icon: '🔧', label: 'Auto Repair', q: 'Auto Repair', budget: '80' },
-]
+const TRENDING = ['Plumber','Electrician','House Cleaner','Restaurant','Mechanic','Personal Trainer','Dog Walker','Tutor','Hair Salon','Massage']
 
 // ── Pre Pay AI — localStorage pattern tracking ─────────────
 const PREPAY_KEY = 'pk_search_history'
@@ -67,36 +157,150 @@ function Stars({ r }) {
 
 function initialOf(p) { return (p.name || '?').trim().charAt(0).toUpperCase() }
 function shortAddr(p) { return p.address || p.addr || p.city || '' }
+function priceLabel(p) {
+  if (p.priceValue) return `from $${p.priceValue}`
+  if (p.price && typeof p.price === 'string') return p.price
+  if (p.price) return `$${p.price}`
+  return ''
+}
 function distLabel(p) {
   if (typeof p.distanceKm === 'number') return `${p.distanceKm.toFixed(1)} km`
   if (typeof p.dist === 'number') return `${p.dist.toFixed(1)} km`
   return ''
 }
-function fmtMoney(n) {
-  if (n == null) return null
-  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+
+// ── Category group browser (two-level: group → category → subcategory) ────────
+function CategoryGroupGrid({ selectedCat, selectedSub, onSelectCat, onSelectSub }) {
+  const selectedGroup = CATEGORY_GROUPS.find(g => g.items.some(it => it.name === selectedCat))
+  const [expanded, setExpanded] = useState(selectedGroup?.id || null)
+
+  useEffect(() => {
+    if (selectedGroup) setExpanded(selectedGroup.id)
+  }, [selectedCat])
+
+  const activeGroup = CATEGORY_GROUPS.find(g => g.id === expanded)
+  const activeItem = activeGroup?.items.find(it => it.name === selectedCat)
+
+  return (
+    <div className="sv-cat-groups">
+      <div className="sv-cat-group-row">
+        {CATEGORY_GROUPS.map(grp => (
+          <button
+            key={grp.id}
+            className={`sv-cat-group-btn ${expanded === grp.id ? 'active' : ''} ${grp.items.some(it => it.name === selectedCat) ? 'has-sel' : ''}`}
+            onClick={() => setExpanded(expanded === grp.id ? null : grp.id)}
+          >
+            <span className="sv-cat-group-icon">{grp.icon}</span>
+            <span className="sv-cat-group-label">{grp.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Level 2 — broad categories */}
+      {activeGroup && (
+        <div className="sv-cat-items">
+          {activeGroup.items.map(item => (
+            <button
+              key={item.name}
+              className={`sv-chip ${selectedCat === item.name ? 'active' : ''}`}
+              onClick={() => onSelectCat(item.name === selectedCat ? null : item.name)}
+            >
+              {item.name}
+              {item.subs?.length ? <span className="sv-chip-caret"> ▾</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Level 3 — subcategories of the selected broad category */}
+      {activeItem?.subs?.length > 0 && (
+        <div className="sv-subcat-row">
+          <span className="sv-subcat-lbl">{activeItem.name}:</span>
+          {activeItem.subs.map(sub => (
+            <button
+              key={sub}
+              className={`sv-subchip ${selectedSub === sub ? 'active' : ''}`}
+              onClick={() => onSelectSub(sub === selectedSub ? null : sub)}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
-// Emoji tile for menu-item rows (we never fake item photos)
-function itemEmoji(text) {
-  const s = (text || '').toLowerCase()
-  if (/pizza/.test(s)) return '🍕'
-  if (/burger/.test(s)) return '🍔'
-  if (/coffee|cafe|café|tea/.test(s)) return '☕'
-  if (/sushi|japanese/.test(s)) return '🍣'
-  if (/taco|burrito|mexican/.test(s)) return '🌮'
-  if (/restaurant|food|dining|catering|meal/.test(s)) return '🍽️'
-  if (/auto|oil|tire|brake|mechanic|car/.test(s)) return '🔧'
-  if (/hair|barber|salon|beauty|nail|spa/.test(s)) return '💇'
-  if (/clean/.test(s)) return '🧽'
-  if (/plumb|leak|drain/.test(s)) return '🚰'
-  if (/electric|wiring|lighting/.test(s)) return '💡'
-  if (/gym|fitness|train/.test(s)) return '🏋️'
-  if (/tutor|math|science|english|class|lesson/.test(s)) return '📚'
-  if (/photo/.test(s)) return '📷'
-  if (/pet|vet|dog|groom/.test(s)) return '🐾'
-  if (/hotel|room|resort/.test(s)) return '🏨'
-  return '🏷️'
+// ── Provider card ──────────────────────────────────────────
+function ProviderCard({ p, onEnrich, enriching, onScrape, scraping, compareSet, onToggleCompare, deal, budget }) {
+  const key = p.placeId || p.name
+  const inCompare = compareSet.has(key)
+  const canAdd = inCompare || compareSet.size < 3
+  const phoneHref = p.phone ? `tel:${String(p.phone).replace(/[^\d+]/g, '')}` : null
+  const mapsHref = p.mapsUrl || (p.lat && p.lng
+    ? `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name || '')}`)
+  const isEnriching = enriching === key
+  const isScraping = scraping === key
+  return (
+    <div className={`sv-card ${inCompare ? 'sv-card-selected' : ''} ${deal ? 'sv-card-deal' : ''}`}>
+      {deal && (
+        <div className="sv-deal-ribbon">
+          <span className="sv-deal-ribbon-tag">🎉 DEAL{deal.price ? ` · ${deal.price}` : ''}</span>
+          <span className="sv-deal-ribbon-text">
+            {deal.title || 'Special offer'}{budget ? ` — under your $${budget} budget` : ''}
+          </span>
+          {deal.url && (
+            <a className="sv-deal-ribbon-link" href={deal.url} target="_blank" rel="noopener noreferrer">View deal →</a>
+          )}
+        </div>
+      )}
+      <div className="sv-card-left">
+        {p.thumbnail
+          ? <img className="sv-avatar lg img" src={p.thumbnail} alt="" />
+          : <div className="sv-avatar lg">{initialOf(p)}</div>}
+        <div className="sv-card-body">
+          <div className="sv-card-name">
+            {p.name}
+            {p.category && <span className="sv-row-cat">{p.category}</span>}
+          </div>
+          {(p.description || p.blurb) && (
+            <div className="sv-card-blurb">{p.description || p.blurb}</div>
+          )}
+          <div className="sv-card-meta">
+            {p.rating != null && <Stars r={p.rating} />}
+            {p.reviewsCount != null && <span className="sv-reviews">({p.reviewsCount.toLocaleString()})</span>}
+            {distLabel(p) && <span className="sv-dist">📍 {distLabel(p)}</span>}
+            {priceLabel(p) && <span className="sv-from">{priceLabel(p)}</span>}
+          </div>
+          {shortAddr(p) && <div className="sv-card-city">{shortAddr(p)}</div>}
+        </div>
+      </div>
+      <div className="sv-card-actions">
+        <button
+          className={`sv-compare-toggle ${inCompare ? 'active' : ''} ${!canAdd ? 'sv-compare-toggle-disabled' : ''}`}
+          onClick={() => canAdd && onToggleCompare(p)}
+          title={inCompare ? 'Remove from comparison' : compareSet.size >= 3 ? 'Max 3 providers' : 'Add to comparison'}
+        >
+          {inCompare ? '✓ Comparing' : '⊕ Compare'}
+        </button>
+        <div className="sv-card-btns">
+          {p.website
+            ? <a href={p.website} target="_blank" rel="noopener noreferrer"
+                 onClick={() => trackProviderClick({ placeId: p.placeId, name: p.name, category: p.category, type: 'service_click' })}
+                 className="sv-btn primary">🌐 Website</a>
+            : <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="sv-btn primary">Maps</a>}
+          {phoneHref && <a href={phoneHref} className="sv-btn ghost">📞 Call</a>}
+          <button className="sv-btn ghost" disabled={isEnriching} onClick={() => onEnrich(p)}>
+            {isEnriching ? '…' : '✨ Details'}
+          </button>
+          <button className="sv-btn ghost sv-btn-firecrawl" disabled={isScraping} onClick={() => onScrape(p)}>
+            {isScraping ? '…' : '📋 Menu / Pricing'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Floating compare bar ───────────────────────────────────
@@ -132,14 +336,14 @@ function CompareBar({ compareSet, providers, onClear, onOpen }) {
 function CompareModal({ compareSet, providers, onClose }) {
   const selected = providers.filter(p => compareSet.has(p.placeId || p.name))
   const rows = [
-    { label: 'Rating',      fn: p => p.rating != null ? <><Stars r={p.rating} /> <span className="sv-reviews">({(p.reviewsCount || 0).toLocaleString()})</span></> : '—' },
-    { label: 'Price Range', fn: p => p.price || '—' },
-    { label: 'Est. Cost',   fn: p => p.priceValue ? `$${p.priceValue}` : '—' },
-    { label: 'Distance',    fn: p => distLabel(p) || '—' },
-    { label: 'Category',    fn: p => p.category || '—' },
-    { label: 'Address',     fn: p => shortAddr(p) || '—' },
-    { label: 'Phone',       fn: p => p.phone ? <a href={`tel:${p.phone}`} className="sv-btn ghost" style={{fontSize:12,padding:'4px 10px'}}>{p.phone}</a> : '—' },
-    { label: 'Profile',     fn: p => p.website ? <a href={p.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary" style={{fontSize:12,padding:'4px 14px'}}>View →</a> : '—' },
+    { label: 'Rating',     fn: p => p.rating != null ? <><Stars r={p.rating} /> <span className="sv-reviews">({(p.reviewsCount || 0).toLocaleString()})</span></> : '—' },
+    { label: 'Price Range',fn: p => p.price || '—' },
+    { label: 'Est. Cost',  fn: p => p.priceValue ? `$${p.priceValue}` : '—' },
+    { label: 'Distance',   fn: p => distLabel(p) || '—' },
+    { label: 'Category',   fn: p => p.category || '—' },
+    { label: 'Address',    fn: p => shortAddr(p) || '—' },
+    { label: 'Phone',      fn: p => p.phone ? <a href={`tel:${p.phone}`} className="sv-btn ghost" style={{fontSize:12,padding:'4px 10px'}}>{p.phone}</a> : '—' },
+    { label: 'Profile',    fn: p => p.website ? <a href={p.website} target="_blank" rel="noopener noreferrer" className="sv-btn primary" style={{fontSize:12,padding:'4px 14px'}}>View →</a> : '—' },
   ]
   return (
     <div className="sv-modal" onClick={onClose}>
@@ -189,6 +393,7 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
   const [prompt, setPrompt]     = useState(null)
   const [dismissed, setDismissed] = useState(new Set())
 
+  // Load spending patterns from backend on mount
   useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -199,6 +404,7 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
     return () => { cancelled = true }
   }, [])
 
+  // Also merge localStorage patterns as fallback
   const localRecs = getPrePayRecs()
 
   if (loading) return (
@@ -217,6 +423,7 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
   const suggestedDeals = data?.suggestedDeals || []
   const topCategories = data?.topCategories || []
 
+  // Merge backend + local recs for pre-book prompts
   const prebook = [
     ...(topCategories.slice(0, 2).map(tc => ({ category: tc.cat, count: tc.count, source: 'ai' }))),
     ...localRecs.filter(lr => !topCategories.some(tc => tc.cat === lr.category)).slice(0, 1)
@@ -312,7 +519,7 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
             <div className="sv-modal-body">
               <div style={{fontSize:36,marginBottom:8}}>💳</div>
               <h3>Pre-Pay for {prompt.replace(/_/g, ' ')}</h3>
-              <p style={{color:'var(--sv-muted)',marginBottom:16,fontSize:14,lineHeight:1.6}}>
+              <p style={{color:'var(--muted-foreground)',marginBottom:16,fontSize:14,lineHeight:1.6}}>
                 Our AI detected you search for <strong>{prompt.replace(/_/g, ' ')}</strong> frequently.
                 Lock in today's rates with a subscription and save up to 20%.
               </p>
@@ -334,7 +541,7 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
               <button className="sv-btn primary block" style={{marginTop:16}} onClick={() => setPrompt(null)}>
                 Get Started
               </button>
-              <p style={{fontSize:12,color:'var(--sv-muted)',marginTop:10,textAlign:'center'}}>
+              <p style={{fontSize:12,color:'var(--muted-foreground)',marginTop:10,textAlign:'center'}}>
                 Subscription management coming soon.
               </p>
             </div>
@@ -345,118 +552,44 @@ function PrePayWidget({ currentQuery, onCategoryClick }) {
   )
 }
 
-// ── Photo provider card with embedded menu matches (client design) ───────────
-function ProviderPhotoCard({
-  p, budget, matches, matchesTotal, matchesLoading, deal, badge, website, priceRange,
-  onOpenMenu, onEnrich, compareSet, onToggleCompare, scraping, icon,
-}) {
-  const key = p.placeId || p.name
-  const inCompare = compareSet.has(key)
-  const canAdd = inCompare || compareSet.size < 3
-  const fromPrice = matches?.length
-    ? Math.min(...matches.map(m => m.price).filter(n => n != null))
-    : (typeof p.priceValue === 'number' ? p.priceValue : null)
+// ── Menu matches strip (scraped menu items ≤ budget, under a provider card) ──
+function MenuMatchesStrip({ menu, budget, provider }) {
+  if (menu.loading) {
+    return (
+      <div className="sv-menu-strip sv-menu-strip-loading">
+        <span className="sv-deals-spinner" /> Reading {provider.name}&rsquo;s menu…
+      </div>
+    )
+  }
+  const d = menu.data
+  if (!d?.ok || !d.matches?.length) return null
+  const site = d.website || null
   let host = null
-  try { host = website ? new URL(website).hostname.replace(/^www\./, '') : null } catch {}
-  const phoneHref = p.phone ? `tel:${String(p.phone).replace(/[^\d+]/g, '')}` : null
-  const totalMatches = (matchesTotal || 0) + (deal ? 1 : 0)
-
+  try { host = site ? new URL(site).hostname.replace(/^www\./, '').toUpperCase() : null } catch {}
   return (
-    <article className={`sv-pcard ${inCompare ? 'selected' : ''}`}>
-      <div className="sv-pcard-photo" onClick={() => onEnrich(p)} role="button" tabIndex={0}>
-        {p.thumbnail
-          ? <img src={p.thumbnail} alt={p.name} loading="lazy" />
-          : <div className="sv-pcard-ph">{initialOf(p)}</div>}
-        {p.promoted && <span className="sv-pcard-promoted">Promoted</span>}
-        {fromPrice != null && <span className="sv-pcard-from">From {fmtMoney(fromPrice)}</span>}
-      </div>
-
-      <div className="sv-pcard-body">
-        <h3 className="sv-pcard-name" onClick={() => onEnrich(p)}>{p.name}</h3>
-        {p.category && <div className="sv-pcard-cat">{p.category}</div>}
-        <div className="sv-pcard-meta">
-          {p.rating != null && (
-            <span className="sv-meta-bit"><Stars r={p.rating} />{p.reviewsCount != null && <span className="sv-reviews"> ({p.reviewsCount.toLocaleString()})</span>}</span>
-          )}
-          {distLabel(p) && <span className="sv-meta-bit">📍 {distLabel(p)}</span>}
-          {priceRange && <span className="sv-meta-bit sv-price-range">$ {priceRange}</span>}
-        </div>
-        {shortAddr(p) && (
-          <div className="sv-pcard-addr">
-            {shortAddr(p)}
-            {phoneHref && <a href={phoneHref} className="sv-pcard-phone" title={p.phone}>📞</a>}
-          </div>
-        )}
-
-        {budget && (matchesLoading || totalMatches > 0) && (
-          <div className="sv-pcard-matches">
-            {matchesLoading ? (
-              <div className="sv-matches-loading"><span className="sv-spinner" /> Checking menu &amp; deals…</div>
-            ) : (
-              <>
-                <div className="sv-matches-head">
-                  {totalMatches} MATCH{totalMatches !== 1 ? 'ES' : ''} UNDER ${budget}
-                </div>
-                {deal && (
-                  <a
-                    className="sv-match-row sv-match-deal"
-                    href={deal.url || undefined}
-                    target={deal.url ? '_blank' : undefined}
-                    rel="noopener noreferrer"
-                  >
-                    <span className="sv-match-thumb">🎉</span>
-                    <span className="sv-match-main">
-                      <span className="sv-match-name">{deal.title || 'Current deal'}<span className="sv-match-badge deal">DEAL</span></span>
-                      {deal.description && <span className="sv-match-desc">{deal.description}</span>}
-                    </span>
-                    <span className="sv-match-price">{deal.price}</span>
-                  </a>
-                )}
-                {(matches || []).slice(0, 2).map((m, i) => (
-                  <div key={i} className="sv-match-row">
-                    <span className="sv-match-thumb">{icon}</span>
-                    <span className="sv-match-main">
-                      <span className="sv-match-name">
-                        {m.name}
-                        {i === 0 && badge && <span className="sv-match-badge">{badge}</span>}
-                      </span>
-                      {m.description && <span className="sv-match-desc">{m.description}</span>}
-                    </span>
-                    <span className="sv-match-price">{m.priceDisplay}</span>
-                  </div>
-                ))}
-                {matchesTotal > 2 && (
-                  <button className="sv-matches-more" onClick={() => onOpenMenu(p)}>
-                    See all {matchesTotal} matches →
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+    <div className="sv-menu-strip">
+      <div className="sv-menu-strip-head">
+        <span className="sv-menu-strip-title">
+          🏷️ MENU MATCHES UNDER ${budget}{host ? <> · <span className="sv-menu-strip-host">{host}</span></> : null}
+        </span>
+        {site && (
+          <a href={site} target="_blank" rel="noopener noreferrer" className="sv-menu-visit">Visit site ↗</a>
         )}
       </div>
-
-      <div className="sv-pcard-foot">
-        {host ? (
-          <a className="sv-pcard-site" href={website} target="_blank" rel="noopener noreferrer"
-             onClick={() => trackProviderClick({ placeId: p.placeId, name: p.name, category: p.category, type: 'service_click' })}>
-            {host} ↗
-          </a>
-        ) : <span />}
-        <div className="sv-pcard-actions">
-          <button className="sv-lbtn" disabled={scraping === key} onClick={() => onOpenMenu(p)}>
-            {scraping === key ? '…' : '📋 Menu'}
-          </button>
-          <button
-            className={`sv-lbtn ${inCompare ? 'active' : ''}`}
-            disabled={!canAdd && !inCompare}
-            onClick={() => canAdd && onToggleCompare(p)}
-          >
-            {inCompare ? '✓ Comparing' : '⚖ Compare'}
-          </button>
-        </div>
+      <div className="sv-menu-cards">
+        {d.matches.slice(0, 8).map((it, i) => (
+          <div key={i} className="sv-menu-card">
+            <div className="sv-menu-card-top">
+              <span className="sv-menu-card-name">{it.name}</span>
+              <span className="sv-menu-card-price">{it.priceDisplay}</span>
+            </div>
+            {it.section && <div className="sv-menu-card-section">{it.section}</div>}
+            {it.description && <div className="sv-menu-card-desc">{it.description}</div>}
+          </div>
+        ))}
       </div>
-    </article>
+      <div className="sv-deals-strip-note">🔎 Prices read live from the business&rsquo;s published menu · confirm before ordering</div>
+    </div>
   )
 }
 
@@ -468,22 +601,24 @@ export default function Services() {
   const [q, setQ]             = useState('')
   const [budget, setBudget]   = useState('')
   const [minRating, setMinRating] = useState('')
+  const [sort, setSort]       = useState('best')
   const [quick, setQuick]     = useState(null)
-  const [radiusKm, setRadiusKm] = useState(25)
+  const [radiusKm, setRadiusKm] = useState(10)
 
   const [geo, setGeo]           = useState({ lat: null, lng: null, city: '', source: 'none' })
-  const [locating, setLocating] = useState(false)
   const [providers, setProviders] = useState([])
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
   const [enriching, setEnriching] = useState(null)
   const [enriched, setEnriched]   = useState(null)
   const [scraping, setScraping]   = useState(null)
-  const [menuModal, setMenuModal] = useState(null)
-  const [menus, setMenus] = useState({})
+  const [menuModal, setMenuModal] = useState(null)   // full-menu modal (bucketed)
+  const [menus, setMenus] = useState({})             // key -> {loading, data} auto strips
 
+  // Live budget deals (real deals ≤ budget found via web search)
   const [deals, setDeals]         = useState([])
   const [dealsLoading, setDealsLoading] = useState(false)
+  const [dealsSearched, setDealsSearched] = useState(false)
 
   const [compareSet, setCompareSet] = useState(new Set())
   const [showCompare, setShowCompare] = useState(false)
@@ -492,6 +627,7 @@ export default function Services() {
   const [trackingEnabled, setTrackingEnabled] = useState(() => {
     try { return localStorage.getItem('pk_tracking_opt_out') !== '1' } catch { return true }
   })
+
   function toggleTracking() {
     const next = !trackingEnabled
     setTrackingEnabled(next)
@@ -506,17 +642,11 @@ export default function Services() {
     return () => { cancelled = true }
   }, [])
 
-  function handleNearMe() {
-    setLocating(true)
-    resolveUserLocation()
-      .then(g => setGeo(g))
-      .catch(() => {})
-      .finally(() => setLocating(false))
-  }
-
   const effectiveQuery = useMemo(() => {
     const typed = q.trim()
     if (typed) return typed
+    // Most specific wins: subcategory (e.g. "Burgers") → broad category → default.
+    // Yelp maps a specific term like "Burgers" / "Oil Change" to the right businesses.
     if (sub) return sub.toLowerCase()
     if (cat) return cat.toLowerCase()
     return 'local services'
@@ -558,15 +688,24 @@ export default function Services() {
     return () => debounceRef.current && clearTimeout(debounceRef.current)
   }, [effectiveQuery, geo.lat, geo.lng, radiusKm, budget, minRating, quick, trackingEnabled])
 
-  // Best providers first (rating desc); no user-facing sort control per client.
   const sortedProviders = useMemo(() => {
-    return [...providers].sort((a, b) => (b.rating || 0) - (a.rating || 0))
-  }, [providers])
+    const arr = [...providers]
+    const dist = p => typeof p.distanceKm === 'number' ? p.distanceKm : Infinity
+    const priceN = p => typeof p.priceValue === 'number' ? p.priceValue : Infinity
+    if (sort === 'price-asc' || quick === 'budget') arr.sort((a, b) => priceN(a) - priceN(b))
+    else if (sort === 'price-desc') arr.sort((a, b) => priceN(b) - priceN(a))
+    else if (sort === 'distance' || quick === 'close') arr.sort((a, b) => dist(a) - dist(b))
+    // 'best' (default): keep Yelp's best_match relevance order
+    return arr
+  }, [providers, sort, quick])
 
-  // ── Live budget deals (real published promos ≤ budget) ────
-  const dealBudget = budget || ''
+  // ── Live budget deals ──────────────────────────────────────
+  // When a budget is set, look up REAL current deals ≤ budget for the top
+  // providers (web search) and surface them as "deal under $X" ribbons.
+  const dealBudget = budget || (quick === 'budget' ? 50 : '')
   useEffect(() => {
     setDeals([])
+    setDealsSearched(false)
     if (!dealBudget || providers.length === 0) return
     let cancelled = false
     setDealsLoading(true)
@@ -581,10 +720,12 @@ export default function Services() {
     })
       .then(r => { if (!cancelled) setDeals(r?.deals || []) })
       .catch(() => { if (!cancelled) setDeals([]) })
-      .finally(() => { if (!cancelled) setDealsLoading(false) })
+      .finally(() => { if (!cancelled) { setDealsLoading(false); setDealsSearched(true) } })
     return () => { cancelled = true }
+    // Re-run when the result set or budget changes (providers identity changes on new search)
   }, [providers, dealBudget, geo.city])
 
+  // Match a deal to a provider by normalized name.
   const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
   const dealFor = useMemo(() => {
     const byName = deals.map(d => ({ key: norm(d.name), deal: d })).filter(x => x.key)
@@ -595,48 +736,6 @@ export default function Services() {
       return hit ? hit.deal : null
     }
   }, [deals])
-
-  // Yelp "website" is the listing URL, not the business site.
-  const realSiteOf = (p) => (p?.website && !/yelp\.com/i.test(p.website)) ? p.website : undefined
-
-  // ── Scraped menus for the top providers (server-cached 7 days) ──
-  useEffect(() => {
-    setMenus({})
-    if (!dealBudget || providers.length === 0) return
-    let cancelled = false
-    providers.slice(0, 3).forEach(p => {
-      const key = p.placeId || p.name
-      setMenus(m => ({ ...m, [key]: { loading: true } }))
-      getProviderMenu({
-        provider: { placeId: p.placeId, name: p.name, website: realSiteOf(p), city: geo.city || undefined },
-        category: sub || cat || effectiveQuery,
-        budget: dealBudget,
-      })
-        .then(r => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false, data: r } })) })
-        .catch(() => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false } })) })
-    })
-    return () => { cancelled = true }
-  }, [providers, dealBudget, geo.city])
-
-  // Card badges: BEST VALUE (globally cheapest match), TOP RATED, CLOSEST —
-  // one badge per provider, only among providers that have matches.
-  const badgeByProvider = useMemo(() => {
-    const entries = sortedProviders.map(p => {
-      const key = p.placeId || p.name
-      const m = menus[key]?.data?.matches
-      const cheapest = m?.length ? Math.min(...m.map(x => x.price).filter(n => n != null)) : null
-      return { key, p, cheapest }
-    }).filter(e => e.cheapest != null && isFinite(e.cheapest))
-    if (!entries.length) return {}
-    const out = {}
-    const bv = entries.reduce((a, b) => (a.cheapest <= b.cheapest ? a : b))
-    out[bv.key] = 'BEST VALUE'
-    const tr = entries.filter(e => e.p.rating != null && !out[e.key]).sort((a, b) => b.p.rating - a.p.rating)[0]
-    if (tr) out[tr.key] = 'TOP RATED'
-    const cl = entries.filter(e => typeof e.p.distanceKm === 'number' && !out[e.key]).sort((a, b) => a.p.distanceKm - b.p.distanceKm)[0]
-    if (cl) out[cl.key] = 'CLOSEST'
-    return out
-  }, [sortedProviders, menus])
 
   function toggleCompare(p) {
     const key = p.placeId || p.name
@@ -660,6 +759,11 @@ export default function Services() {
     }
   }
 
+  // Yelp "website" is the listing URL, not the business site — don't feed it to
+  // the scraper as an official-site hint.
+  const realSiteOf = (p) => (p?.website && !/yelp\.com/i.test(p.website)) ? p.website : undefined
+
+  // Open the full scraped menu / price list for one provider (bucket chips + budget highlight)
   async function handleMenuOpen(prov) {
     const key = prov.placeId || prov.name
     setScraping(key)
@@ -678,221 +782,294 @@ export default function Services() {
     }
   }
 
+  // Auto-load scraped menus for the top providers when a budget is set, powering
+  // the "MENU MATCHES UNDER $X" strips (results are cached server-side for 7 days).
+  useEffect(() => {
+    setMenus({})
+    if (!dealBudget || providers.length === 0) return
+    let cancelled = false
+    providers.slice(0, 2).forEach(p => {
+      const key = p.placeId || p.name
+      setMenus(m => ({ ...m, [key]: { loading: true } }))
+      getProviderMenu({
+        provider: { placeId: p.placeId, name: p.name, website: realSiteOf(p), city: geo.city || undefined },
+        category: sub || cat || effectiveQuery,
+        budget: dealBudget,
+      })
+        .then(r => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false, data: r } })) })
+        .catch(() => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false } })) })
+    })
+    return () => { cancelled = true }
+  }, [providers, dealBudget, geo.city])
+
   function clearAll() {
-    setCat(null); setSub(null); setQ(''); setBudget(''); setMinRating(''); setQuick(null); setRadiusKm(25)
+    setCat(null); setSub(null); setQ(''); setBudget(''); setMinRating(''); setQuick(null); setRadiusKm(10)
   }
 
   const hasFilters = !!(budget || minRating || cat || sub || q)
-  const selectedService = FLAT_SERVICES.find(s => s.label === cat)
-  const icon = itemEmoji(sub || cat || q || (sortedProviders[0]?.category))
 
   return (
     <div className="sv-page">
-      <div className="container sv-shell">
+      <div className="sv-bg" />
 
-        {/* ── Utility row ── */}
+      {/* ── Search engine hero ── */}
+      <section className="container sv-hero-v2">
         <div className="sv-util-row">
+          <Link to="/vendor" className="sv-util-link">🏪 For Vendors</Link>
+          <span className="sv-util-dot">·</span>
+          <Link to="/promote" className="sv-util-link">📣 Promote My Listing</Link>
+          <span className="sv-util-dot">·</span>
+          <Link to="/network" className="sv-util-link">🚀 Join the Network</Link>
+          <span className="sv-util-dot">·</span>
           <button
-            className={`sv-tracking-toggle ${trackingEnabled ? '' : 'off'}`}
+            className={`sv-util-link sv-tracking-toggle ${trackingEnabled ? '' : 'off'}`}
             onClick={toggleTracking}
             title={trackingEnabled ? 'AI search tracking is ON — click to opt out' : 'AI search tracking is OFF — click to enable'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
             {trackingEnabled ? '🤖 AI Tracking: On' : '🚫 AI Tracking: Off'}
           </button>
-          <div className="sv-util-links">
-            <Link to="/vendor" className="sv-util-link">🏪 For Vendors</Link>
-            <span className="sv-util-dot">·</span>
-            <Link to="/promote" className="sv-util-link">📣 Promote My Listing</Link>
-            <span className="sv-util-dot">·</span>
-            <Link to="/network" className="sv-util-link">🚀 Join the PriceKlick Network</Link>
-          </div>
         </div>
 
-        {/* ── Hero ── */}
-        <header className="sv-hero">
-          <h1 className="sv-hero-title">PriceKlick</h1>
-          <p className="sv-hero-sub">Scroll less, save more.</p>
-          <Link to="/smart-compare" className="sv-sc-pill">
-            <span className="sv-sc-strong">✨ Smart Compare Advisor</span>
-            <span className="sv-sc-hint">— describe anything, get a full comparison</span>
+        <div className="sv-hero-center">
+          <h1 className="sv-brand-title">PriceKlick</h1>
+          <p className="sv-brand-sub">Find any service. Compare prices. Book smarter.</p>
+          <Link to="/smart-compare" className="sv-compare-btn">
+            <span className="sv-compare-icon">✨</span>
+            <span className="sv-compare-label">Smart Compare Advisor</span>
+            <span className="sv-compare-sep">—</span>
+            <span className="sv-compare-hint">describe anything, get a full comparison</span>
           </Link>
-        </header>
-
-        {/* ── Search bar ── */}
-        <div className="sv-search-wrap">
-          <span className="sv-search-icon">🔍</span>
-          <input
-            type="text"
-            value={q}
-            onChange={e => { setQ(e.target.value); setCat(null); setSub(null) }}
-            placeholder="Search plumber, electrician, tutor, cleaner..."
-            className="sv-search-input"
-          />
-          {q && (
-            <button className="sv-search-x" onClick={() => setQ('')} aria-label="Clear search">✕</button>
-          )}
         </div>
 
-        {/* ── Service chips ── */}
-        <div className="sv-chips">
-          <button
-            className={`sv-chip ${!cat && !q ? 'active' : ''}`}
-            onClick={() => { setCat(null); setSub(null); setQ('') }}
-          >All</button>
-          {FLAT_SERVICES.map(s => (
-            <button
-              key={s.label}
-              className={`sv-chip ${cat === s.label ? 'active' : ''}`}
-              onClick={() => { setCat(cat === s.label ? null : s.label); setSub(null); setQ('') }}
-            >{s.label}</button>
-          ))}
-        </div>
-        {selectedService?.subs?.length > 0 && (
-          <div className="sv-subs">
-            <span className="sv-subs-label">{selectedService.label}:</span>
-            {selectedService.subs.map(s2 => (
-              <button
-                key={s2}
-                className={`sv-subchip ${sub === s2 ? 'active' : ''}`}
-                onClick={() => setSub(sub === s2 ? null : s2)}
-              >{s2}</button>
-            ))}
-          </div>
-        )}
-
-        {/* ── Control bar ── */}
-        <div className="sv-controlbar">
-          <button className="sv-nearme" onClick={handleNearMe} disabled={locating}>
-            {locating ? '…' : '◈ Near me'}
-          </button>
-          <span className="sv-ctl-sep" />
-          <label className="sv-ctl">
-            Within
-            <select className="sv-ctl-select" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))}>
-              <option value="5">5 km</option>
-              <option value="10">10 km</option>
-              <option value="25">25 km</option>
-              <option value="50">50 km</option>
-              <option value="100">100 km</option>
-            </select>
-          </label>
-          <span className="sv-ctl-sep" />
-          <label className="sv-ctl">
-            <span className="sv-ctl-dollar">$</span>
+        {/* Main search bar */}
+        <div className="sv-engine-bar">
+          <div className="sv-search-wrap">
+            <span className="sv-search-icon">🔍</span>
             <input
-              type="number" min="0" placeholder="Max budget"
-              className="sv-ctl-budget"
-              value={budget} onChange={e => setBudget(e.target.value)}
+              type="text"
+              value={q}
+              onChange={e => { setQ(e.target.value); setCat(null); setSub(null) }}
+              placeholder="Search any service — plumber, restaurant, doctor, hotel, tutor..."
+              className="sv-search-input"
             />
-          </label>
-          <div className="sv-viewtoggle">
-            <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')}>☰ List</button>
-            <button className={view === 'map' ? 'active' : ''} onClick={() => setView('map')}>🗺 Map</button>
+            {q && (
+              <button className="sv-search-x" onClick={() => setQ('')} aria-label="Clear search">✕</button>
+            )}
           </div>
-          {hasFilters && <button className="sv-clear-all" onClick={clearAll}>✕ Clear</button>}
+          <div className="sv-engine-meta">
+            {geo.city && <><span>📍 Near <strong>{geo.city}</strong></span><span className="sv-util-dot">·</span></>}
+            <span>Within
+              <select className="sv-inline-sel" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))}>
+                <option value="5">5 km</option>
+                <option value="10">10 km</option>
+                <option value="25">25 km</option>
+                <option value="50">50 km</option>
+                <option value="100">100 km</option>
+              </select>
+            </span>
+          </div>
         </div>
 
-        {/* ── Popular searches ── */}
-        <div className="sv-popular">
-          <div className="sv-popular-label"><span>TRY A POPULAR SEARCH</span></div>
-          <div className="sv-popular-pills">
-            {POPULAR.map(pp => (
-              <button
-                key={pp.label}
-                className={`sv-popular-pill ${q === pp.q && budget === pp.budget ? 'active' : ''}`}
-                onClick={() => { setQ(pp.q); setCat(null); setSub(null); setBudget(pp.budget) }}
-              >
-                <span>{pp.icon}</span> {pp.label}
-              </button>
+        {/* Category group browser */}
+        <CategoryGroupGrid
+          selectedCat={cat}
+          selectedSub={sub}
+          onSelectCat={c => { setCat(c); setSub(null); setQ('') }}
+          onSelectSub={s => { setSub(s); setQ('') }}
+        />
+
+        {/* Trending row */}
+        <div className="sv-trending-row">
+          <span className="sv-trending-lbl">🔥 Trending:</span>
+          <div className="sv-trending">
+            {TRENDING.map(t => (
+              <button key={t} className="sv-trend" onClick={() => { setQ(t); setCat(null); setSub(null) }}>{t}</button>
             ))}
           </div>
-          {q && dealBudget && (
-            <div className="sv-popular-preview">
-              Previewing results for <strong>"{q.toLowerCase()} ${dealBudget}"</strong>
-              {geo.city ? <> · {geo.city}</> : null} · Max ${dealBudget}
-            </div>
-          )}
         </div>
+      </section>
 
-        {/* ── Results panel ── */}
-        <section className="sv-panel">
-          <div className="sv-panel-head">
-            <span className="sv-panel-title">
-              🏷 NEARBY PROVIDERS{dealBudget ? <> WITH MATCHES UNDER <span className="sv-panel-budget">${dealBudget}</span></> : null}
-            </span>
-            {!loading && (
-              <span className="sv-panel-count">{sortedProviders.length} providers · {radiusKm} km</span>
+      {/* ── Results section ── */}
+      <section className="container sv-section sv-providers">
+        <div className="sv-providers-grid">
+          <div>
+            {/* Results header */}
+            <div className="sv-res-head">
+              <div className="sv-res-title-row">
+                <h2 className="sv-res-title">
+                  {loading ? 'Searching…' : sub || q || cat || 'All Services'}
+                  {!loading && sub && cat && <span className="sv-res-parent"> in {cat}</span>}
+                  {!loading && budget && <span className="sv-res-budget"> · under ${budget}</span>}
+                </h2>
+                {!loading && (
+                  <span className="sv-count">{sortedProviders.length} providers · {radiusKm} km radius</span>
+                )}
+              </div>
+
+              {/* Filter strip */}
+              <div className="sv-filter-bar">
+                <div className="sv-filter-cell">
+                  <span>$</span>
+                  <input type="number" className="sv-filter-input" placeholder="Max budget"
+                    value={budget} onChange={e => setBudget(e.target.value)} min="0" />
+                </div>
+                <div className="sv-filter-cell">
+                  <span>★</span>
+                  <input type="number" className="sv-filter-input" placeholder="Min rating"
+                    value={minRating} onChange={e => setMinRating(e.target.value)}
+                    min="1" max="5" step="0.5" style={{maxWidth:90}} />
+                </div>
+                <div className="sv-filter-view">
+                  <button className={`sv-control ${view==='list' ? 'active' : ''}`} onClick={() => setView('list')}>☰ List</button>
+                  <button className={`sv-control ${view==='map' ? 'active' : ''}`} onClick={() => setView('map')}>🗺 Map</button>
+                </div>
+                {hasFilters && (
+                  <button className="sv-clear-all" onClick={clearAll}>✕ Clear</button>
+                )}
+              </div>
+
+              {/* Quick pills */}
+              <div className="sv-quick-pills">
+                {[
+                  { key: 'budget', label: '💰 Under $50' },
+                  { key: 'top',    label: '⭐ 4.5+ Rating' },
+                  { key: 'close',  label: '📍 Closest First' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    className={`sv-quick-pill ${quick === f.key ? 'active' : ''}`}
+                    onClick={() => setQuick(quick === f.key ? null : f.key)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {loading && <div className="sv-loading-bar"><div className="sv-loading-inner" /></div>}
+
+            {error && (
+              <div className="sv-empty" style={{borderColor:'oklch(70% .18 25 / .4)',marginBottom:16}}>
+                <div className="sv-empty-icon">⚠️</div>
+                <h3>Search failed</h3><p>{error}</p>
+              </div>
+            )}
+
+            {!error && !loading && sortedProviders.length === 0 ? (
+              <div className="sv-empty">
+                <div className="sv-empty-icon">🔍</div>
+                <h3>No providers found</h3>
+                <p>Try a different service, wider radius, or clear filters.</p>
+                <button className="sv-btn ghost" onClick={clearAll}>Clear all filters</button>
+              </div>
+            ) : view === 'map' ? (
+              <ServiceMap providers={sortedProviders} userLat={geo.lat} userLng={geo.lng} />
+            ) : (
+              <>
+                {/* Live budget-deals strip */}
+                {dealBudget && (dealsLoading || deals.length > 0 || dealsSearched) && (
+                  <div className="sv-deals-strip">
+                    {dealsLoading ? (
+                      <div className="sv-deals-strip-loading">
+                        <span className="sv-deals-spinner" /> Finding real deals under ${dealBudget} near you…
+                      </div>
+                    ) : deals.length === 0 ? (
+                      <div className="sv-deals-strip-empty">
+                        💸 We checked the web — no published deals under ${dealBudget} found for these businesses right now. Prices shown are still within your budget.
+                      </div>
+                    ) : (
+                      <>
+                        <div className="sv-deals-strip-head">
+                          💸 {deals.length} deal{deals.length > 1 ? 's' : ''} under <strong>${dealBudget}</strong> near you
+                        </div>
+                        <div className="sv-deals-strip-list">
+                          {deals.slice(0, 6).map((d, i) => (
+                            <a key={i} className="sv-deal-pill"
+                               href={d.url || '#'} target={d.url ? '_blank' : undefined} rel="noopener noreferrer">
+                              {d.price && <span className="sv-deal-pill-price">{d.price}</span>}
+                              <span className="sv-deal-pill-title">{d.title || 'Deal'}</span>
+                              <span className="sv-deal-pill-store">@ {d.name}</span>
+                            </a>
+                          ))}
+                        </div>
+                        <div className="sv-deals-strip-note">🔎 Live web-verified · deals can change — confirm with the business</div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="sv-cards">
+                  {sortedProviders.map(p => {
+                    const key = p.placeId || p.name
+                    const menu = menus[key]
+                    return (
+                      <React.Fragment key={key}>
+                        <ProviderCard
+                          p={p}
+                          deal={dealFor(p)}
+                          budget={dealBudget}
+                          onEnrich={handleEnrich}
+                          enriching={enriching}
+                          onScrape={handleMenuOpen}
+                          scraping={scraping}
+                          compareSet={compareSet}
+                          onToggleCompare={toggleCompare}
+                        />
+                        {menu && dealBudget && (
+                          <MenuMatchesStrip menu={menu} budget={dealBudget} provider={p} />
+                        )}
+                      </React.Fragment>
+                    )
+                  })}
+                </div>
+              </>
             )}
           </div>
 
-          {loading && <div className="sv-loading-bar"><div className="sv-loading-inner" /></div>}
+          {/* ── Sidebar ── */}
+          <aside className="sv-side">
+            <PrePayWidget
+              currentQuery={effectiveQuery}
+              onCategoryClick={item => { setQ(item); setCat(null); setSub(null) }}
+            />
 
-          {error && (
-            <div className="sv-empty">
-              <div className="sv-empty-icon">⚠️</div>
-              <h3>Search failed</h3><p>{error}</p>
+            <div className="sv-side-card sv-quick">
+              <div className="sv-tag-mini">QUICK FILTERS</div>
+              {[
+                { key:'budget', icon:'$', label:'Under $50',    meta:'Budget',   hue:'155' },
+                { key:'top',    icon:'★', label:'Top Rated',    meta:'4.5+',     hue:'80'  },
+                { key:'close',  icon:'◷', label:'Closest First',meta:'Distance', hue:'200' },
+              ].map(f => (
+                <button key={f.key} className={`sv-quick-card ${quick===f.key ? 'active' : ''}`}
+                  onClick={() => setQuick(quick===f.key ? null : f.key)}>
+                  <span className="sv-quick-ic" style={{background:`oklch(80% .15 ${f.hue} / .15)`,color:`oklch(70% .18 ${f.hue})`}}>{f.icon}</span>
+                  <span className="sv-quick-body"><strong>{f.label}</strong></span>
+                  <span className="sv-quick-meta">{f.meta}</span>
+                </button>
+              ))}
             </div>
-          )}
 
-          {!error && !loading && sortedProviders.length === 0 ? (
-            <div className="sv-empty">
-              <div className="sv-empty-icon">🔍</div>
-              <h3>No providers found</h3>
-              <p>Try a different service, wider radius, or clear filters.</p>
-              <button className="sv-btn ghost" onClick={clearAll}>Clear all filters</button>
+            {/* PriceKlick Preferred Vendors — title only until vendors register */}
+            <div className="sv-side-card sv-preferred-vendors">
+              <div className="sv-tag-mini">⭐ PRICEKLICK PREFERRED VENDORS</div>
+              <p style={{color:'var(--muted-foreground)',fontSize:13,margin:'8px 0 0',lineHeight:1.5}}>
+                Preferred vendor listings coming soon. Are you a business?
+              </p>
+              <Link to="/vendor" className="sv-btn ghost" style={{marginTop:10,display:'inline-flex',fontSize:13}}>
+                Apply to be a Preferred Vendor →
+              </Link>
             </div>
-          ) : view === 'map' ? (
-            <div className="sv-map-shell">
-              <ServiceMap providers={sortedProviders} userLat={geo.lat} userLng={geo.lng} />
-            </div>
-          ) : (
-            <div className="sv-grid">
-              {sortedProviders.map(p => {
-                const key = p.placeId || p.name
-                const menu = menus[key]
-                const items = menu?.data?.items
-                const priceRange = items?.length
-                  ? `$${Math.round(Math.min(...items.map(i => i.price)))}–$${Math.round(Math.max(...items.map(i => i.price)))}`
-                  : (p.price || null)
-                return (
-                  <ProviderPhotoCard
-                    key={key}
-                    p={p}
-                    budget={dealBudget}
-                    matches={menu?.data?.matches}
-                    matchesTotal={menu?.data?.matches?.length || 0}
-                    matchesLoading={!!menu?.loading || (dealBudget && dealsLoading && !menu)}
-                    deal={dealFor(p)}
-                    badge={badgeByProvider[key]}
-                    website={menu?.data?.website || realSiteOf(p) || p.website}
-                    priceRange={priceRange}
-                    onOpenMenu={handleMenuOpen}
-                    onEnrich={handleEnrich}
-                    compareSet={compareSet}
-                    onToggleCompare={toggleCompare}
-                    scraping={scraping}
-                    icon={icon}
-                  />
-                )
-              })}
-            </div>
-          )}
-        </section>
 
-        {/* ── Preferred vendors (title only until vendors register) ── */}
-        <div className="sv-pref-strip">
-          ⭐ <strong>PriceKlick Preferred Vendors</strong> — coming soon ·{' '}
-          <Link to="/vendor">Apply to be a Preferred Vendor →</Link>
+            <div className="sv-side-card sv-vendors-cta">
+              <div className="sv-tag-mini">📣 FOR VENDORS</div>
+              <h3>Grow your business</h3>
+              <p>Reach thousands of customers searching for your services.</p>
+              <Link to="/vendor" className="sv-btn primary block">Get Started — Free</Link>
+            </div>
+          </aside>
         </div>
-
-        {/* ── Pre Pay AI insights ── */}
-        <div className="sv-prepay-wrap">
-          <PrePayWidget
-            currentQuery={effectiveQuery}
-            onCategoryClick={item => { setQ(item); setCat(null); setSub(null) }}
-          />
-        </div>
-      </div>
+      </section>
 
       {/* ── Floating compare bar ── */}
       <CompareBar
@@ -902,6 +1079,7 @@ export default function Services() {
         onOpen={() => setShowCompare(true)}
       />
 
+      {/* ── Compare modal ── */}
       {showCompare && (
         <CompareModal
           compareSet={compareSet}
@@ -910,7 +1088,7 @@ export default function Services() {
         />
       )}
 
-      {/* ── Details modal ── */}
+      {/* ── Enrich details modal ── */}
       {enriched && (
         <div className="sv-modal" onClick={() => setEnriched(null)}>
           <div className="sv-modal-card" onClick={e => e.stopPropagation()}>
@@ -918,7 +1096,7 @@ export default function Services() {
             {!enriched.ok ? (
               <div style={{padding:24}}>
                 <h3>Couldn't load details</h3>
-                <p style={{color:'var(--sv-muted)'}}>{enriched.error || 'Unknown error.'}</p>
+                <p style={{color:'var(--muted-foreground)'}}>{enriched.error || 'Unknown error.'}</p>
               </div>
             ) : (
               <div className="sv-modal-body">
@@ -944,7 +1122,7 @@ export default function Services() {
                 {enriched.provider?.openingHours && (
                   <div style={{marginTop:12}}>
                     <strong>Opening Hours</strong>
-                    <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:13,margin:'6px 0 0',color:'var(--sv-muted)'}}>
+                    <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:13,margin:'6px 0 0',color:'var(--muted-foreground)'}}>
                       {enriched.provider.openingHours}
                     </pre>
                   </div>
@@ -971,15 +1149,16 @@ export default function Services() {
               </div>
 
               {menuModal.loading ? (
-                <div className="sv-matches-loading" style={{padding:'18px 0'}}>
-                  <span className="sv-spinner" /> Reading the published menu / price list from the web…
+                <div className="sv-menu-strip-loading" style={{padding:'18px 0'}}>
+                  <span className="sv-deals-spinner" /> Reading the published menu / price list from the web…
                 </div>
               ) : !menuModal.data?.ok || !menuModal.data.items?.length ? (
-                <p style={{color:'var(--sv-muted)'}}>
+                <p style={{color:'var(--muted-foreground)'}}>
                   {menuModal.error || 'No published prices found online for this business yet. Try their website or call for pricing.'}
                 </p>
               ) : (
                 <>
+                  {/* Price-bucket chips */}
                   <div className="sv-menu-buckets">
                     <button
                       className={`sv-subchip ${!menuModal.bucket ? 'active' : ''}`}
@@ -1019,7 +1198,7 @@ export default function Services() {
                         )
                       })}
                   </div>
-                  <div className="sv-menu-note">
+                  <div className="sv-deals-strip-note" style={{marginTop:10}}>
                     🔎 Prices read live from the business&rsquo;s published menu · confirm before ordering
                   </div>
                 </>
