@@ -2,7 +2,11 @@
   position: relative;
   padding: 40px 0 80px;
   color: var(--foreground, #f7f5ff);
+  overflow-x: hidden; /* never let a wide child cause a horizontal scrollbar */
 }
+/* Wider container on the Services page so the results + sidebar both fit
+   comfortably on large screens (default site container is only 1100px). */
+.sv-page .container { max-width: 1320px; }
 .sv-bg {
   position: absolute;
   inset: 0;
@@ -180,7 +184,10 @@
 .sv-pref-blurb { margin: 0; color: var(--muted-foreground, #a9a3c4); font-size: 13px; line-height: 1.5; }
 
 /* Providers section */
-.sv-providers-grid { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+.sv-providers-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+/* min-width:0 lets the main column shrink so wide children (menu strip) scroll
+   instead of pushing the sidebar off-screen. */
+.sv-providers-grid > * { min-width: 0; }
 .sv-providers-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
 .sv-providers-head h2 {
   margin: 0;
