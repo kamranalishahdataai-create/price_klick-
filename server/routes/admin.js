@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import User from '../models/User.js';
 import UserActivity from '../models/UserActivity.js';
 import { authenticate, adminOnly } from '../middleware/auth.js';
@@ -18,6 +19,32 @@ const router = express.Router();
 
 // All admin routes require authentication + admin role
 router.use(authenticate, adminOnly);
+
+// ========================================================
+// PASSCODE GATE — extra password on top of admin login
+// Set ADMIN_PANEL_PASSWORD in server/.env to enable. If unset, the gate is
+// disabled and role-based auth alone protects the panel (no lockout risk).
+// ========================================================
+function safeEqual(a, b) {
+  const ab = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+// Tells the client whether a passcode is required (does NOT leak the value)
+router.get('/gate', (req, res) => {
+  res.json({ ok: true, required: !!process.env.ADMIN_PANEL_PASSWORD });
+});
+
+// Verify the passcode. Rate-agnostic; already behind admin auth.
+router.post('/unlock', (req, res) => {
+  const configured = process.env.ADMIN_PANEL_PASSWORD;
+  if (!configured) return res.json({ ok: true, disabled: true });
+  const { password } = req.body || {};
+  if (password && safeEqual(password, configured)) return res.json({ ok: true });
+  return res.status(401).json({ ok: false, error: 'invalid_passcode' });
+});
 
 // ========================================================
 // ADMIN DASHBOARD - Overview stats

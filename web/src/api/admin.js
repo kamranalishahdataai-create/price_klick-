@@ -28,6 +28,17 @@ async function adminFetch(path, options = {}) {
   return data;
 }
 
+// Passcode gate (extra password on top of admin login)
+export async function getGate() {
+  return adminFetch('/api/admin/gate');
+}
+export async function unlockPanel(password) {
+  return adminFetch('/api/admin/unlock', {
+    method: 'POST',
+    body: JSON.stringify({ password })
+  });
+}
+
 // Dashboard stats
 export async function getAdminStats() {
   return adminFetch('/api/admin/stats');

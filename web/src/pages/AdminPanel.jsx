@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   getAdminStats, getUsers, getUser, updateUser, deleteUser, suspendUser,
   getTrending, getBrandStats, getBrandAlerts, resetBrandAlert, processAlerts,
-  getSettings, bootstrapAdmin, getActivity
+  getSettings, bootstrapAdmin, getActivity, getGate, unlockPanel
 } from '../api/admin';
 import ActivityTab from './AdminActivityTab';
 import './Panel.css';
@@ -213,6 +213,13 @@ export default function AdminPanel() {
   const [activityDays, setActivityDays] = useState(30);
   const [activityLoading, setActivityLoading] = useState(false);
 
+  // Passcode gate state
+  const [gateRequired, setGateRequired] = useState(null); // null = checking
+  const [unlocked, setUnlocked] = useState(sessionStorage.getItem('admin_unlocked') === '1');
+  const [gatePassword, setGatePassword] = useState('');
+  const [gateError, setGateError] = useState('');
+  const [gateBusy, setGateBusy] = useState(false);
+
   // Auth check
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || (user && user.role !== 'admin'))) {
@@ -220,10 +227,35 @@ export default function AdminPanel() {
     }
   }, [authLoading, isAuthenticated, user, navigate]);
 
-  // Load initial data
+  // Check whether a passcode is required for this panel
   useEffect(() => {
-    if (user?.role === 'admin') loadDashboard();
+    if (user?.role !== 'admin') return;
+    getGate()
+      .then(d => { setGateRequired(!!d.required); if (!d.required) setUnlocked(true); })
+      .catch(() => setGateRequired(false)); // fail-open to role auth if the check errors
   }, [user]);
+
+  async function handleUnlock(e) {
+    e?.preventDefault();
+    setGateError('');
+    setGateBusy(true);
+    try {
+      const res = await unlockPanel(gatePassword);
+      if (res.ok) {
+        sessionStorage.setItem('admin_unlocked', '1');
+        setUnlocked(true);
+        setGatePassword('');
+      }
+    } catch (err) {
+      setGateError('Incorrect passcode');
+    }
+    setGateBusy(false);
+  }
+
+  // Load initial data (only once past the gate)
+  useEffect(() => {
+    if (user?.role === 'admin' && (unlocked || gateRequired === false)) loadDashboard();
+  }, [user, unlocked, gateRequired]);
 
   async function loadDashboard() {
     setLoading(true);
@@ -303,6 +335,43 @@ export default function AdminPanel() {
 
   if (authLoading) return <div className="panel-loading">Loading...</div>;
   if (!user || user.role !== 'admin') return null;
+  if (gateRequired === null) return <div className="panel-loading">Loading...</div>;
+
+  // Passcode gate — extra password on top of admin login
+  if (gateRequired && !unlocked) {
+    return (
+      <div className="panel-page">
+        <div className="panel-container" style={{ maxWidth: 420, margin: '0 auto' }}>
+          <div className="panel-card" style={{ marginTop: 80, textAlign: 'center' }}>
+            <div style={{ fontSize: 44, marginBottom: 8 }}>🔒</div>
+            <h1 className="panel-card-title" style={{ justifyContent: 'center' }}>Admin Access</h1>
+            <p style={{ color: '#888', fontSize: 14, marginBottom: 20 }}>
+              Enter the admin passcode to continue.
+            </p>
+            <form onSubmit={handleUnlock} style={{ display: 'grid', gap: 12 }}>
+              <input
+                type="password"
+                autoFocus
+                autoComplete="off"
+                className="panel-input"
+                placeholder="Passcode"
+                value={gatePassword}
+                onChange={e => setGatePassword(e.target.value)}
+                style={{ textAlign: 'center', letterSpacing: 2 }}
+              />
+              {gateError && <div style={{ color: '#ff6b6b', fontSize: 13 }}>{gateError}</div>}
+              <button type="submit" className="panel-btn panel-btn-primary" disabled={gateBusy || !gatePassword}>
+                {gateBusy ? 'Verifying…' : 'Unlock'}
+              </button>
+              <button type="button" className="panel-btn panel-btn-ghost" onClick={() => navigate('/user-dashboard')}>
+                ← Back to Dashboard
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="panel-page">
