@@ -314,58 +314,102 @@ function FinanceVsLease({ fl }) {
   )
 }
 
+const DASH_NAV = [
+  { icon: '🏠', label: 'Dashboard', active: true },
+  { icon: '🔍', label: 'Smart Compare' },
+  { icon: '🏷️', label: 'Deals' },
+  { icon: '🚗', label: 'Vehicles' },
+  { icon: '📊', label: 'Finance Tools' },
+  { icon: '🔔', label: 'Price Alerts' },
+  { icon: '❤️', label: 'Saved' },
+  { icon: '📈', label: 'Market Insights' },
+  { icon: '❓', label: 'Help & FAQ' },
+  { icon: '⚙️', label: 'Settings' },
+]
+
 function ResultDashboard({ data, sample = false }) {
   if (!data) return null
   const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+  const noun = /vehicle|car|suv|truck/i.test(data.category || '') ? 'vehicles' : 'options'
   return (
     <div className={`sc-dash ${sample ? 'sample' : ''}`}>
-      <div className="sc-dash-top">
-        <div className="sc-dash-brand">✦ AI-Powered Smart Compare</div>
-      </div>
-      <div className="sc-dash-summary">
-        <div className="sc-dash-quote">💬 {data.summary}</div>
-        <div className="sc-dash-meta">
-          Analyzed {Number(data.analyzedCount || 0).toLocaleString()} options · {data.vendorsCount || 0} vendors
-          {updated && ` · Updated ${updated}`}
+      {/* Left nav */}
+      <aside className="sc-nav">
+        <div className="sc-nav-brand"><span className="sc-nav-logo">✦</span> Price<span>Klick</span></div>
+        <nav className="sc-nav-list">
+          {DASH_NAV.map(n => (
+            <div key={n.label} className={`sc-nav-item ${n.active ? 'active' : ''}`}>
+              <span className="sc-nav-ic">{n.icon}</span>{n.label}
+            </div>
+          ))}
+        </nav>
+        <div className="sc-nav-cta">
+          <div className="sc-nav-cta-ic">✦</div>
+          <div className="sc-nav-cta-title">AI-Powered Smart Compare</div>
+          <div className="sc-nav-cta-desc">Get personalized recommendations in seconds.</div>
         </div>
-      </div>
+      </aside>
 
-      {data.promotions?.length > 0 && (
-        <div className="sc-dash-section">
-          <div className="sc-dash-h">🎟️ Current Promotions <span className="sc-dash-view">View all →</span></div>
-          <div className="sc-dash-promos">
-            {data.promotions.slice(0, 4).map((p, i) => <PromoCard key={i} p={p} />)}
+      {/* Main */}
+      <div className="sc-dashmain">
+        <div className="sc-topbar">
+          <div className="sc-topbar-title"><span className="sc-topbar-spark">✦</span> AI-Powered Smart Compare</div>
+          <div className="sc-topbar-right">
+            <span className="sc-topbar-bell">🔔</span>
+            <span className="sc-topbar-user"><span className="sc-topbar-avatar">JD</span> {sample ? 'John D.' : 'You'}</span>
           </div>
         </div>
-      )}
 
-      {data.financeVsLease && <FinanceVsLease fl={data.financeVsLease} />}
-
-      {data.options?.length > 0 && (
-        <div className="sc-dash-section sc-dash-options">
-          {data.options.slice(0, 4).map((o, i) => <OptionCard key={i} o={o} />)}
-        </div>
-      )}
-
-      {/* Live sources (Perplexity citations) — clickable, real, current */}
-      {Array.isArray(data.citations) && data.citations.length > 0 && (
-        <div className="sc-dash-section">
-          <div className="sc-dash-h">🔗 Live Sources <span className="sc-dash-view">{data.engine === 'perplexity' ? 'web-verified' : ''}</span></div>
-          <div className="sc-sources">
-            {data.citations.slice(0, 8).map((c, i) => {
-              const url = typeof c === 'string' ? c : (c?.url || c?.link)
-              if (!url) return null
-              let host = url
-              try { host = new URL(url).hostname.replace(/^www\./, '') } catch {}
-              return (
-                <a key={i} className="sc-source" href={url} target="_blank" rel="noopener noreferrer">
-                  <span className="sc-source-n">{i + 1}</span>{host} →
-                </a>
-              )
-            })}
+        <div className="sc-dashbody">
+          <div className="sc-dash-summary">
+            <div className="sc-dash-quote">💬 {data.summary}</div>
+            <div className="sc-dash-meta">
+              Analyzed {Number(data.analyzedCount || 0).toLocaleString()} {noun} · {data.vendorsCount || 0} vendors
+              {updated && ` · Updated ${updated}`}
+            </div>
           </div>
+
+          {data.promotions?.length > 0 && (
+            <div className="sc-dash-section">
+              <div className="sc-dash-h">🎟️ Current Promotions <span className="sc-dash-view">View all →</span></div>
+              <div className="sc-dash-promos">
+                {data.promotions.slice(0, 4).map((p, i) => <PromoCard key={i} p={p} />)}
+              </div>
+            </div>
+          )}
+
+          {data.financeVsLease && <FinanceVsLease fl={data.financeVsLease} />}
+
+          {data.options?.length > 0 && (
+            <div className="sc-dash-section">
+              <div className="sc-dash-h">✦ AI Recommendations <span className="sc-dash-view">ranked by fit</span></div>
+              <div className="sc-dash-options">
+                {data.options.slice(0, 4).map((o, i) => <OptionCard key={i} o={o} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Live sources (Perplexity citations) — clickable, real, current */}
+          {Array.isArray(data.citations) && data.citations.length > 0 && (
+            <div className="sc-dash-section">
+              <div className="sc-dash-h">🔗 Live Sources <span className="sc-dash-view">{data.engine === 'perplexity' ? 'web-verified' : ''}</span></div>
+              <div className="sc-sources">
+                {data.citations.slice(0, 8).map((c, i) => {
+                  const url = typeof c === 'string' ? c : (c?.url || c?.link)
+                  if (!url) return null
+                  let host = url
+                  try { host = new URL(url).hostname.replace(/^www\./, '') } catch {}
+                  return (
+                    <a key={i} className="sc-source" href={url} target="_blank" rel="noopener noreferrer">
+                      <span className="sc-source-n">{i + 1}</span>{host} →
+                    </a>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
