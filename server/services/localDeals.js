@@ -57,19 +57,24 @@ export async function findLocalDeals({ providers = [], budget, category, locatio
     .map((p, i) => `${i + 1}. ${p.name}${(p.city || p.address) ? ` — ${p.city || p.address}` : ''}`)
     .join('\n');
 
+  const focus = (category || '').trim();
   const prompt =
     `You are a local-deals researcher with live web access. Find CURRENT, REAL deals, specials, ` +
     `promotions, value offers, or discounted packages where the customer's FINAL PRICE is at or ` +
-    `below $${budgetNum}, offered by these ${category || 'local'} businesses` +
-    `${location ? ` in ${location}` : ''}. This can be any service or product the business sells ` +
-    `(a value meal, a haircut special, an oil-change package, an intro class, a first-visit rate, etc.). ` +
+    `below $${budgetNum}, offered by these ${focus || 'local'} businesses` +
+    `${location ? ` in ${location}` : ''}. ` +
+    (focus
+      ? `The deal MUST be for ${focus} specifically (the exact thing the user is shopping for) — ` +
+        `e.g. if the focus is "pizza", only pizza deals; if "coffee & tea", only coffee/tea drink deals; ` +
+        `if "oil change", only oil-change deals. Ignore unrelated items the business also sells. `
+      : `This can be any service or product the business sells. `) +
     `IMPORTANT: "price" must be what the customer actually PAYS, not a discount amount — ` +
     `"$15 off" is NOT a $15 price; skip offers where you can't determine the final price ≤ $${budgetNum}. ` +
-    `Only include a business where you find a genuine current offer; skip the rest. ` +
+    `Only include a business where you find a genuine current ${focus || ''} offer; skip the rest. ` +
     `Match each deal to the EXACT business name from the list. Do not invent deals.\n\n` +
     `Businesses:\n${list}\n\n` +
     `Respond with ONLY this JSON: {"deals":[{"name":"<exact business name from the list>",` +
-    `"title":"<short deal name, e.g. Everyday Value Burrito>","price":"<final price the customer pays, e.g. $6.99>",` +
+    `"title":"<short deal name>","price":"<final price the customer pays, e.g. $6.99>",` +
     `"url":"<source url>","description":"<one short line>"}]}`;
 
   try {

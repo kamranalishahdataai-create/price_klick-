@@ -51,6 +51,88 @@ export function bucketFor(price) {
 
 const nameKeyOf = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
+// Narrow the budget "matches" to the SELECTED service type — a pizza search
+// should surface pizzas, not the shop's fries; a coffee search should surface
+// drinks, not sandwiches. Keyword sets per common service; unmapped categories
+// fall back to the significant words of the category name itself.
+const FOCUS_KEYWORDS = {
+  // ── Food & drink ──
+  pizza: ['pizza', 'margherita', 'pepperoni', 'calzone'],
+  burgers: ['burger', 'smash', 'patty', 'cheeseburger'],
+  sushi: ['sushi', 'roll', 'sashimi', 'nigiri', 'maki', 'japanese', 'bento'],
+  'coffee & tea': ['coffee', 'tea', 'espresso', 'latte', 'cappuccino', 'americano', 'mocha', 'macchiato', 'cortado', 'brew', 'matcha', 'chai', 'flat white', 'affogato', 'cold brew', 'drip'],
+  'coffee and tea': ['coffee', 'tea', 'espresso', 'latte', 'cappuccino', 'americano', 'mocha', 'macchiato', 'cortado', 'brew', 'matcha', 'chai', 'flat white', 'cold brew', 'drip'],
+  coffee: ['coffee', 'espresso', 'latte', 'cappuccino', 'americano', 'mocha', 'macchiato', 'cortado', 'brew', 'drip', 'cold brew', 'flat white', 'affogato'],
+  tea: ['tea', 'matcha', 'chai', 'oolong', 'herbal', 'green tea', 'black tea'],
+  'cafés': ['coffee', 'tea', 'espresso', 'latte', 'cappuccino', 'pastry', 'croissant'],
+  'cafes': ['coffee', 'tea', 'espresso', 'latte', 'cappuccino', 'pastry', 'croissant'],
+  'espresso bars': ['espresso', 'coffee', 'latte', 'cappuccino', 'americano', 'macchiato', 'cortado'],
+  'bubble tea': ['bubble tea', 'boba', 'milk tea', 'tea', 'smoothie'],
+  'juice bars': ['juice', 'smoothie', 'shake', 'bowl'],
+  bakeries: ['bread', 'cake', 'pastry', 'croissant', 'muffin', 'cookie', 'donut', 'bun', 'loaf', 'bagel', 'tart', 'pie', 'scone'],
+  bars: ['beer', 'wine', 'cocktail', 'draft', 'pint', 'spirit', 'shot', 'ale', 'lager', 'margarita'],
+  catering: ['platter', 'tray', 'package', 'buffet', 'catering', 'box'],
+  italian: ['pasta', 'pizza', 'risotto', 'lasagna', 'spaghetti', 'italian', 'gnocchi'],
+  chinese: ['noodle', 'rice', 'dumpling', 'chow', 'wonton', 'spring roll', 'chinese'],
+  mexican: ['taco', 'burrito', 'quesadilla', 'nacho', 'enchilada', 'fajita', 'mexican'],
+  indian: ['curry', 'naan', 'biryani', 'tikka', 'masala', 'samosa', 'tandoori', 'indian'],
+  thai: ['pad thai', 'curry', 'noodle', 'thai', 'spring roll'],
+  steakhouse: ['steak', 'ribeye', 'sirloin', 'filet'],
+  seafood: ['fish', 'shrimp', 'lobster', 'crab', 'oyster', 'seafood', 'salmon'],
+  bbq: ['bbq', 'ribs', 'brisket', 'pulled', 'smoked', 'wings'],
+  breakfast: ['breakfast', 'egg', 'pancake', 'waffle', 'omelette', 'bacon', 'brunch', 'toast'],
+  // ── Auto ──
+  'auto repair': ['oil', 'tire', 'brake', 'transmission', 'battery', 'alignment', 'engine', 'diagnostic', 'repair', 'service', 'muffler', 'exhaust', 'tune'],
+  'oil change': ['oil', 'lube'],
+  tires: ['tire', 'tyre', 'wheel'],
+  brakes: ['brake', 'pad', 'rotor'],
+  'car wash': ['wash', 'detail', 'wax', 'clean'],
+  // ── Home / trades ──
+  plumbing: ['drain', 'leak', 'pipe', 'faucet', 'toilet', 'water heater', 'plumb', 'clog', 'sink'],
+  electrical: ['wiring', 'outlet', 'panel', 'light', 'breaker', 'electric', 'install'],
+  hvac: ['ac', 'furnace', 'heat', 'cooling', 'duct', 'thermostat', 'hvac', 'air condition'],
+  'house cleaning': ['clean', 'deep clean', 'room', 'home', 'maid'],
+  cleaning: ['clean', 'deep clean', 'room', 'home', 'maid'],
+  landscaping: ['lawn', 'tree', 'mow', 'garden', 'snow', 'yard', 'hedge', 'landscap'],
+  'pest control': ['pest', 'rodent', 'insect', 'termite', 'bed bug', 'spray', 'exterminat'],
+  roofing: ['roof', 'shingle', 'gutter'],
+  painting: ['paint', 'coat', 'wall', 'room', 'interior', 'exterior'],
+  moving: ['move', 'moving', 'pack', 'truck', 'storage'],
+  // ── Beauty ──
+  'hair salons': ['haircut', 'cut', 'color', 'colour', 'style', 'blowout', 'highlight', 'trim', 'wash'],
+  barbers: ['haircut', 'cut', 'beard', 'shave', 'trim', 'fade', 'lineup'],
+  'nail salons': ['manicure', 'pedicure', 'nail', 'gel', 'acrylic', 'polish'],
+  spas: ['facial', 'massage', 'spa', 'treatment', 'wax', 'body'],
+  massage: ['massage', 'deep tissue', 'swedish', 'relaxation', 'sports'],
+  // ── Fitness / education / pet ──
+  gyms: ['membership', 'pass', 'class', 'session', 'training', 'day pass'],
+  'personal training': ['session', 'training', 'package', 'class'],
+  tutoring: ['session', 'hour', 'lesson', 'tutor', 'package', 'class'],
+  'music lessons': ['lesson', 'session', 'class'],
+  'pet grooming': ['groom', 'bath', 'nail', 'wash', 'trim', 'de-shed'],
+  vets: ['exam', 'vaccine', 'checkup', 'consultation', 'visit'],
+};
+
+function focusKeywords(category) {
+  const c = (category || '').toLowerCase().trim();
+  if (!c) return null;
+  if (FOCUS_KEYWORDS[c]) return FOCUS_KEYWORDS[c];
+  // Partial match (e.g. selected "coffee" vs key "coffee & tea")
+  for (const k of Object.keys(FOCUS_KEYWORDS)) {
+    if (c.includes(k) || k.includes(c)) return FOCUS_KEYWORDS[k];
+  }
+  // Fallback: significant words from the category name itself.
+  const stop = new Set(['and', 'the', 'for', 'with', 'service', 'services', 'shop', 'store', 'local']);
+  const words = c.split(/[^a-z]+/).filter(w => w.length > 2 && !stop.has(w));
+  return words.length ? words : null;
+}
+
+function itemMatchesFocus(item, keywords) {
+  if (!keywords || !keywords.length) return true;
+  const hay = `${item.name || ''} ${item.section || ''}`.toLowerCase();
+  return keywords.some(k => hay.includes(k));
+}
+
 // Normalize raw extracted items → deduped, priced, bucketed, capped.
 function normalizeItems(raw) {
   const seen = new Set();
@@ -234,9 +316,19 @@ export async function getProviderMenu({ placeId, name, website, city, category, 
 
   const items = (doc?.items || []).map(it => (it.toObject ? it.toObject() : it));
   const budgetNum = parsePrice(budget);
-  const matches = budgetNum != null
+  let matches = budgetNum != null
     ? items.filter(it => it.price != null && it.price <= budgetNum + 0.01)
-    : items;
+    : items.slice();
+
+  // Narrow matches to the selected service type (pizza search → pizzas, not fries).
+  // If the focus filter finds relevant items we keep only those; if it finds none
+  // (keywords too strict for this business), we fall back to the budget matches so
+  // the strip is never wrongly empty.
+  const keywords = focusKeywords(category);
+  if (keywords) {
+    const focused = matches.filter(it => itemMatchesFocus(it, keywords));
+    if (focused.length > 0) matches = focused;
+  }
 
   return {
     ok: true,
