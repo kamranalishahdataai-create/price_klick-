@@ -782,34 +782,53 @@ export default function Services() {
     }
   }
 
-  // Auto-load scraped menus for the top providers when a budget is set, powering
-  // the "MENU MATCHES UNDER $X" strips (results are cached server-side for 7 days).
-  // Loading is staggered so we don't fire many web-scrape calls at once.
+  // Auto-load scraped menus for the top displayed providers when a budget is set,
+  // powering the "MENU MATCHES UNDER $X" strips (server-cached 7 days).
   const MENU_STRIP_COUNT = 6
+  const menuCacheRef = useRef({})   // cacheKey -> menu data (persists across re-renders)
+  // A STABLE signature of the top displayed providers + budget + category, so the
+  // effect only re-runs when the actual inputs change — not on every array
+  // reference change (which was wiping menus before they finished loading).
+  const menuSig = useMemo(() => {
+    const cat_ = sub || cat || effectiveQuery
+    return JSON.stringify([
+      dealBudget, cat_,
+      sortedProviders.slice(0, MENU_STRIP_COUNT).map(p => p.placeId || p.name),
+    ])
+  }, [sortedProviders, dealBudget, sub, cat, effectiveQuery])
+
   useEffect(() => {
-    setMenus({})
-    if (!dealBudget || providers.length === 0) return
+    if (!dealBudget) { setMenus({}); return }
+    const top = sortedProviders.slice(0, MENU_STRIP_COUNT)
+    if (top.length === 0) return
+    const cat_ = sub || cat || effectiveQuery
     let cancelled = false
     const timers = []
-    providers.slice(0, MENU_STRIP_COUNT).forEach((p, i) => {
+    top.forEach((p, i) => {
       const key = p.placeId || p.name
-      setMenus(m => ({ ...m, [key]: { loading: true } }))
-      // Stagger by 250ms each so the first cards fill in fast and we stay under
-      // the scraper's rate limits on a cold (uncached) search.
+      const cacheKey = `${key}|${cat_}|${dealBudget}`
+      const cached = menuCacheRef.current[cacheKey]
+      if (cached) { setMenus(m => ({ ...m, [key]: { loading: false, data: cached } })); return }
+      setMenus(m => (m[key]?.data ? m : { ...m, [key]: { loading: true } }))
       const t = setTimeout(() => {
         if (cancelled) return
         getProviderMenu({
           provider: { placeId: p.placeId, name: p.name, website: realSiteOf(p), city: geo.city || undefined },
-          category: sub || cat || effectiveQuery,
+          category: cat_,
           budget: dealBudget,
         })
-          .then(r => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false, data: r } })) })
+          .then(r => {
+            if (cancelled) return
+            menuCacheRef.current[cacheKey] = r
+            setMenus(m => ({ ...m, [key]: { loading: false, data: r } }))
+          })
           .catch(() => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false } })) })
       }, i * 250)
       timers.push(t)
     })
     return () => { cancelled = true; timers.forEach(clearTimeout) }
-  }, [providers, dealBudget, geo.city])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuSig])
 
   function clearAll() {
     setCat(null); setSub(null); setQ(''); setBudget(''); setMinRating(''); setQuick(null); setRadiusKm(10)
