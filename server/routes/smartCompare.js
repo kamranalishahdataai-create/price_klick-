@@ -309,17 +309,19 @@ router.post('/', optionalAuth, async (req, res) => {
       await enrichUrlsWithPerplexity(parsed, { location });
     }
 
-    // Best-effort log activity (non-blocking)
-    if (req.user?._id) {
-      try {
-        const { default: UserActivity } = await import('../models/UserActivity.js');
-        UserActivity.create({
-          userId: req.user._id,
-          type: 'compare',
-          payload: { query, budget, location, category, optionsCount: parsed.options.length },
-        }).catch(() => {});
-      } catch {}
-    }
+    // Best-effort activity capture (logged-in OR anonymous session) — non-blocking.
+    try {
+      const { default: UserActivity } = await import('../models/UserActivity.js');
+      UserActivity.create({
+        userId: req.user?._id || undefined,
+        sessionId: req.headers['x-session-id'] || undefined,
+        type: 'smart_compare',
+        query: query || undefined,
+        category: (parsed.category || category) || undefined,
+        location: location ? { city: String(location).slice(0, 80) } : undefined,
+        meta: { budget: budget || null, optionsCount: parsed.options.length, engine: parsed.engine || null },
+      }).catch(() => {});
+    } catch {}
 
     res.json(parsed);
   } catch (e) {

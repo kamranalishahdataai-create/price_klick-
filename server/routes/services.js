@@ -82,6 +82,21 @@ router.post('/deals', optionalAuth, async (req, res) => {
     if (!dealsReady()) return res.json({ ok: true, deals: [], disabled: true });
     const { providers = [], budget, category, location } = req.body || {};
     const result = await findLocalDeals({ providers, budget, category, location });
+
+    if (result?.ok) {
+      setImmediate(() => {
+        UserActivity.create({
+          userId: req.userId || null,
+          sessionId: req.headers['x-session-id'] || null,
+          type: 'deal_search',
+          query: category || undefined,
+          category: category || undefined,
+          location: location ? { city: String(location).slice(0, 80) } : undefined,
+          meta: { budget: budget || null, dealsFound: result.deals?.length || 0 },
+        }).catch(() => {});
+      });
+    }
+
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message, deals: [] });
@@ -209,6 +224,21 @@ router.post('/menu', optionalAuth, async (req, res) => {
       budget,
       force: !!force && req.user?.role === 'admin', // force re-scrape is admin-only
     });
+
+    // Capture the menu/price-list view into the activity stream (non-blocking).
+    if (result?.ok) {
+      setImmediate(() => {
+        UserActivity.create({
+          userId: req.userId || null,
+          sessionId: req.headers['x-session-id'] || null,
+          type: 'menu_view',
+          query: provider.name,
+          category: category || undefined,
+          meta: { itemCount: result.items?.length || 0, matchCount: result.matches?.length || 0, budget: budget || null },
+        }).catch(() => {});
+      });
+    }
+
     res.json(result);
   } catch (e) {
     console.error('services/menu', e.message);

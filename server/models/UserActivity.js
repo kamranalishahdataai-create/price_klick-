@@ -8,7 +8,8 @@ const userActivitySchema = new mongoose.Schema({
   type: {
     type: String,
     enum: ['lens_scan', 'service_search', 'service_click', 'service_favorite',
-           'product_click', 'coupon_apply', 'compare', 'flyer_view'],
+           'product_click', 'coupon_apply', 'compare', 'flyer_view',
+           'menu_view', 'deal_search', 'smart_compare'],
     required: true,
     index: true
   },

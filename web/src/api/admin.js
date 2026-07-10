@@ -33,6 +33,11 @@ export async function getAdminStats() {
   return adminFetch('/api/admin/stats');
 }
 
+// Full activity stream (Lens scans, searches, menu views, smart compares, deals…)
+export async function getActivity(days = 30) {
+  return adminFetch(`/api/admin/activity?days=${days}`);
+}
+
 // Users
 export async function getUsers({ page = 1, limit = 20, search = '', role = '', sortBy = 'createdAt', sortOrder = 'desc' } = {}) {
   const params = new URLSearchParams({ page, limit, search, role, sortBy, sortOrder });

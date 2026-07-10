@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   getAdminStats, getUsers, getUser, updateUser, deleteUser, suspendUser,
   getTrending, getBrandStats, getBrandAlerts, resetBrandAlert, processAlerts,
-  getSettings, bootstrapAdmin
+  getSettings, bootstrapAdmin, getActivity
 } from '../api/admin';
+import ActivityTab from './AdminActivityTab';
 import './Panel.css';
 
 // ========================================================
@@ -207,6 +208,11 @@ export default function AdminPanel() {
   // Settings state
   const [settings, setSettingsData] = useState(null);
 
+  // Activity stream state
+  const [activity, setActivity] = useState(null);
+  const [activityDays, setActivityDays] = useState(30);
+  const [activityLoading, setActivityLoading] = useState(false);
+
   // Auth check
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || (user && user.role !== 'admin'))) {
@@ -278,11 +284,22 @@ export default function AdminPanel() {
     } catch (e) { setError(e.message); }
   }
 
+  // Load activity stream
+  const loadActivity = useCallback(async (days = activityDays) => {
+    setActivityLoading(true);
+    try {
+      const data = await getActivity(days);
+      setActivity(data);
+    } catch (e) { setError(e.message); }
+    setActivityLoading(false);
+  }, [activityDays]);
+
   useEffect(() => {
     if (activeTab === 'analytics') loadAnalytics();
     if (activeTab === 'alerts') loadAlerts();
     if (activeTab === 'settings') loadSettings();
-  }, [activeTab]);
+    if (activeTab === 'activity') loadActivity();
+  }, [activeTab]); // eslint-disable-line
 
   if (authLoading) return <div className="panel-loading">Loading...</div>;
   if (!user || user.role !== 'admin') return null;
@@ -310,13 +327,14 @@ export default function AdminPanel() {
 
         {/* Tabs */}
         <div className="panel-tabs">
-          {['dashboard', 'users', 'analytics', 'alerts', 'settings'].map(tab => (
+          {['dashboard', 'activity', 'users', 'analytics', 'alerts', 'settings'].map(tab => (
             <button
               key={tab}
               className={`panel-tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
               {tab === 'dashboard' ? '📊 Dashboard' :
+               tab === 'activity' ? '📡 Activity' :
                tab === 'users' ? '👥 Users' :
                tab === 'analytics' ? '📈 Analytics' :
                tab === 'alerts' ? '🔔 Alerts' : '⚙️ Settings'}
@@ -410,6 +428,17 @@ export default function AdminPanel() {
                   </div>
                 )}
               </>
+            )}
+
+            {/* ====== ACTIVITY TAB ====== */}
+            {activeTab === 'activity' && (
+              <ActivityTab
+                activity={activity}
+                loading={activityLoading}
+                days={activityDays}
+                onDays={(d) => { setActivityDays(d); loadActivity(d); }}
+                onRefresh={() => loadActivity(activityDays)}
+              />
             )}
 
             {/* ====== USERS TAB ====== */}

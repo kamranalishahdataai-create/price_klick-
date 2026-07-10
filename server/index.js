@@ -1094,6 +1094,20 @@ app.post('/api/promo/find-url', async (req, res) => {
         url: result.redirectUrl
       });
     }
+
+    // Capture the Lens scan into the activity stream (admin analytics + PrePay).
+    try {
+      const { default: UserActivity } = await import('./models/UserActivity.js');
+      UserActivity.create({
+        sessionId: req.headers['x-session-id'] || undefined,
+        type: 'lens_scan',
+        query: result.promotionTitle || result.products?.[0] || result.brand || undefined,
+        brand: result.brand || undefined,
+        productName: result.products?.[0] || undefined,
+        category: result.productCategory || undefined,
+        meta: { hasPromo: !!result.discountAmount, confidence: result.confidence || null, provider: result.provider || null },
+      }).catch(() => {});
+    } catch {}
     
     // Build a redirect URL fallback if detection succeeded but no URL was found
     let redirectUrl = result.redirectUrl;

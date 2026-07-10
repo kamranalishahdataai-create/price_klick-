@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import UserActivity from '../models/UserActivity.js';
 import { authenticate, adminOnly } from '../middleware/auth.js';
 import {
   getTrendingBrands,
@@ -35,6 +36,10 @@ router.get('/stats', async (req, res) => {
     const brandAlerts = getBrandsExceedingThreshold();
     const registeredBrands = getAllRegisteredBrands();
 
+    const since7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const activityTotal = await UserActivity.countDocuments();
+    const activity7d = await UserActivity.countDocuments({ createdAt: { $gte: since7 } });
+
     res.json({
       ok: true,
       stats: {
@@ -44,7 +49,9 @@ router.get('/stats', async (req, res) => {
         recentUsers,
         trendingBrandsCount: trendingBrands.length,
         activeBrandAlerts: brandAlerts.length,
-        registeredBrands: registeredBrands.length
+        registeredBrands: registeredBrands.length,
+        activityTotal,
+        activity7d
       },
       trendingBrands: trendingBrands.slice(0, 5),
       recentAlerts: brandAlerts.slice(0, 5)
@@ -52,6 +59,67 @@ router.get('/stats', async (req, res) => {
   } catch (e) {
     console.error('Admin stats error:', e);
     res.status(500).json({ error: 'server_error', message: e.message });
+  }
+});
+
+// ========================================================
+// ACTIVITY STREAM — everything users do across the platform
+// (Lens scans, service searches, menu views, smart compares, deals, clicks…)
+// ========================================================
+router.get('/activity', async (req, res) => {
+  try {
+    const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+    const since = new Date(Date.now() - days * 24 * 3600 * 1000);
+    const match = { createdAt: { $gte: since } };
+
+    const [
+      total, byType, topCategories, topQueries, topBrands,
+      recent, dailyRaw, uniqueUsersAgg, uniqueSessionsAgg,
+    ] = await Promise.all([
+      UserActivity.countDocuments(match),
+      UserActivity.aggregate([{ $match: match }, { $group: { _id: '$type', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+      UserActivity.aggregate([{ $match: { ...match, category: { $nin: [null, ''] } } }, { $group: { _id: '$category', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 12 }]),
+      UserActivity.aggregate([{ $match: { ...match, query: { $nin: [null, ''] } } }, { $group: { _id: '$query', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 12 }]),
+      UserActivity.aggregate([{ $match: { ...match, brand: { $nin: [null, ''] } } }, { $group: { _id: '$brand', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 10 }]),
+      UserActivity.find(match).sort({ createdAt: -1 }).limit(60)
+        .populate('userId', 'email firstName').lean(),
+      UserActivity.aggregate([
+        { $match: match },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      UserActivity.aggregate([{ $match: { ...match, userId: { $ne: null } } }, { $group: { _id: '$userId' } }, { $count: 'n' }]),
+      UserActivity.aggregate([{ $match: { ...match, sessionId: { $ne: null } } }, { $group: { _id: '$sessionId' } }, { $count: 'n' }]),
+    ]);
+
+    res.json({
+      ok: true,
+      windowDays: days,
+      total,
+      uniqueUsers: uniqueUsersAgg[0]?.n || 0,
+      uniqueSessions: uniqueSessionsAgg[0]?.n || 0,
+      byType: byType.map(t => ({ type: t._id, count: t.count })),
+      topCategories: topCategories.map(t => ({ category: t._id, count: t.count })),
+      topQueries: topQueries.map(t => ({ query: t._id, count: t.count })),
+      topBrands: topBrands.map(t => ({ brand: t._id, count: t.count })),
+      daily: dailyRaw.map(d => ({ date: d._id, count: d.count })),
+      recent: recent.map(r => ({
+        id: String(r._id),
+        type: r.type,
+        query: r.query || null,
+        category: r.category || null,
+        brand: r.brand || null,
+        productName: r.productName || null,
+        city: r.location?.city || null,
+        user: r.userId ? (r.userId.email || r.userId.firstName) : null,
+        anon: !r.userId,
+        meta: r.meta || null,
+        at: r.createdAt,
+      })),
+    });
+  } catch (e) {
+    console.error('Admin activity error:', e);
+    res.status(500).json({ ok: false, error: 'server_error', message: e.message });
   }
 });
 
