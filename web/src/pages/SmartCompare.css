@@ -344,9 +344,16 @@
   width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 8px; background: #1a1f2e;
 }
 .sc-option-img.placeholder {
-  display: flex; align-items: center; justify-content: center;
-  color: #4a5168; font-weight: 800; font-size: 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: radial-gradient(120% 120% at 50% 0%, rgba(109,74,255,.16), #121726 70%);
+  border: 1px solid rgba(255,255,255,.06);
 }
+.sc-option-ph-logo {
+  display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+  color: #fff; font-weight: 800; font-size: 20px; box-shadow: 0 6px 16px rgba(0,0,0,.35);
+}
+.sc-option-ph-brand { color: #e6e8ef; font-weight: 700; font-size: 14px; }
+.sc-option-ph-model { color: #8a92a6; font-weight: 500; font-size: 11px; text-align: center; padding: 0 10px; }
 .sc-option-tag {
   display: inline-block; align-self: flex-start;
   background: rgba(16,185,129,.15); color: #6ee7b7;

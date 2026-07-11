@@ -157,6 +157,8 @@ function OptionCard({ o }) {
   const lg = brandLogo(o.brand)
   const [livePrice, setLivePrice] = useState(null)
   const [checking, setChecking] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
+  const showImage = o.image && !imgFailed
 
   async function checkLivePrice() {
     if (!o.url || checking) return
@@ -187,9 +189,16 @@ function OptionCard({ o }) {
       </div>
       <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'block', cursor: 'pointer' }}
          title={`Open ${o.brand || ''} ${o.model || ''}`}>
-        {o.image
-          ? <img className="sc-option-img" src={o.image} alt={`${o.brand} ${o.model}`} loading="lazy" />
-          : <div className="sc-option-img placeholder">{o.brand}</div>}
+        {showImage ? (
+          <img className="sc-option-img" src={o.image} alt={`${o.brand} ${o.model}`} loading="lazy"
+               onError={() => setImgFailed(true)} />
+        ) : (
+          <div className="sc-option-img placeholder">
+            <span className="sc-option-ph-logo" style={{ background: lg.bg }}>{lg.initial}</span>
+            <span className="sc-option-ph-brand">{o.brand}</span>
+            <span className="sc-option-ph-model">{o.model}</span>
+          </div>
+        )}
       </a>
       {o.tag && <span className="sc-option-tag">⚡ {o.tag}</span>}
       <div className="sc-option-price">

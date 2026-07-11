@@ -88,7 +88,8 @@ async function enrichUrlsWithPerplexity(parsed, { location } = {}) {
 
   // Flat list of items needing a real URL (cap to keep the prompt tight).
   // An option "needs" a URL when it has none OR when the engine produced a
-  // search-engine link instead of the actual product page.
+  // search-engine link instead of the actual product page. (Images come from
+  // the reliable Wikipedia lookup, not from guessed URLs.)
   const items = [];
   promos.slice(0, 5).forEach((p, idx) =>
     items.push({ kind: 'promo', idx, label: `${p.brand || ''} — ${p.title || ''} (promotion/offer page)` }));
@@ -141,6 +142,58 @@ async function enrichUrlsWithPerplexity(parsed, { location } = {}) {
   } catch (e) {
     console.error('SMART_COMPARE enrich_exception', e.message);
   }
+  return parsed;
+}
+
+// Real product photos via the Wikipedia page-image API. Deterministic and
+// reliable (unlike asking an LLM to guess exact image filenames): we search for
+// the model's article and take its lead image thumbnail. Best-effort per option.
+const TRIM_WORDS = /\b(XLE|XSE|LE|SE|SEL|RWD|AWD|FWD|4WD|EX|EX-L|LX|DX|GT|GTS|Turbo|Preferred|Ultimate|Touring|Sport|Hybrid|PHEV|EV|Limited|Premium|Platinum|Base|Advanced|Pack|Package|Edition|Trim|Line|Plus|Pro|Max|Long\s*Range|Standard|Performance)\b/gi;
+
+async function fetchWikiImage(brand, model) {
+  const brandWord = (brand || '').trim().split(/\s+/)[0];
+  const cleaned = `${brand || ''} ${model || ''}`.replace(TRIM_WORDS, '').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return null;
+  // Force the brand into the article title so we land on the model's page, not a
+  // tangential result (e.g. a race driver photographed in a Honda).
+  const modelPart = brandWord ? cleaned.replace(new RegExp('^' + brandWord, 'i'), '').trim() : cleaned;
+  const term = brandWord ? `intitle:${brandWord} ${modelPart}`.trim() : cleaned;
+  const api = `https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=640&redirects=1`;
+  // Retry once on failure — parallel lookups can transiently trip Wikipedia's rate limit.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const ctrl = AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined;
+      const r = await fetch(api, { headers: { 'User-Agent': 'PriceKlick/1.0 (smart-compare)' }, signal: ctrl });
+      if (r.ok) {
+        const j = await r.json();
+        const pages = j?.query?.pages;
+        if (pages) {
+          for (const k of Object.keys(pages)) {
+            const pg = pages[k];
+            const src = pg?.thumbnail?.source;
+            const title = String(pg?.title || '');
+            // Safety net: the matched article's title must contain the brand.
+            if (brandWord && !new RegExp(brandWord, 'i').test(title)) continue;
+            if (typeof src === 'string' && /^https:\/\/upload\.wikimedia\.org/i.test(src)) return src;
+          }
+          return null; // valid response, genuinely no image — no point retrying
+        }
+      }
+    } catch { /* fall through to retry */ }
+    if (attempt === 0) await new Promise(res => setTimeout(res, 500));
+  }
+  return null;
+}
+
+async function enrichImagesWithWikipedia(parsed) {
+  const options = Array.isArray(parsed.options) ? parsed.options : [];
+  const targets = options.map((o, idx) => ({ o, idx })).filter(x => !x.o.image).slice(0, 6);
+  if (!targets.length) return parsed;
+  await Promise.all(targets.map(async ({ o }) => {
+    const img = await fetchWikiImage(o.brand, o.model);
+    if (img) o.image = img;
+  }));
+  if (targets.some(t => t.o.image)) parsed.imagesEnrichedBy = 'wikipedia';
   return parsed;
 }
 
@@ -301,6 +354,10 @@ router.post('/', optionalAuth, async (req, res) => {
     parsed.updatedAt = new Date().toISOString();
     parsed.options = Array.isArray(parsed.options) ? parsed.options : [];
     parsed.promotions = Array.isArray(parsed.promotions) ? parsed.promotions : [];
+
+    // Fill real product photos from Wikipedia (reliable, existing image URLs).
+    // Runs for every engine — best-effort, never blocks the response on failure.
+    await enrichImagesWithWikipedia(parsed);
 
     // Hybrid step: when the comparison came from Claude/OpenAI (no live web),
     // use Perplexity to fill in REAL current promo/product URLs + citations.
