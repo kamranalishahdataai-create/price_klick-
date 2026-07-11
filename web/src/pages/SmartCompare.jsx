@@ -330,7 +330,10 @@ const DASH_NAV = [
 function ResultDashboard({ data, sample = false }) {
   if (!data) return null
   const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-  const noun = /vehicle|car|suv|truck/i.test(data.category || '') ? 'vehicles' : 'options'
+  const isVehicle = /vehicle|car|suv|truck|auto/i.test(data.category || '')
+  const noun = isVehicle ? 'vehicles' : 'options'
+  const vendorNoun = isVehicle ? 'dealerships' : 'vendors'
+  const promoLabel = isVehicle ? 'Current Dealership Promotions' : 'Current Promotions'
   return (
     <div className={`sc-dash ${sample ? 'sample' : ''}`}>
       {/* Left nav */}
@@ -355,6 +358,7 @@ function ResultDashboard({ data, sample = false }) {
         <div className="sc-topbar">
           <div className="sc-topbar-title"><span className="sc-topbar-spark">✦</span> AI-Powered Smart Compare</div>
           <div className="sc-topbar-right">
+            <span className="sc-topbar-spark-btn">✦</span>
             <span className="sc-topbar-bell">🔔</span>
             <span className="sc-topbar-user"><span className="sc-topbar-avatar">JD</span> {sample ? 'John D.' : 'You'}</span>
           </div>
@@ -364,14 +368,15 @@ function ResultDashboard({ data, sample = false }) {
           <div className="sc-dash-summary">
             <div className="sc-dash-quote">💬 {data.summary}</div>
             <div className="sc-dash-meta">
-              Analyzed {Number(data.analyzedCount || 0).toLocaleString()} {noun} · {data.vendorsCount || 0} vendors
+              Analyzed {Number(data.analyzedCount || 0).toLocaleString()} {noun} · {data.vendorsCount || 0} {vendorNoun}
               {updated && ` · Updated ${updated}`}
             </div>
+            <span className="sc-dash-spark">✦</span>
           </div>
 
           {data.promotions?.length > 0 && (
             <div className="sc-dash-section">
-              <div className="sc-dash-h">🎟️ Current Promotions <span className="sc-dash-view">View all →</span></div>
+              <div className="sc-dash-h">🏷️ {promoLabel} <span className="sc-dash-view">View all promotions →</span></div>
               <div className="sc-dash-promos">
                 {data.promotions.slice(0, 4).map((p, i) => <PromoCard key={i} p={p} />)}
               </div>

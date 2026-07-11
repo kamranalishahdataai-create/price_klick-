@@ -209,6 +209,11 @@
   background: linear-gradient(135deg, #6d4aff, #22d3ee); font-size: 12px;
 }
 .sc-topbar-right { display: flex; align-items: center; gap: 14px; }
+.sc-topbar-spark-btn {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
+  background: rgba(109,74,255,.18); border: 1px solid rgba(109,74,255,.4);
+  color: #c4b5fd; font-size: 13px;
+}
 .sc-topbar-bell { font-size: 15px; opacity: .8; }
 .sc-topbar-user { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #d7dae4; }
 .sc-topbar-avatar {
@@ -217,12 +222,19 @@
 }
 .sc-dashbody { padding: 22px; }
 .sc-dash-summary {
+  position: relative;
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px; padding: 14px 18px; margin-bottom: 22px;
+  border-radius: 14px; padding: 14px 56px 14px 18px; margin-bottom: 22px;
 }
 .sc-dash-quote { font-size: 15px; color: #fff; margin-bottom: 6px }
 .sc-dash-meta { font-size: 13px; color: #9aa1b2 }
+.sc-dash-spark {
+  position: absolute; top: 50%; right: 16px; transform: translateY(-50%);
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+  background: linear-gradient(135deg, #6d4aff, #7c3aed); color: #fff; font-size: 15px;
+  box-shadow: 0 4px 14px rgba(109,74,255,.4);
+}
 
 .sc-dash-section { margin-bottom: 26px }
 .sc-dash-h {
