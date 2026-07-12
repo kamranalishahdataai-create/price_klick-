@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import './SmartCompare.css'
 import { scrapeProductPrice } from '../api/services'
@@ -51,6 +51,12 @@ const SAMPLE_RESULT = {
       pros: ['Spacious & practical', 'Great fuel economy', 'Strong safety ratings'], cons: ['Not the most engaging', 'Higher trims get pricey'] },
     { fitScore: 81, brand: 'Hyundai', model: 'Ioniq 5 SE', tag: 'Electric', price: '$49,999', priceLabel: 'Starting MSRP',
       pros: ['Ultra-fast charging', 'Roomy & futuristic', 'Excellent tech features'], cons: ['Some road noise', 'Range varies in winter'] },
+  ],
+  topRecommendation: "The Toyota RAV4 Hybrid XLE is our top pick. It offers the best fuel economy and resale value in your budget, is widely available across GTA dealers, and blends everyday practicality with proven reliability — the safest all-round choice under $60K.",
+  followUpQuestions: [
+    'Do you have a vehicle to trade in?',
+    'What is your typical daily commute distance?',
+    'Is cargo space or performance a higher priority?',
   ],
 }
 
@@ -336,7 +342,7 @@ const DASH_NAV = [
   { icon: '⚙️', label: 'Settings' },
 ]
 
-function ResultDashboard({ data, sample = false }) {
+function ResultDashboard({ data, sample = false, onFollowUp }) {
   if (!data) return null
   const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const isVehicle = /vehicle|car|suv|truck|auto/i.test(data.category || '')
@@ -403,6 +409,29 @@ function ResultDashboard({ data, sample = false }) {
             </div>
           )}
 
+          {/* Top recommendation — the AI's single best pick + why */}
+          {data.topRecommendation && (
+            <div className="sc-toprec">
+              <div className="sc-toprec-h">🏆 Top Recommendation</div>
+              <p className="sc-toprec-body">{data.topRecommendation}</p>
+            </div>
+          )}
+
+          {/* Narrow it down — follow-up questions to refine the pick */}
+          {data.followUpQuestions?.length > 0 && (
+            <div className="sc-narrow">
+              <div className="sc-narrow-h">💬 Narrow it down</div>
+              <div className="sc-narrow-chips">
+                {data.followUpQuestions.map((q, i) => (
+                  <button key={i} type="button" className="sc-narrow-chip"
+                    onClick={() => onFollowUp && onFollowUp(q)} title="Add to your request and compare again">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Live sources (Perplexity citations) — clickable, real, current */}
           {Array.isArray(data.citations) && data.citations.length > 0 && (
             <div className="sc-dash-section">
@@ -436,6 +465,21 @@ export default function SmartCompare() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
+  const textareaRef = useRef(null)
+
+  // A follow-up chip was clicked — bring the question up into the request so the
+  // user can answer it, then scroll to the box and focus it.
+  function handleFollowUp(q) {
+    setQuery(prev => {
+      const base = (prev || '').trim()
+      return base ? `${base}\n${q} ` : `${q} `
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => {
+      const el = textareaRef.current
+      if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length) }
+    }, 300)
+  }
 
   async function submit(e) {
     e?.preventDefault?.()
@@ -481,6 +525,7 @@ export default function SmartCompare() {
         <form className="sc-card" onSubmit={submit}>
           <label className="sc-label">WHAT ARE YOU LOOKING FOR?</label>
           <textarea
+            ref={textareaRef}
             className="sc-textarea"
             placeholder="e.g. I'm in the GTA, budget $60k, open to gas / hybrid / EV. Lease or finance? Any promos?"
             value={query}
@@ -531,7 +576,7 @@ export default function SmartCompare() {
         <section id="sc-result" className="container sc-result-wrap">
           <div className="sc-result-tag">YOUR COMPARISON</div>
           <h2 className="sc-result-title">Here's your side-by-side</h2>
-          <ResultDashboard data={result} />
+          <ResultDashboard data={result} onFollowUp={handleFollowUp} />
         </section>
       )}
 
@@ -544,7 +589,7 @@ export default function SmartCompare() {
             </div>
             <div className="sc-sample-eg">Example: vehicles under $60K in the GTA</div>
           </div>
-          <ResultDashboard data={SAMPLE_RESULT} sample />
+          <ResultDashboard data={SAMPLE_RESULT} sample onFollowUp={handleFollowUp} />
         </section>
       )}
     </div>

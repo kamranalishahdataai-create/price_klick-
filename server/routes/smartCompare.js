@@ -294,7 +294,9 @@ ALWAYS reply with VALID JSON matching exactly this schema (no markdown, no comme
       "image": "<optional public image URL of product>",
       "url": "<optional buy/explore URL>"
     }
-  ]
+  ],
+  "topRecommendation": "<2-3 sentences naming the single best option (by brand + model) and explaining WHY it wins for THIS buyer — tie it to their budget, location, and stated needs>",
+  "followUpQuestions": ["<short question that would refine the recommendation>", "<another>", "<another>"]
 }
 
 Rules:
@@ -302,6 +304,8 @@ Rules:
 - fitScore: weigh budget fit, location availability, user-stated preferences, reliability/value.
 - promotions: include 3–4 brand promotions actually plausible for the user's region & category.
 - financeVsLease: include ONLY when category is "vehicle". Otherwise null.
+- topRecommendation: ALWAYS include — name the #1 pick (must be one of the options) and justify it concretely.
+- followUpQuestions: ALWAYS include exactly 3 short, distinct questions whose answers would let you refine the pick (e.g. trade-in, daily mileage, must-have features). Each ≤ 12 words, phrased TO the user.
 - Keep all strings concise; pros/cons ≤ 6 words each.
 - If budget is provided, weight in-budget items strongly.
 - Use the user's location for currency & regional context. If unclear default to USD.
@@ -354,6 +358,10 @@ router.post('/', optionalAuth, async (req, res) => {
     parsed.updatedAt = new Date().toISOString();
     parsed.options = Array.isArray(parsed.options) ? parsed.options : [];
     parsed.promotions = Array.isArray(parsed.promotions) ? parsed.promotions : [];
+    parsed.topRecommendation = typeof parsed.topRecommendation === 'string' ? parsed.topRecommendation.trim() : '';
+    parsed.followUpQuestions = Array.isArray(parsed.followUpQuestions)
+      ? parsed.followUpQuestions.filter(q => typeof q === 'string' && q.trim()).map(q => q.trim()).slice(0, 3)
+      : [];
 
     // Fill real product photos from Wikipedia (reliable, existing image URLs).
     // Runs for every engine — best-effort, never blocks the response on failure.

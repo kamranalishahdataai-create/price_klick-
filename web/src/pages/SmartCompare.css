@@ -242,6 +242,38 @@
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 12px;
 }
+
+/* Top recommendation callout */
+.sc-toprec {
+  background: linear-gradient(135deg, rgba(16,185,129,.10), rgba(109,74,255,.08));
+  border: 1px solid rgba(16,185,129,.25);
+  border-radius: 14px; padding: 16px 18px; margin-bottom: 22px;
+}
+.sc-toprec-h {
+  font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: #6ee7b7; margin-bottom: 8px;
+}
+.sc-toprec-body { font-size: 14px; line-height: 1.6; color: #dfe3ec; margin: 0; }
+
+/* Narrow it down — follow-up question chips */
+.sc-narrow {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px; padding: 16px 18px; margin-bottom: 22px;
+}
+.sc-narrow-h {
+  font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: #a78bfa; margin-bottom: 12px;
+}
+.sc-narrow-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.sc-narrow-chip {
+  font-family: inherit; font-size: 13px; color: #d7dae4; cursor: pointer;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px; padding: 8px 15px; transition: all .15s ease;
+}
+.sc-narrow-chip:hover {
+  background: rgba(109,74,255,.18); border-color: rgba(109,74,255,.5); color: #fff;
+}
 .sc-dash-view { font-size: 13px; color: #a78bfa; cursor: pointer }
 
 /* Promotions */
