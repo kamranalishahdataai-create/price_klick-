@@ -329,19 +329,6 @@ function FinanceVsLease({ fl }) {
   )
 }
 
-const DASH_NAV = [
-  { icon: '🏠', label: 'Dashboard', active: true },
-  { icon: '🔍', label: 'Smart Compare' },
-  { icon: '🏷️', label: 'Deals' },
-  { icon: '🚗', label: 'Vehicles' },
-  { icon: '📊', label: 'Finance Tools' },
-  { icon: '🔔', label: 'Price Alerts' },
-  { icon: '❤️', label: 'Saved' },
-  { icon: '📈', label: 'Market Insights' },
-  { icon: '❓', label: 'Help & FAQ' },
-  { icon: '⚙️', label: 'Settings' },
-]
-
 function ResultDashboard({ data, sample = false, onFollowUp }) {
   if (!data) return null
   const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -351,23 +338,6 @@ function ResultDashboard({ data, sample = false, onFollowUp }) {
   const promoLabel = isVehicle ? 'Current Dealership Promotions' : 'Current Promotions'
   return (
     <div className={`sc-dash ${sample ? 'sample' : ''}`}>
-      {/* Left nav */}
-      <aside className="sc-nav">
-        <div className="sc-nav-brand"><span className="sc-nav-logo">✦</span> Price<span>Klick</span></div>
-        <nav className="sc-nav-list">
-          {DASH_NAV.map(n => (
-            <div key={n.label} className={`sc-nav-item ${n.active ? 'active' : ''}`}>
-              <span className="sc-nav-ic">{n.icon}</span>{n.label}
-            </div>
-          ))}
-        </nav>
-        <div className="sc-nav-cta">
-          <div className="sc-nav-cta-ic">✦</div>
-          <div className="sc-nav-cta-title">AI-Powered Smart Compare</div>
-          <div className="sc-nav-cta-desc">Get personalized recommendations in seconds.</div>
-        </div>
-      </aside>
-
       {/* Main */}
       <div className="sc-dashmain">
         <div className="sc-topbar">
