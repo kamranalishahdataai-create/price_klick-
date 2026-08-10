@@ -5,6 +5,7 @@ import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import Loader from './components/Loader.jsx'
 import Home from './pages/Home.jsx'
+import KlickLanding from './pages/KlickLanding.jsx'
 import Features from './pages/Features.jsx'
 import HowItWorks from './pages/HowItWorks.jsx'
 import Stores from './pages/Stores.jsx'
@@ -40,7 +41,8 @@ export default function App(){
           <>
             <Navbar/>
             <Routes>
-              <Route path="/" element={<Home/>}/>
+              <Route path="/" element={<KlickLanding/>}/>
+              <Route path="/home" element={<Home/>}/>
               <Route path="/features" element={<Features/>}/>
               <Route path="/how-it-works" element={<HowItWorks/>}/>
               <Route path="/stores" element={<Stores/>}/>
