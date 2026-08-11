@@ -176,10 +176,85 @@
   display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 
+/* ===================================================================
+   "Join the Klick!" landing — additional pieces
+   =================================================================== */
+.kl-h1-xl { font-size: clamp(52px, 9vw, 88px); }
+.kl-mt-sm { margin-top: 12px; }
+.kl-xs { font-size: 12px; }
+.kl-strong { color: var(--foreground); font-weight: 600; }
+.kl-link { color: var(--accent); text-decoration: none; }
+.kl-link:hover { text-decoration: underline; }
+
+/* Hero trust chips */
+.kl-trust-row { margin-top: 32px; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.kl-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 999px; font-size: 14px;
+  background: oklch(0.98 0.01 280 / .06);
+  border: 1px solid oklch(0.85 0.10 280 / .14);
+}
+
+/* Perks grid */
+.kl-perks-grid { margin-top: 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.kl-perk { border-radius: 16px; padding: 24px; transition: transform .2s var(--transition-smooth); }
+.kl-perk:hover { transform: translateY(-4px); }
+
+/* Numbered steps */
+.kl-steps-numbered { margin-top: 40px; }
+.kl-step-num-card { position: relative; margin-top: 12px; overflow: visible; }
+.kl-step-num {
+  position: absolute; top: -14px; left: 24px;
+  height: 28px; width: 28px; border-radius: 50%;
+  background: var(--gradient-brand); color: var(--primary-foreground);
+  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  box-shadow: var(--shadow-glow);
+}
+.kl-step-num-card .kl-step-title { margin-top: 12px; }
+
+/* Community */
+.kl-community { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+.kl-community-card { border-radius: 24px; padding: 28px; }
+.kl-community-head { display: flex; align-items: center; gap: 12px; }
+.kl-icon-tile-sm { height: 40px; width: 40px; border-radius: 12px; }
+.kl-community-title { font-weight: 600; margin: 0; }
+.kl-code-list { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+.kl-code-row {
+  display: flex; align-items: center; justify-content: space-between;
+  border-radius: 10px; padding: 10px 16px; font-size: 14px;
+  border: 1px solid oklch(0.80 0.16 175 / .3);
+  background: oklch(0.80 0.16 175 / .10);
+}
+.kl-code { display: inline-flex; align-items: center; gap: 8px; font-family: ui-monospace, monospace; font-weight: 500; }
+.kl-code-note { font-size: 12px; color: var(--success); font-weight: 500; }
+.kl-community-foot { margin-top: 20px; display: flex; align-items: center; gap: 6px; }
+
+/* Data transparency */
+.kl-data-wrap { max-width: 896px; }
+.kl-data-card { border-radius: 24px; padding: 40px; }
+.kl-data-body { margin-top: 24px; display: flex; flex-direction: column; gap: 16px; font-size: 15px; line-height: 1.6; color: var(--muted-foreground); }
+
+/* FAQ */
+.kl-faq-wrap { max-width: 768px; }
+.kl-faq { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; }
+.kl-faq-item { border-radius: 16px; padding: 16px 20px; }
+.kl-faq-summary {
+  cursor: pointer; list-style: none; font-weight: 600;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.kl-faq-summary::-webkit-details-marker { display: none; }
+.kl-faq-chevron { flex-shrink: 0; transition: transform .2s; }
+.kl-faq-item[open] .kl-faq-chevron { transform: rotate(90deg); }
+.kl-faq-answer { margin: 12px 0 0; font-size: 14px; }
+
 /* ---- Responsive ---- */
+@media (max-width: 1000px) {
+  .kl-perks-grid { grid-template-columns: 1fr 1fr; }
+}
 @media (max-width: 820px) {
-  .kl-compare-grid, .kl-steps-grid, .kl-join-grid { grid-template-columns: 1fr; }
-  .kl-how-card { padding: 28px; }
+  .kl-compare-grid, .kl-steps-grid, .kl-join-grid,
+  .kl-perks-grid, .kl-community { grid-template-columns: 1fr; }
+  .kl-how-card, .kl-data-card { padding: 28px; }
   .kl-finalcta { padding: 48px 24px; }
   .kl-secnav { top: 56px; }
 }
