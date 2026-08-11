@@ -1,0 +1,107 @@
+/* Demo.css — "Watch it work" live demo page.
+   Reuses KlickLanding.css primitives (.kl-glass*, .kl-btn*, .kl-icon-tile, tokens). */
+
+.dm-page { max-width: 1152px; margin: 0 auto; padding: 64px 24px 80px; }
+
+.dm-hero { max-width: 640px; margin: 0 auto; text-align: center; }
+.dm-h1 { font-size: clamp(36px, 6vw, 60px); margin-top: 24px; }
+.dm-hero .kl-lead { margin-top: 16px; }
+
+/* Video */
+.dm-video {
+  margin: 48px auto 0; max-width: 896px; border-radius: 24px; overflow: hidden;
+  box-shadow: var(--shadow-glow);
+}
+.dm-video-el { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+
+/* Tool card grid */
+.dm-tools { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.dm-card { border-radius: 24px; padding: 28px; }
+.dm-card-head { display: flex; align-items: flex-start; gap: 14px; }
+.dm-tile { flex-shrink: 0; }
+.dm-card-title { font-size: 20px; font-weight: 700; margin: 0; }
+.dm-card-sub { font-size: 13.5px; margin: 4px 0 0; }
+.dm-lens-headtext { flex: 1; min-width: 0; }
+.dm-uploads-left {
+  flex-shrink: 0; align-self: flex-start;
+  font-size: 12px; color: var(--muted-foreground);
+  background: oklch(0.98 0.01 280 / .06); border: 1px solid oklch(0.85 0.10 280 / .14);
+  border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+}
+
+/* Coupon input */
+.dm-input-row { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+.dm-input-wrap { position: relative; flex: 1; min-width: 200px; }
+.dm-input-ic { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); color: var(--muted-foreground); }
+.dm-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--input-bg); border: 1px solid var(--border-color); color: var(--foreground);
+  border-radius: 999px; padding: 12px 16px 12px 38px; font-size: 14px; font-family: inherit; outline: none;
+}
+.dm-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px oklch(68% .22 295 / .25); }
+.dm-input::placeholder { color: var(--muted-foreground); opacity: .7; }
+.dm-gen-btn { white-space: nowrap; padding: 12px 20px; font-size: 14px; }
+
+/* Example chips */
+.dm-chips { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+.dm-chip {
+  font-family: inherit; font-size: 13px; color: var(--foreground); cursor: pointer;
+  background: oklch(0.98 0.01 280 / .06); border: 1px solid oklch(0.85 0.10 280 / .14);
+  border-radius: 999px; padding: 6px 13px; transition: all .15s;
+}
+.dm-chip:hover { background: oklch(0.28 0.06 285 / .5); border-color: oklch(68% .22 295 / .5); }
+
+/* Coupon result */
+.dm-result { margin-top: 22px; min-height: 60px; }
+.dm-empty { font-size: 14px; text-align: center; padding: 14px 0; }
+.dm-codes { display: flex; flex-direction: column; gap: 8px; }
+.dm-code-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border-radius: 10px; padding: 10px 14px; font-size: 14px;
+  border: 1px solid oklch(0.80 0.16 175 / .3); background: oklch(0.80 0.16 175 / .10);
+}
+.dm-code { display: inline-flex; align-items: center; gap: 8px; font-family: ui-monospace, monospace; font-weight: 600; }
+.dm-code-desc { font-size: 12px; color: var(--muted-foreground); text-align: right; }
+.dm-error { margin-top: 12px; font-size: 13px; color: #ffb0b0; }
+
+/* Lens dropzone */
+.dm-drop {
+  margin-top: 20px; min-height: 220px; border-radius: 16px; cursor: pointer;
+  border: 1.5px dashed oklch(0.85 0.10 280 / .28);
+  background: oklch(0.98 0.01 280 / .03);
+  display: grid; place-items: center; padding: 20px; transition: border-color .15s, background .15s;
+}
+.dm-drop:hover { border-color: oklch(68% .22 295 / .55); background: oklch(0.98 0.01 280 / .05); }
+.dm-drop-disabled { cursor: default; opacity: .8; }
+.dm-drop-inner { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.dm-drop-ic { width: 40px; height: 40px; color: var(--muted-foreground); }
+.dm-lens-thumb { max-height: 130px; max-width: 100%; border-radius: 10px; object-fit: contain; }
+
+/* Lens result */
+.dm-lens-result { display: flex; gap: 16px; align-items: center; width: 100%; }
+.dm-lens-info { text-align: left; }
+.dm-lens-brand { font-weight: 700; font-size: 16px; margin: 0; }
+.dm-xs { font-size: 12px; margin: 4px 0 0; }
+.dm-lens-cta { margin-top: 12px; padding: 9px 16px; font-size: 13px; }
+
+.dm-lens-actions { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
+.dm-lens-actions .kl-btn { padding: 12px 20px; font-size: 14px; }
+
+/* Service search banner */
+.dm-banner {
+  margin-top: 40px; border-radius: 24px; padding: 28px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+.dm-banner-left { display: flex; align-items: flex-start; gap: 16px; }
+.dm-banner-title { font-size: 20px; font-weight: 700; margin: 0; }
+.dm-banner-cta { flex-shrink: 0; }
+
+/* Spinner */
+.dm-spin { animation: dm-spin 0.7s linear infinite; }
+@keyframes dm-spin { to { transform: rotate(360deg); } }
+
+/* Responsive */
+@media (max-width: 820px) {
+  .dm-tools { grid-template-columns: 1fr; }
+  .dm-banner { flex-direction: column; align-items: flex-start; }
+}

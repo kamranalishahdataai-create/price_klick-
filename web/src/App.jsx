@@ -7,6 +7,7 @@ import Loader from './components/Loader.jsx'
 import Home from './pages/Home.jsx'
 import KlickLanding from './pages/KlickLanding.jsx'
 import JoinKlickLanding from './pages/JoinKlickLanding.jsx'
+import Demo from './pages/Demo.jsx'
 import Features from './pages/Features.jsx'
 import HowItWorks from './pages/HowItWorks.jsx'
 import Stores from './pages/Stores.jsx'
@@ -44,6 +45,7 @@ export default function App(){
             <Routes>
               <Route path="/" element={<JoinKlickLanding/>}/>
               <Route path="/just-klick" element={<KlickLanding/>}/>
+              <Route path="/demo" element={<Demo/>}/>
               <Route path="/home" element={<Home/>}/>
               <Route path="/features" element={<Features/>}/>
               <Route path="/how-it-works" element={<HowItWorks/>}/>

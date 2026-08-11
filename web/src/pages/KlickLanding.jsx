@@ -152,7 +152,7 @@ export default function KlickLanding() {
             })}
           </div>
           <div className="kl-cta-row kl-center-row">
-            <Link to="/how-it-works" className="kl-btn kl-btn-glass">
+            <Link to="/demo" className="kl-btn kl-btn-glass">
               Watch the demo <ArrowRight className="kl-ic" />
             </Link>
           </div>

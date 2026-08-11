@@ -82,7 +82,7 @@ export default function JoinKlickLanding() {
             <Link to="/install" className="kl-btn kl-btn-brand">
               <Download className="kl-ic" /> Add to browser — Free
             </Link>
-            <Link to="/how-it-works" className="kl-btn kl-btn-glass">
+            <Link to="/demo" className="kl-btn kl-btn-glass">
               Watch it work <ArrowRight className="kl-ic" />
             </Link>
           </div>
