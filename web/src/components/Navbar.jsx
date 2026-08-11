@@ -20,21 +20,11 @@ export default function Navbar(){
           <span>PriceKlick</span>
         </Link>
 
-        <div className="nav-links">
-          <NavLink to="/features">Features</NavLink>
-          <NavLink to="/how-it-works">How It Works</NavLink>
-          <NavLink to="/lens">JustKlick</NavLink>
-          <NavLink to="/stores">Stores</NavLink>
-          <NavLink to="/services">Services</NavLink>
-          <NavLink to="/prepay">PrePay</NavLink>
-          <NavLink to="/vendor-login">Vendor</NavLink>
-          {isAuthenticated && user?.role === 'admin' && (
-            <NavLink to="/admin" className="admin-link">Admin</NavLink>
-          )}
-        </div>
-
         {isAuthenticated ? (
           <div className="auth-nav">
+            {user?.role === 'admin' && (
+              <NavLink to="/admin" className="admin-link">Admin</NavLink>
+            )}
             <span className="user-greeting">
               {user?.firstName || user?.email?.split('@')[0]}
             </span>

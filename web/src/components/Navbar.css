@@ -76,6 +76,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  margin-left: auto; /* keep auth actions right-aligned now that the middle nav is gone */
 }
 
 .user-greeting {
