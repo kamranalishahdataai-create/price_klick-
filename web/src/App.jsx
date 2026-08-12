@@ -26,7 +26,16 @@ import Promote from './pages/Promote.jsx'
 import Network from './pages/Network.jsx'
 import VendorLogin from './pages/VendorLogin.jsx'
 import PrePay from './pages/PrePay.jsx'
-import AuthProvider from './context/AuthContext.jsx'
+import AuthProvider, { useAuth } from './context/AuthContext.jsx'
+
+// The site root adapts to who's viewing:
+//  - Signed-out visitors (search / marketing) get the "Join the Klick" landing.
+//  - Signed-in members see the full previous website (old Home + all sections).
+function RootLanding(){
+  const { isAuthenticated, loading } = useAuth()
+  if (loading) return null
+  return isAuthenticated ? <Home/> : <JoinKlickLanding/>
+}
 
 export default function App(){
   const [showContent, setShowContent] = useState(false)
@@ -43,7 +52,8 @@ export default function App(){
           <>
             <Navbar/>
             <Routes>
-              <Route path="/" element={<JoinKlickLanding/>}/>
+              <Route path="/" element={<RootLanding/>}/>
+              <Route path="/landing" element={<JoinKlickLanding/>}/>
               <Route path="/just-klick" element={<KlickLanding/>}/>
               <Route path="/demo" element={<Demo/>}/>
               <Route path="/home" element={<Home/>}/>

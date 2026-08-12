@@ -20,6 +20,20 @@ export default function Navbar(){
           <span>PriceKlick</span>
         </Link>
 
+        {/* Full section nav — only for signed-in members (the previous website).
+            Signed-out visitors see the simplified marketing header. */}
+        {isAuthenticated && (
+          <div className="nav-links">
+            <NavLink to="/features">Features</NavLink>
+            <NavLink to="/how-it-works">How It Works</NavLink>
+            <NavLink to="/lens">JustKlick</NavLink>
+            <NavLink to="/stores">Stores</NavLink>
+            <NavLink to="/services">Services</NavLink>
+            <NavLink to="/prepay">PrePay</NavLink>
+            <NavLink to="/vendor-login">Vendor</NavLink>
+          </div>
+        )}
+
         {isAuthenticated ? (
           <div className="auth-nav">
             {user?.role === 'admin' && (
