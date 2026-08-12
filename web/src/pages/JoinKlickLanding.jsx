@@ -4,6 +4,7 @@ import {
   ArrowRight, Sparkles, Zap, ShieldCheck, Users, Tags,
   BadgeCheck, Download, Heart, MessageCircle, Gift,
 } from 'lucide-react'
+import JoinPaths from '../components/JoinPaths'
 import './KlickLanding.css'
 
 const perks = [
@@ -32,31 +33,6 @@ const faqs = [
   { q: 'Can I turn off personalization?', a: 'Yes — switch it off in member settings at any time. Coupons still apply at checkout.' },
   { q: 'Which browsers work?', a: 'Chrome, Edge, Firefox and Safari.' },
 ]
-
-// Reconstruction of the client's <JoinPaths> dual sign-up section.
-function JoinPaths() {
-  return (
-    <section id="get-started" className="kl-section kl-joinpaths">
-      <p className="kl-eyebrow kl-eyebrow-center">Sign up</p>
-      <h2 className="kl-h2">Download it, or list on it</h2>
-      <p className="kl-sub">Shoppers klick and save. Vendors get discovered by shoppers who are actively comparing.</p>
-      <div className="kl-join-grid">
-        <div className="kl-glass-strong kl-join-card">
-          <div className="kl-icon-tile"><Download className="kl-ic-lg" /></div>
-          <h3 className="kl-join-title">I'm a shopper</h3>
-          <p className="kl-muted">Install the free extension and klick to compare prices and auto-apply the best code at checkout.</p>
-          <Link to="/install" className="kl-btn kl-btn-brand kl-btn-block"><Download className="kl-ic" /> Download free</Link>
-        </div>
-        <div className="kl-glass kl-join-card">
-          <div className="kl-icon-tile"><Users className="kl-ic-lg" /></div>
-          <h3 className="kl-join-title">I'm a vendor</h3>
-          <p className="kl-muted">List your business and get discovered by shoppers who are actively comparing and ready to buy.</p>
-          <Link to="/network" className="kl-btn kl-btn-glass kl-btn-block"><Users className="kl-ic" /> Join the Network</Link>
-        </div>
-      </div>
-    </section>
-  )
-}
 
 export default function JoinKlickLanding() {
   return (
@@ -156,10 +132,10 @@ export default function JoinKlickLanding() {
             share the ones that land, and the whole community checks out cheaper because of it.
           </p>
           <div className="kl-cta-row">
-            <Link to="/how-it-works" className="kl-btn kl-btn-brand">
+            <Link to="/register" className="kl-btn kl-btn-brand">
               Join the Klick <ArrowRight className="kl-ic" />
             </Link>
-            <Link to="/network" className="kl-btn kl-btn-glass">I'm a vendor</Link>
+            <Link to="/vendor" className="kl-btn kl-btn-glass">I'm a vendor</Link>
           </div>
         </div>
 

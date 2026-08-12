@@ -158,12 +158,19 @@
 .kl-step .kl-muted { margin-top: 8px; font-size: 14px; }
 .kl-how-card .kl-cta-row { margin-top: 32px; }
 
-/* ---- Join paths ---- */
-.kl-joinpaths .kl-h2 { margin-top: 8px; text-align: center; }
-.kl-join-grid { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.kl-join-card { border-radius: 24px; padding: 32px; display: flex; flex-direction: column; }
-.kl-join-title { margin: 16px 0 8px; font-size: 22px; font-weight: 700; }
-.kl-join-card .kl-muted { font-size: 14px; margin-bottom: 24px; }
+/* ---- Join paths (dual sign-up: members + vendors) ---- */
+.kl-jp-head { max-width: 640px; margin: 0 auto; text-align: center; }
+.kl-jp-head .kl-eyebrow { text-align: center; }
+.kl-jp-grid { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.kl-jp-card { border-radius: 24px; padding: 32px; display: flex; flex-direction: column; }
+.kl-jp-title { margin: 20px 0 0; font-size: 24px; font-weight: 700; font-family: 'Space Grotesk', 'Inter', sans-serif; }
+.kl-jp-desc { font-size: 14px; margin: 8px 0 0; }
+.kl-jp-list { margin: 20px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.kl-jp-li { display: flex; align-items: center; gap: 8px; }
+.kl-jp-li .kl-ic-sm { flex-shrink: 0; }
+.kl-jp-actions { margin-top: auto; padding-top: 28px; display: flex; flex-wrap: wrap; gap: 12px; }
+.kl-jp-actions .kl-btn { padding: 13px 22px; font-size: 14px; }
+.kl-jp-alt { margin-top: 12px; font-size: 12px; color: var(--muted-foreground); }
 
 /* ---- Final CTA ---- */
 .kl-finalcta-wrap { max-width: 1152px; }
@@ -252,7 +259,7 @@
   .kl-perks-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 820px) {
-  .kl-compare-grid, .kl-steps-grid, .kl-join-grid,
+  .kl-compare-grid, .kl-steps-grid, .kl-jp-grid,
   .kl-perks-grid, .kl-community { grid-template-columns: 1fr; }
   .kl-how-card, .kl-data-card { padding: 28px; }
   .kl-finalcta { padding: 48px 24px; }

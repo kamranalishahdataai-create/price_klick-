@@ -4,6 +4,7 @@ import {
   ArrowRight, Download, Search, Timer, Sparkles,
   MousePointerClick, Tags, ShieldCheck, ListChecks, Store,
 } from 'lucide-react'
+import JoinPaths from '../components/JoinPaths'
 import './KlickLanding.css'
 
 const oldWay = [
@@ -26,34 +27,6 @@ const steps = [
   { icon: Tags, title: 'You save', desc: 'The best offer and best code land in your cart automatically.' },
 ]
 
-// Reconstruction of the client's <JoinPaths> dual sign-up section.
-function JoinPaths({ eyebrow, heading, subheading }) {
-  return (
-    <section id="get-started" className="kl-section kl-joinpaths">
-      <p className="kl-eyebrow kl-eyebrow-center">{eyebrow}</p>
-      <h2 className="kl-h2">{heading}</h2>
-      <p className="kl-sub">{subheading}</p>
-      <div className="kl-join-grid">
-        <div className="kl-glass-strong kl-join-card">
-          <div className="kl-icon-tile"><Download className="kl-ic-lg" /></div>
-          <h3 className="kl-join-title">I'm a shopper</h3>
-          <p className="kl-muted">Install the free extension and klick to compare prices and auto-apply the best code at checkout.</p>
-          <Link to="/install" className="kl-btn kl-btn-brand kl-btn-block">
-            <Download className="kl-ic" /> Download free
-          </Link>
-        </div>
-        <div className="kl-glass kl-join-card">
-          <div className="kl-icon-tile"><Store className="kl-ic-lg" /></div>
-          <h3 className="kl-join-title">I'm a vendor</h3>
-          <p className="kl-muted">List your business and get discovered by shoppers who are actively comparing and ready to buy.</p>
-          <Link to="/vendor" className="kl-btn kl-btn-glass kl-btn-block">
-            <Store className="kl-ic" /> Sign up as a vendor
-          </Link>
-        </div>
-      </div>
-    </section>
-  )
-}
 
 export default function KlickLanding() {
   return (
@@ -181,7 +154,7 @@ export default function KlickLanding() {
             <Link to="/install" className="kl-btn kl-btn-brand">
               <Download className="kl-ic" /> Get PriceKlick free
             </Link>
-            <Link to="/how-it-works" className="kl-btn kl-btn-glass">
+            <Link to="/register" className="kl-btn kl-btn-glass">
               Join the Klick <ArrowRight className="kl-ic" />
             </Link>
           </div>
