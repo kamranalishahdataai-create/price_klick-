@@ -784,7 +784,9 @@ export default function Services() {
 
   // Auto-load scraped menus for the top displayed providers when a budget is set,
   // powering the "MENU MATCHES UNDER $X" strips (server-cached 7 days).
-  const MENU_STRIP_COUNT = 6
+  // Kept small + well-spaced (see the stagger below) so we stay under the
+  // Perplexity rate limit — bursts of parallel lookups were returning 429.
+  const MENU_STRIP_COUNT = 3
   const menuCacheRef = useRef({})   // cacheKey -> menu data (persists across re-renders)
   // A STABLE signature of the top displayed providers + budget + category, so the
   // effect only re-runs when the actual inputs change — not on every array
@@ -823,7 +825,7 @@ export default function Services() {
             setMenus(m => ({ ...m, [key]: { loading: false, data: r } }))
           })
           .catch(() => { if (!cancelled) setMenus(m => ({ ...m, [key]: { loading: false } })) })
-      }, i * 250)
+      }, i * 900)   // space calls ~0.9s apart to avoid tripping the Perplexity rate limit
       timers.push(t)
     })
     return () => { cancelled = true; timers.forEach(clearTimeout) }
