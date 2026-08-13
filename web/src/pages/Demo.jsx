@@ -123,6 +123,12 @@ function LensUploadDemo() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image }),
       })
+      const ct = r.headers.get('content-type') || ''
+      if (!ct.includes('application/json')) {
+        throw new Error(r.status === 504 || r.status === 502
+          ? 'The scan took too long. Please try a smaller or clearer photo.'
+          : `Server error (${r.status}). Please try again.`)
+      }
       const data = await r.json()
       if (!r.ok || !data.ok) throw new Error(data.error || 'Scan failed')
       setResult(data)

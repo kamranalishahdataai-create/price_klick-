@@ -205,6 +205,16 @@ export default function Lens() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image })
       })
+      // A slow scan can hit a gateway timeout (504) which returns an HTML page,
+      // not JSON — handle that with a clear message instead of a parse error.
+      const ct = res.headers.get('content-type') || ''
+      if (!ct.includes('application/json')) {
+        throw new Error(
+          res.status === 504 || res.status === 502
+            ? 'The scan took too long to finish. Please try again, or use a smaller / clearer photo.'
+            : `Server error (${res.status}). Please try again in a moment.`
+        )
+      }
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
