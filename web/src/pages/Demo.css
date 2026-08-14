@@ -96,6 +96,16 @@
 .dm-banner-title { font-size: 20px; font-weight: 700; margin: 0; }
 .dm-banner-cta { flex-shrink: 0; }
 
+/* Guest limit reached */
+.dm-limit { text-align: center; padding: 28px 8px 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.dm-limit-ic {
+  display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px;
+  background: oklch(0.60 0.24 295 / .16); color: var(--primary-glow); margin-bottom: 4px;
+}
+.dm-limit-title { font-weight: 700; font-size: 16px; margin: 0; }
+.dm-limit-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.dm-limit-actions .kl-btn { padding: 11px 18px; font-size: 14px; }
+
 /* Spinner */
 .dm-spin { animation: dm-spin 0.7s linear infinite; }
 @keyframes dm-spin { to { transform: rotate(360deg); } }

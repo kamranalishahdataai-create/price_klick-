@@ -1,5 +1,7 @@
 ﻿import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { GUEST_LIMIT, guestLeft, guestSpend } from '../utils/guestLimit'
 import './Lens.css'
 
 const API = import.meta.env.VITE_API_URL || ''
@@ -127,6 +129,8 @@ function pickCheapestNearby(options, country) {
 }
 
 export default function Lens() {
+  const { isAuthenticated } = useAuth()
+  const [guestScansLeft, setGuestScansLeft] = useState(() => isAuthenticated ? GUEST_LIMIT : guestLeft('lens'))
   const [image, setImage] = useState(null)
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -196,8 +200,11 @@ export default function Lens() {
     reader.readAsDataURL(file)
   }, [])
 
+  const guestBlocked = !isAuthenticated && guestScansLeft <= 0
+
   const analyze = async () => {
     if (!image) return
+    if (guestBlocked) { setError('guest_limit'); return }
     setLoading(true); setError(null); setResult(null)
     try {
       const res = await fetch(`${API}/api/promo/find-url`, {
@@ -218,6 +225,7 @@ export default function Lens() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
+      if (!isAuthenticated) setGuestScansLeft(guestSpend('lens'))
       setResultTab('compare')
       const best = pickCheapestNearby(buildOptions(data), geo.country)
       // Redirect priority: 1) promotion if one was detected, 2) the same/similar
@@ -337,7 +345,7 @@ export default function Lens() {
                 </div>
 
                 <div className="lens-actions">
-                  <button className="lens-btn primary" onClick={analyze} disabled={!image || loading}>
+                  <button className="lens-btn primary" onClick={analyze} disabled={!image || loading || guestBlocked}>
                     {loading ? '🔄 Analyzing…' : '🔍 Find This Product'}
                   </button>
                   {preview && !loading && (
@@ -347,6 +355,9 @@ export default function Lens() {
                     <input type="checkbox" checked={autoRedirect} onChange={() => setAutoRedirect(!autoRedirect)} />
                     <span>Auto-open best link</span>
                   </label>
+                  {!isAuthenticated && !guestBlocked && (
+                    <span className="lens-guest-left">{guestScansLeft} of {GUEST_LIMIT} free scans left</span>
+                  )}
                 </div>
 
                 {demo && demoStep <= 2 && (
@@ -362,7 +373,18 @@ export default function Lens() {
                   </div>
                 )}
 
-                {error && <div className="lens-error">⚠ {error}</div>}
+                {(guestBlocked || error === 'guest_limit') && (
+                  <div className="lens-guest-block">
+                    <strong>🔒 You've used your {GUEST_LIMIT} free scans</strong>
+                    <p>Create a free account to keep scanning — unlimited for members.</p>
+                    <div className="lens-guest-actions">
+                      <Link to="/register" className="lens-btn primary">Sign up free</Link>
+                      <Link to="/install" className="lens-btn ghost">Install</Link>
+                    </div>
+                  </div>
+                )}
+
+                {error && error !== 'guest_limit' && <div className="lens-error">⚠ {error}</div>}
               </>
             )}
 

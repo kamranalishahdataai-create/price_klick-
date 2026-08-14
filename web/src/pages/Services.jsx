@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { searchServices, enrichProvider, trackProviderClick, resolveUserLocation, getSpendingPatterns, trackActivity, findServiceDeals, getProviderMenu } from '../api/services'
 import ServiceMap from '../components/ServiceMap'
+import { useAuth } from '../context/AuthContext'
+import { GUEST_LIMIT, guestLeft, guestSpend } from '../utils/guestLimit'
 import './Services.css'
 
 // ── Category taxonomy (two levels: broad category → subcategories) ─────────────
@@ -636,6 +638,14 @@ export default function Services() {
 
   const debounceRef = useRef(null)
 
+  // Guest usage limit — signed-out visitors get GUEST_LIMIT free searches, then
+  // are prompted to sign up. Members are unlimited. Only distinct search terms
+  // count (filter tweaks on the same term don't burn a search).
+  const { isAuthenticated } = useAuth()
+  const [guestSearchesLeft, setGuestSearchesLeft] = useState(() => isAuthenticated ? GUEST_LIMIT : guestLeft('services'))
+  const [searchBlocked, setSearchBlocked] = useState(false)
+  const countedQueriesRef = useRef(new Set())
+
   useEffect(() => {
     let cancelled = false
     resolveUserLocation().then(g => { if (!cancelled) setGeo(g) }).catch(() => {})
@@ -655,6 +665,17 @@ export default function Services() {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
+      // Guest limit: a "search" is a distinct, deliberate query (not the default
+      // idle load, and not filter tweaks on a term we already counted).
+      const countable = effectiveQuery && effectiveQuery !== 'local services'
+      if (countable && !countedQueriesRef.current.has(effectiveQuery)) {
+        if (!isAuthenticated && guestLeft('services') <= 0) {
+          setSearchBlocked(true); setLoading(false); return
+        }
+        countedQueriesRef.current.add(effectiveQuery)
+        if (!isAuthenticated) setGuestSearchesLeft(guestSpend('services'))
+      }
+      setSearchBlocked(false)
       setLoading(true); setError('')
       if (trackingEnabled) {
         trackSearch(effectiveQuery)
@@ -686,7 +707,7 @@ export default function Services() {
       }
     }, 400)
     return () => debounceRef.current && clearTimeout(debounceRef.current)
-  }, [effectiveQuery, geo.lat, geo.lng, radiusKm, budget, minRating, quick, trackingEnabled])
+  }, [effectiveQuery, geo.lat, geo.lng, radiusKm, budget, minRating, quick, trackingEnabled, isAuthenticated])
 
   const sortedProviders = useMemo(() => {
     const arr = [...providers]
@@ -932,6 +953,9 @@ export default function Services() {
                   {!loading && sub && cat && <span className="sv-res-parent"> in {cat}</span>}
                   {!loading && budget && <span className="sv-res-budget"> · under ${budget}</span>}
                 </h2>
+                {!isAuthenticated && !searchBlocked && (
+                  <span className="sv-guest-left">{guestSearchesLeft} of {GUEST_LIMIT} free searches left</span>
+                )}
                 {!loading && (
                   <span className="sv-count">{sortedProviders.length} providers · {radiusKm} km radius</span>
                 )}
@@ -979,14 +1003,26 @@ export default function Services() {
 
             {loading && <div className="sv-loading-bar"><div className="sv-loading-inner" /></div>}
 
-            {error && (
+            {searchBlocked && (
+              <div className="sv-empty sv-guest-block" style={{borderColor:'oklch(68% .22 295 / .4)',marginBottom:16}}>
+                <div className="sv-empty-icon">🔒</div>
+                <h3>You've used your {GUEST_LIMIT} free searches</h3>
+                <p>Create a free account to keep comparing local providers — unlimited for members.</p>
+                <div className="sv-guest-actions">
+                  <Link to="/register" className="sv-btn primary">Sign up free</Link>
+                  <Link to="/install" className="sv-btn ghost">Install</Link>
+                </div>
+              </div>
+            )}
+
+            {!searchBlocked && error && (
               <div className="sv-empty" style={{borderColor:'oklch(70% .18 25 / .4)',marginBottom:16}}>
                 <div className="sv-empty-icon">⚠️</div>
                 <h3>Search failed</h3><p>{error}</p>
               </div>
             )}
 
-            {!error && !loading && sortedProviders.length === 0 ? (
+            {searchBlocked ? null : !error && !loading && sortedProviders.length === 0 ? (
               <div className="sv-empty">
                 <div className="sv-empty-icon">🔍</div>
                 <h3>No providers found</h3>

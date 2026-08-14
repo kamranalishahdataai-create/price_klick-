@@ -2,27 +2,31 @@ import React, { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Sparkles, Search, ArrowRight, Ticket, ScanLine, Store,
-  Upload, Camera, Tag, Loader2,
+  Upload, Camera, Tag, Loader2, Lock,
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { GUEST_LIMIT, guestLeft, guestSpend } from '../utils/guestLimit'
 import './KlickLanding.css'
 import './Demo.css'
 
 const API = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || ''
-const LENS_LIMIT = 3
-const LENS_KEY = 'pk_demo_lens_left'
 
 /* ---------------- Coupon generator (free, unlimited) ---------------- */
 function CouponGeneratorDemo() {
+  const { isAuthenticated } = useAuth()
   const [store, setStore] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [coupons, setCoupons] = useState(null)
+  const [left, setLeft] = useState(() => guestLeft('coupons'))
 
   const examples = ['pizzapizza.ca', 'quick auto repair', 'bestbuy.ca']
+  const blocked = !isAuthenticated && left <= 0
 
   async function generate(value) {
     const q = (value ?? store).trim()
-    if (!q) return
+    if (!q || loading) return
+    if (blocked) return
     setStore(q); setLoading(true); setError(null); setCoupons(null)
     try {
       const r = await fetch(`${API}/api/coupons/discover`, {
@@ -33,6 +37,7 @@ function CouponGeneratorDemo() {
       const data = await r.json()
       if (!r.ok) throw new Error(data.error || 'Could not fetch codes')
       setCoupons(Array.isArray(data.coupons) ? data.coupons : [])
+      if (!isAuthenticated) setLeft(guestSpend('coupons'))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -44,52 +49,74 @@ function CouponGeneratorDemo() {
     <div className="kl-glass-strong dm-card">
       <div className="dm-card-head">
         <div className="kl-icon-tile dm-tile"><Ticket className="kl-ic" /></div>
-        <div>
+        <div className="dm-lens-headtext">
           <h2 className="dm-card-title">Coupon generator</h2>
-          <p className="kl-muted dm-card-sub">Every working code, found and tested in seconds. Free, unlimited.</p>
+          <p className="kl-muted dm-card-sub">Every working code, found and tested in seconds.</p>
         </div>
+        {!isAuthenticated && <span className="dm-uploads-left">{left} of {GUEST_LIMIT} free left</span>}
       </div>
 
-      <form className="dm-input-row" onSubmit={(e) => { e.preventDefault(); generate() }}>
-        <div className="dm-input-wrap">
-          <Store className="kl-ic-sm dm-input-ic" />
-          <input
-            className="dm-input"
-            placeholder="Store or checkout URL — e.g. pizzapizza.ca"
-            value={store}
-            onChange={(e) => setStore(e.target.value)}
-          />
-        </div>
-        <button type="submit" className="kl-btn kl-btn-brand dm-gen-btn" disabled={loading}>
-          {loading ? <Loader2 className="kl-ic dm-spin" /> : <Sparkles className="kl-ic" />} Generate codes
-        </button>
-      </form>
+      {blocked ? (
+        <GuestLimitNotice label="coupon lookups" />
+      ) : (
+        <>
+          <form className="dm-input-row" onSubmit={(e) => { e.preventDefault(); generate() }}>
+            <div className="dm-input-wrap">
+              <Store className="kl-ic-sm dm-input-ic" />
+              <input
+                className="dm-input"
+                placeholder="Store or checkout URL — e.g. pizzapizza.ca"
+                value={store}
+                onChange={(e) => setStore(e.target.value)}
+              />
+            </div>
+            <button type="submit" className="kl-btn kl-btn-brand dm-gen-btn" disabled={loading}>
+              {loading ? <Loader2 className="kl-ic dm-spin" /> : <Sparkles className="kl-ic" />} Generate codes
+            </button>
+          </form>
 
-      <div className="dm-chips">
-        {examples.map((ex) => (
-          <button key={ex} type="button" className="dm-chip" onClick={() => generate(ex)}>{ex}</button>
-        ))}
-      </div>
-
-      <div className="dm-result">
-        {error && <p className="dm-error">⚠ {error}</p>}
-        {!error && !coupons && !loading && (
-          <p className="kl-muted dm-empty">Pick a store above and watch PriceKlick pull every live code.</p>
-        )}
-        {loading && <p className="kl-muted dm-empty">Pulling live codes for <strong>{store}</strong>…</p>}
-        {coupons && coupons.length === 0 && (
-          <p className="kl-muted dm-empty">No public codes found right now — install the extension and we'll catch them at checkout.</p>
-        )}
-        {coupons && coupons.length > 0 && (
-          <div className="dm-codes">
-            {coupons.map((c, i) => (
-              <div key={i} className="dm-code-row">
-                <span className="dm-code"><Tag className="kl-ic-sm kl-success" /> {c.code}</span>
-                <span className="dm-code-desc">{c.description || (c.discount ? `${c.discount}${c.type === 'PERCENT' ? '%' : ''} off` : 'Deal')}</span>
-              </div>
+          <div className="dm-chips">
+            {examples.map((ex) => (
+              <button key={ex} type="button" className="dm-chip" onClick={() => generate(ex)}>{ex}</button>
             ))}
           </div>
-        )}
+
+          <div className="dm-result">
+            {error && <p className="dm-error">⚠ {error}</p>}
+            {!error && !coupons && !loading && (
+              <p className="kl-muted dm-empty">Pick a store above and watch PriceKlick pull every live code.</p>
+            )}
+            {loading && <p className="kl-muted dm-empty">Pulling live codes for <strong>{store}</strong>…</p>}
+            {coupons && coupons.length === 0 && (
+              <p className="kl-muted dm-empty">No public codes found right now — install the extension and we'll catch them at checkout.</p>
+            )}
+            {coupons && coupons.length > 0 && (
+              <div className="dm-codes">
+                {coupons.map((c, i) => (
+                  <div key={i} className="dm-code-row">
+                    <span className="dm-code"><Tag className="kl-ic-sm kl-success" /> {c.code}</span>
+                    <span className="dm-code-desc">{c.description || (c.discount ? `${c.discount}${c.type === 'PERCENT' ? '%' : ''} off` : 'Deal')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/* Shown when a guest has used all 3 free tries of a tool. */
+function GuestLimitNotice({ label }) {
+  return (
+    <div className="dm-limit">
+      <div className="dm-limit-ic"><Lock className="kl-ic-lg" /></div>
+      <p className="dm-limit-title">You've used your {GUEST_LIMIT} free {label}</p>
+      <p className="kl-muted dm-xs">Create a free account to keep going — unlimited for members.</p>
+      <div className="dm-limit-actions">
+        <Link to="/register" className="kl-btn kl-btn-brand">Sign up free</Link>
+        <Link to="/install" className="kl-btn kl-btn-glass"><Upload className="kl-ic-sm" /> Install</Link>
       </div>
     </div>
   )
@@ -97,23 +124,15 @@ function CouponGeneratorDemo() {
 
 /* ---------------- JustKlick lens (3 free guest lookups) ---------------- */
 function LensUploadDemo() {
-  const [left, setLeft] = useState(() => {
-    const v = Number(localStorage.getItem(LENS_KEY))
-    return Number.isFinite(v) && v > 0 && v <= LENS_LIMIT ? v : LENS_LIMIT
-  })
+  const { isAuthenticated } = useAuth()
+  const [left, setLeft] = useState(() => isAuthenticated ? GUEST_LIMIT : guestLeft('lens'))
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const fileRef = useRef(null)
 
-  const decrement = () => {
-    setLeft((n) => {
-      const next = Math.max(0, n - 1)
-      localStorage.setItem(LENS_KEY, String(next))
-      return next
-    })
-  }
+  const blocked = !isAuthenticated && left <= 0
 
   async function analyze(image) {
     setLoading(true); setError(null); setResult(null)
@@ -132,7 +151,7 @@ function LensUploadDemo() {
       const data = await r.json()
       if (!r.ok || !data.ok) throw new Error(data.error || 'Scan failed')
       setResult(data)
-      decrement()
+      if (!isAuthenticated) setLeft(guestSpend('lens'))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -141,7 +160,7 @@ function LensUploadDemo() {
   }
 
   function onFile(file) {
-    if (!file || !file.type.startsWith('image/') || left <= 0) return
+    if (!file || !file.type.startsWith('image/') || blocked) return
     setPreview(URL.createObjectURL(file))
     const reader = new FileReader()
     reader.onload = () => analyze(reader.result)
@@ -158,12 +177,12 @@ function LensUploadDemo() {
           <h2 className="dm-card-title">JustKlick lens</h2>
           <p className="kl-muted dm-card-sub">Snap or upload any product — we find it cheaper.</p>
         </div>
-        <span className="dm-uploads-left">{left} of {LENS_LIMIT} uploads left</span>
+        {!isAuthenticated && <span className="dm-uploads-left">{left} of {GUEST_LIMIT} uploads left</span>}
       </div>
 
       <div
-        className={`dm-drop ${left <= 0 ? 'dm-drop-disabled' : ''}`}
-        onClick={() => left > 0 && fileRef.current?.click()}
+        className={`dm-drop ${blocked ? 'dm-drop-disabled' : ''}`}
+        onClick={() => !blocked && fileRef.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer.files?.[0]) }}
       >
@@ -183,11 +202,14 @@ function LensUploadDemo() {
               )}
             </div>
           </div>
-        ) : left <= 0 ? (
+        ) : blocked ? (
           <div className="dm-drop-inner">
-            <Camera className="dm-drop-ic" />
-            <p className="kl-muted">You've used your 3 free lookups.</p>
-            <Link to="/install" className="kl-btn kl-btn-brand dm-lens-cta"><Upload className="kl-ic-sm" /> Install free to keep going</Link>
+            <Lock className="dm-drop-ic" />
+            <p className="kl-muted">You've used your {GUEST_LIMIT} free lookups.</p>
+            <div className="dm-limit-actions">
+              <Link to="/register" className="kl-btn kl-btn-brand dm-lens-cta">Sign up free</Link>
+              <Link to="/install" className="kl-btn kl-btn-glass dm-lens-cta"><Upload className="kl-ic-sm" /> Install</Link>
+            </div>
           </div>
         ) : (
           <div className="dm-drop-inner">
@@ -200,7 +222,7 @@ function LensUploadDemo() {
       {error && <p className="dm-error">⚠ {error}</p>}
 
       <div className="dm-lens-actions">
-        <button type="button" className="kl-btn kl-btn-brand" disabled={left <= 0 || loading} onClick={() => fileRef.current?.click()}>
+        <button type="button" className="kl-btn kl-btn-brand" disabled={blocked || loading} onClick={() => fileRef.current?.click()}>
           <Upload className="kl-ic" /> Upload photo
         </button>
         <Link to="/lens" className="kl-btn kl-btn-glass">
