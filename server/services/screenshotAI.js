@@ -1959,6 +1959,33 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     console.log(`  🧩 Total ${similarProducts.length} similar product options`);
   }
 
+  // Final safety net against dead links: a URL guessed from the brand/domain can
+  // be a non-existent site (e.g. a local eatery whose domain doesn't exist →
+  // NXDOMAIN), which would send "See it cheaper" to a page that won't load.
+  // Validate any *guessed/constructed* URL and drop it if it doesn't resolve.
+  // Verified SERP/Lens/retailer URLs are trusted as-is (they can legitimately 403
+  // a server-side HEAD while working fine in a browser). Then guarantee at least
+  // one working destination via a product web search.
+  const isGuessSrc = (s) => !s || /homepage|ai_detected|constructed|domain|brand/i.test(String(s));
+  if (redirectUrl && isGuessSrc(urlSource) && !(await validateUrl(redirectUrl))) {
+    console.log(`  ✗ Dropping dead guessed redirectUrl: ${redirectUrl}`);
+    redirectUrl = null;
+  }
+  if (productUrl && isGuessSrc(productSource) && !(await validateUrl(productUrl))) {
+    console.log(`  ✗ Dropping dead guessed productUrl: ${productUrl}`);
+    productUrl = null;
+  }
+  if (!redirectUrl && !productUrl) {
+    const q = promoDetails.productSearchQuery
+      || [promoDetails.brand, (promoDetails.products || [])[0]].filter(Boolean).join(' ').trim()
+      || promoDetails.brand;
+    if (q) {
+      redirectUrl = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+      urlSource = 'web_search';
+      console.log(`  → Web-search fallback (no verified page): ${redirectUrl}`);
+    }
+  }
+
   // Enforce HTTPS on all URLs before returning
   return {
     success: true,
