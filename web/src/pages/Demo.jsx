@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Sparkles, Search, ArrowRight, Ticket, ScanLine, Store,
@@ -122,110 +122,27 @@ function GuestLimitNotice({ label }) {
   )
 }
 
-/* ---------------- JustKlick lens (3 free guest lookups) ---------------- */
+/* ---------------- JustKlick lens (funnels to the full /lens experience) ---------------- */
 function LensUploadDemo() {
-  const { isAuthenticated } = useAuth()
-  const [left, setLeft] = useState(() => isAuthenticated ? GUEST_LIMIT : guestLeft('lens'))
-  const [preview, setPreview] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [result, setResult] = useState(null)
-  const fileRef = useRef(null)
-
-  const blocked = !isAuthenticated && left <= 0
-
-  async function analyze(image) {
-    setLoading(true); setError(null); setResult(null)
-    try {
-      const r = await fetch(`${API}/api/promo/find-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image }),
-      })
-      const ct = r.headers.get('content-type') || ''
-      if (!ct.includes('application/json')) {
-        throw new Error(r.status === 504 || r.status === 502
-          ? 'The scan took too long. Please try a smaller or clearer photo.'
-          : `Server error (${r.status}). Please try again.`)
-      }
-      const data = await r.json()
-      if (!r.ok || !data.ok) throw new Error(data.error || 'Scan failed')
-      setResult(data)
-      if (!isAuthenticated) setLeft(guestSpend('lens'))
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function onFile(file) {
-    if (!file || !file.type.startsWith('image/') || blocked) return
-    setPreview(URL.createObjectURL(file))
-    const reader = new FileReader()
-    reader.onload = () => analyze(reader.result)
-    reader.readAsDataURL(file)
-  }
-
-  const bestUrl = result && (result.redirectUrl || result.productUrl || null)
-
   return (
     <div className="kl-glass-strong dm-card">
       <div className="dm-card-head">
         <div className="kl-icon-tile dm-tile"><ScanLine className="kl-ic" /></div>
         <div className="dm-lens-headtext">
           <h2 className="dm-card-title">JustKlick lens</h2>
-          <p className="kl-muted dm-card-sub">Snap or upload any product — we find it cheaper.</p>
+          <p className="kl-muted dm-card-sub">Snap any product — we identify it and find it cheaper.</p>
         </div>
-        {!isAuthenticated && <span className="dm-uploads-left">{left} of {GUEST_LIMIT} uploads left</span>}
       </div>
 
-      <div
-        className={`dm-drop ${blocked ? 'dm-drop-disabled' : ''}`}
-        onClick={() => !blocked && fileRef.current?.click()}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer.files?.[0]) }}
-      >
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => onFile(e.target.files?.[0])} />
-        {loading ? (
-          <div className="dm-drop-inner"><Loader2 className="dm-drop-ic dm-spin" /><p className="kl-muted">Scanning for a cheaper price…</p></div>
-        ) : result ? (
-          <div className="dm-lens-result">
-            {preview && <img src={preview} alt="scanned" className="dm-lens-thumb" />}
-            <div className="dm-lens-info">
-              <p className="dm-lens-brand">{result.brand || result.productCategory || 'Product identified'}</p>
-              <p className="kl-muted dm-xs">{result.products?.[0] || result.promotionTitle || 'Match found'}</p>
-              {bestUrl && (
-                <a href={bestUrl} target="_blank" rel="noopener noreferrer" className="kl-btn kl-btn-brand dm-lens-cta">
-                  See it cheaper <ArrowRight className="kl-ic-sm" />
-                </a>
-              )}
-            </div>
-          </div>
-        ) : blocked ? (
-          <div className="dm-drop-inner">
-            <Lock className="dm-drop-ic" />
-            <p className="kl-muted">You've used your {GUEST_LIMIT} free lookups.</p>
-            <div className="dm-limit-actions">
-              <Link to="/register" className="kl-btn kl-btn-brand dm-lens-cta">Sign up free</Link>
-              <Link to="/install" className="kl-btn kl-btn-glass dm-lens-cta"><Upload className="kl-ic-sm" /> Install</Link>
-            </div>
-          </div>
-        ) : (
-          <div className="dm-drop-inner">
-            {preview ? <img src={preview} alt="preview" className="dm-lens-thumb" /> : <Camera className="dm-drop-ic" />}
-            <p className="kl-muted">Upload a product photo, or run the sample scan</p>
-          </div>
-        )}
-      </div>
-
-      {error && <p className="dm-error">⚠ {error}</p>}
+      <Link to="/lens" className="dm-drop dm-drop-link">
+        <div className="dm-drop-inner">
+          <Camera className="dm-drop-ic" />
+          <p className="kl-muted">Run the live sample scan to see JustKlick in action.</p>
+        </div>
+      </Link>
 
       <div className="dm-lens-actions">
-        <button type="button" className="kl-btn kl-btn-brand" disabled={blocked || loading} onClick={() => fileRef.current?.click()}>
-          <Upload className="kl-ic" /> Upload photo
-        </button>
-        <Link to="/lens" className="kl-btn kl-btn-glass">
+        <Link to="/lens" className="kl-btn kl-btn-brand dm-lens-full-btn">
           <Sparkles className="kl-ic" /> Run sample scan
         </Link>
       </div>

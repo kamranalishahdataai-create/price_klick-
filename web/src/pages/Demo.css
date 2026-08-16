@@ -76,6 +76,7 @@
 .dm-drop-inner { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .dm-drop-ic { width: 40px; height: 40px; color: var(--muted-foreground); }
 .dm-lens-thumb { max-height: 130px; max-width: 100%; border-radius: 10px; object-fit: contain; }
+.dm-drop-link { text-decoration: none; color: inherit; }
 
 /* Lens result */
 .dm-lens-result { display: flex; gap: 16px; align-items: center; width: 100%; }
