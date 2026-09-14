@@ -1,7 +1,7 @@
 {
   "name": "PriceKlick",
   "description": "Applies coupons, compares prices, and lets you save items to wishlist.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "manifest_version": 3,
 
   "action": {
@@ -17,7 +17,6 @@
 
   "permissions": [
     "storage",
-    "scripting",
     "activeTab",
     "tabs"
   ],
