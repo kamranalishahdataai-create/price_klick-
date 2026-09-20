@@ -4,6 +4,12 @@
 # ---- Stage 1: build the frontend ----
 FROM node:20-slim AS web
 WORKDIR /web
+# Public client-side build vars, supplied by Railway as build args (not committed).
+# VITE_API_URL is left empty so the frontend calls the API on its own origin.
+ARG VITE_MAPBOX_TOKEN=""
+ARG VITE_API_URL=""
+ENV VITE_MAPBOX_TOKEN=$VITE_MAPBOX_TOKEN
+ENV VITE_API_URL=$VITE_API_URL
 COPY web/package*.json ./
 RUN npm install
 COPY web/ ./
