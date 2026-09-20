@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { v4 as uuid } from 'uuid';
 import cron from 'node-cron';
@@ -1186,5 +1189,20 @@ app.post('/api/deals/firecrawl-scan', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// ── Serve the built frontend (single-service deploy: same origin for app + API) ──
+// In production (Railway/Docker) the Vite build is copied to server/public and the
+// Express server serves it, with an SPA fallback for client-side routes. Skipped
+// automatically in local dev where that folder doesn't exist (Vite dev server runs).
+const __dirnameESM = path.dirname(fileURLToPath(import.meta.url));
+const CLIENT_DIR = process.env.CLIENT_DIR || path.join(__dirnameESM, 'public');
+if (fs.existsSync(path.join(CLIENT_DIR, 'index.html'))) {
+  app.use(express.static(CLIENT_DIR));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(CLIENT_DIR, 'index.html'));
+  });
+  console.log('Serving frontend from', CLIENT_DIR);
+}
 
 app.listen(PORT, () => console.log('Server listening on', PORT));

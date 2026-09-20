@@ -1,0 +1,11 @@
+**/node_modules
+web/dist
+server/public
+.git
+.gitignore
+*.log
+npm-debug.log*
+server/.env
+extension
+INVOICE-PriceKlick.html
+priceklick-icon-source-960x1088.png
