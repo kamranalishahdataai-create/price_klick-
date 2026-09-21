@@ -67,7 +67,6 @@ const PORT = process.env.PORT || 5050;
 // --- Auth Routes (MongoDB) ---
 if (mongoConnection) {
   app.use('/api/auth', authRoutes);
-  app.use('/api/admin', adminRoutes);
   app.use('/api/services', servicesRoutes);
   app.use('/api/insights', insightsRoutes);
   app.use('/api/smart-compare', smartCompareRoutes);
@@ -88,6 +87,9 @@ if (mongoConnection) {
       res.status(500).json({ error: 'server_error', message: e.message });
     }
   });
+
+  // Mounted after /bootstrap: this router's adminOnly guard would otherwise 403 it
+  app.use('/api/admin', adminRoutes);
 }
 
 // --- Health Check ---
