@@ -33,7 +33,7 @@ export default function RunAgentButton({ secret = "changeme" }) {
       console.log("Agent results:", data);
     } catch (e) {
       setError(e.message || String(e));
-      alert(`Agent failed âŒ\n${e.message || e}`);
+      alert(`Agent failed âŒ\n${e.message || e}`);
       console.error(e);
     } finally {
       setLoading(false);

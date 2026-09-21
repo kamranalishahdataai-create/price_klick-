@@ -45,7 +45,7 @@ export default function Dashboard() {
     e.preventDefault();
     await add({ title, target_price: Number(target), currency: "USD" });
     setWishlist(await list());
-    addToast(`â€œ${title}â€ saved to wishlist.`, "success");
+    addToast(`â€œ${title}â€ saved to wishlist.`, "success");
     setTitle("");
   }
 
@@ -287,7 +287,7 @@ export default function Dashboard() {
                       onClick={async () => {
                         await remove(it.id);
                         setWishlist(await list());
-                        addToast(`â€œ${it.title}â€ removed.`, "warning");
+                        addToast(`â€œ${it.title}â€ removed.`, "warning");
                       }}
                     >
                       Remove

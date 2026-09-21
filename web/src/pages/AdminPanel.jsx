@@ -144,7 +144,7 @@ function UserModal({ userId, onClose, onUpdate }) {
                   </button>
                 )}
                 <button className="panel-btn panel-btn-danger panel-btn-sm" onClick={handleDelete}>
-                  🗑️ Delete User
+                  🗑️ Delete User
                 </button>
               </div>
 
@@ -379,11 +379,11 @@ export default function AdminPanel() {
         {/* Header */}
         <div className="panel-header">
           <div>
-            <h1 className="panel-title">🛡️ Admin Panel</h1>
+            <h1 className="panel-title">🛡️ Admin Panel</h1>
             <p className="panel-subtitle">Manage users, monitor analytics, and control the system</p>
           </div>
           <button className="panel-btn panel-btn-ghost" onClick={() => navigate('/user-dashboard')}>
-            ← Back to Dashboard
+            ← Back to Dashboard
           </button>
         </div>
 
@@ -406,7 +406,7 @@ export default function AdminPanel() {
                tab === 'activity' ? '📡 Activity' :
                tab === 'users' ? '👥 Users' :
                tab === 'analytics' ? '📈 Analytics' :
-               tab === 'alerts' ? '🔔 Alerts' : '⚙️ Settings'}
+               tab === 'alerts' ? '🔔 Alerts' : '⚙️ Settings'}
             </button>
           ))}
         </div>
@@ -430,7 +430,7 @@ export default function AdminPanel() {
                     <div className="stat-label">Verified Users</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">🛡️</div>
+                    <div className="stat-icon">🛡️</div>
                     <div className="stat-value">{stats.adminUsers}</div>
                     <div className="stat-label">Admins</div>
                   </div>
@@ -527,7 +527,7 @@ export default function AdminPanel() {
                     <option value="admin">Admins</option>
                   </select>
                   <button className="panel-btn panel-btn-primary" onClick={() => loadUsers()}>
-                    🔍 Search
+                    🔍 Search
                   </button>
                 </div>
 
@@ -609,7 +609,7 @@ export default function AdminPanel() {
                           disabled={usersPagination.page <= 1}
                           onClick={() => loadUsers(usersPagination.page - 1)}
                         >
-                          ← Prev
+                          ← Prev
                         </button>
                         <span className="page-info">
                           Page {usersPagination.page} of {usersPagination.pages}
@@ -641,7 +641,7 @@ export default function AdminPanel() {
               <>
                 {/* Brand Search */}
                 <div className="panel-card">
-                  <div className="panel-card-title">🔍 Brand Lookup</div>
+                  <div className="panel-card-title">🔍 Brand Lookup</div>
                   <div className="filter-row" style={{ marginBottom: 0 }}>
                     <input
                       className="filter-input"
@@ -676,7 +676,7 @@ export default function AdminPanel() {
                       <div style={{ padding: 12, background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
                         <div style={{ fontSize: 11, color: '#888' }}>Alert Threshold</div>
                         <span className={`badge ${brandInfo.alertThresholdMet ? 'badge-danger' : 'badge-info'}`}>
-                          {brandInfo.alertThresholdMet ? '⚠️ Met' : 'Not met'}
+                          {brandInfo.alertThresholdMet ? '⚠️ Met' : 'Not met'}
                         </span>
                       </div>
                       {brandInfo.queries && brandInfo.queries.length > 0 && (
@@ -755,7 +755,7 @@ export default function AdminPanel() {
 
                 {/* Active Alerts */}
                 <div className="panel-card">
-                  <div className="panel-card-title">⚠️ Brands Exceeding Alert Threshold</div>
+                  <div className="panel-card-title">⚠️ Brands Exceeding Alert Threshold</div>
                   {alerts.length === 0 ? (
                     <div className="empty-state">
                       <div className="empty-icon">🔔</div>
@@ -851,7 +851,7 @@ export default function AdminPanel() {
             {activeTab === 'settings' && (
               <>
                 <div className="panel-card">
-                  <div className="panel-card-title">⚙️ System Configuration</div>
+                  <div className="panel-card-title">⚙️ System Configuration</div>
                   {!settings ? (
                     <div className="panel-loading">Loading settings...</div>
                   ) : (
@@ -861,14 +861,14 @@ export default function AdminPanel() {
                         <div style={{ fontWeight: 700 }}>
                           <span className={`badge ${settings.aiProvider !== 'none' ? 'badge-success' : 'badge-danger'}`}>
                             {settings.aiProvider === 'openai' ? '🤖 OpenAI' :
-                             settings.aiProvider === 'google_vision' ? '👁️ Google Vision' : 'âŒ None'}
+                             settings.aiProvider === 'google_vision' ? '👁️ Google Vision' : 'âŒ None'}
                           </span>
                         </div>
                       </div>
                       <div style={{ padding: 16, background: 'rgba(255,255,255,0.04)', borderRadius: 12 }}>
                         <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>SERP API</div>
                         <span className={`badge ${settings.serpApiConfigured ? 'badge-success' : 'badge-warning'}`}>
-                          {settings.serpApiConfigured ? '✓ Configured' : '⚠️ Not configured'}
+                          {settings.serpApiConfigured ? '✓ Configured' : '⚠️ Not configured'}
                         </span>
                       </div>
                       <div style={{ padding: 16, background: 'rgba(255,255,255,0.04)', borderRadius: 12 }}>
@@ -894,7 +894,7 @@ export default function AdminPanel() {
                 </div>
 
                 <div className="panel-card">
-                  <div className="panel-card-title">ℹ️ About</div>
+                  <div className="panel-card-title">ℹ️ About</div>
                   <div style={{ color: '#666', fontSize: 14, lineHeight: 1.8 }}>
                     <p><strong>PriceKlick Admin Panel</strong></p>
                     <p>This panel allows administrators to:</p>
