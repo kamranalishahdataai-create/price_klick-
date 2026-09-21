@@ -1,7 +1,7 @@
 // Admin API client — all requests include auth headers
 import authService from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5050';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5050' : '');
 
 async function adminFetch(path, options = {}) {
   const headers = {
