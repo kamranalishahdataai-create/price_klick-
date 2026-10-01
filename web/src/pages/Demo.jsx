@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { GUEST_LIMIT, guestLeft, guestSpend } from '../utils/guestLimit'
 import './KlickLanding.css'
 import './Demo.css'
+import { CHROME_STORE_URL } from '../config/extension'
 
 const API = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || ''
 
@@ -116,7 +117,7 @@ function GuestLimitNotice({ label }) {
       <p className="kl-muted dm-xs">Create a free account to keep going — unlimited for members.</p>
       <div className="dm-limit-actions">
         <Link to="/register" className="kl-btn kl-btn-brand">Sign up free</Link>
-        <Link to="/install" className="kl-btn kl-btn-glass"><Upload className="kl-ic-sm" /> Install</Link>
+        <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="kl-btn kl-btn-glass"><Upload className="kl-ic-sm" /> Install</a>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { CHROME_STORE_URL } from '../config/extension'
 import './Navbar.css'
 
 export default function Navbar(){
@@ -47,7 +48,7 @@ export default function Navbar(){
         ) : (
           <div className="auth-nav">
             <Link to="/login" className="nav-login">Login</Link>
-            <Link to="/install" className="nav-install">Install Free</Link>
+            <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="nav-install">Install Free</a>
           </div>
         )}
       </div>

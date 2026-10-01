@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import JoinPaths from '../components/JoinPaths'
 import './KlickLanding.css'
+import { CHROME_STORE_URL } from '../config/extension'
 
 const perks = [
   { icon: Zap, title: 'Instant savings', desc: 'Codes are found, tested and stacked at checkout in under three seconds.' },
@@ -55,9 +56,9 @@ export default function JoinKlickLanding() {
           </p>
 
           <div className="kl-cta-row">
-            <Link to="/install" className="kl-btn kl-btn-brand">
+            <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="kl-btn kl-btn-brand">
               <Download className="kl-ic" /> Add to browser — Free
-            </Link>
+            </a>
             <Link to="/demo" className="kl-btn kl-btn-glass">
               Watch it work <ArrowRight className="kl-ic" />
             </Link>
@@ -82,7 +83,7 @@ export default function JoinKlickLanding() {
           ].map((l) => (
             <a key={l.href} href={l.href} className="kl-secnav-link">{l.label}</a>
           ))}
-          <Link to="/install" className="kl-secnav-cta"><Download className="kl-ic-sm" /> Get it free</Link>
+          <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="kl-secnav-cta"><Download className="kl-ic-sm" /> Get it free</a>
         </div>
       </nav>
 
@@ -209,9 +210,9 @@ export default function JoinKlickLanding() {
           </h2>
           <p className="kl-sub">Free to install, free to use, free forever. Your next checkout could be cheaper.</p>
           <div className="kl-cta-row kl-center-row">
-            <Link to="/install" className="kl-btn kl-btn-brand">
+            <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="kl-btn kl-btn-brand">
               <Download className="kl-ic" /> Get PriceKlick free
-            </Link>
+            </a>
             <Link to="/services" className="kl-btn kl-btn-glass">
               Browse services <ArrowRight className="kl-ic" />
             </Link>

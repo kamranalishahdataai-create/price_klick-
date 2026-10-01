@@ -5,6 +5,7 @@ import ServiceMap from '../components/ServiceMap'
 import { useAuth } from '../context/AuthContext'
 import { GUEST_LIMIT, guestLeft, guestSpend } from '../utils/guestLimit'
 import './Services.css'
+import { CHROME_STORE_URL } from '../config/extension'
 
 // ── Category taxonomy (two levels: broad category → subcategories) ─────────────
 // Every broad category that has natural subdivisions carries a `subs` array, so
@@ -1010,7 +1011,7 @@ export default function Services() {
                 <p>Create a free account to keep comparing local providers — unlimited for members.</p>
                 <div className="sv-guest-actions">
                   <Link to="/register" className="sv-btn primary">Sign up free</Link>
-                  <Link to="/install" className="sv-btn ghost">Install</Link>
+                  <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="sv-btn ghost">Install</a>
                 </div>
               </div>
             )}

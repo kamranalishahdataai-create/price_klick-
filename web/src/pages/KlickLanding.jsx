@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import JoinPaths from '../components/JoinPaths'
 import './KlickLanding.css'
+import { CHROME_STORE_URL } from '../config/extension'
 
 const oldWay = [
   'Google the product, open eight tabs',
@@ -51,9 +52,9 @@ export default function KlickLanding() {
           </p>
 
           <div className="kl-cta-row">
-            <Link to="/install" className="kl-btn kl-btn-brand">
+            <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="kl-btn kl-btn-brand">
               <Download className="kl-ic" /> Download free
-            </Link>
+            </a>
             <Link to="/vendor" className="kl-btn kl-btn-glass">
               <Store className="kl-ic" /> Sign up as a vendor
             </Link>
@@ -151,9 +152,9 @@ export default function KlickLanding() {
             Free to install, free to use. Your next checkout could be cheaper.
           </p>
           <div className="kl-cta-row kl-center-row">
-            <Link to="/install" className="kl-btn kl-btn-brand">
+            <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="kl-btn kl-btn-brand">
               <Download className="kl-ic" /> Get PriceKlick free
-            </Link>
+            </a>
             <Link to="/register" className="kl-btn kl-btn-glass">
               Join the Klick <ArrowRight className="kl-ic" />
             </Link>

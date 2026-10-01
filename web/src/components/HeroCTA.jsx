@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CHROME_STORE_URL } from '../config/extension'
 import './HeroCTA.css'
 
 function CheckoutDemo(){
@@ -82,7 +83,7 @@ export default function HeroCTA({ title = 'Save money', subtitle, accent = 'auto
             {subtitle || 'PriceKlick is the smart browser companion that scans, tests, and stacks the best coupon codes at checkout — in under three seconds. Always free.'}
           </p>
           <div className="hero-cta">
-            <Link to="/install" className="btn-hero-primary">Add to Chrome — Free <span>→</span></Link>
+            <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="btn-hero-primary">Add to Chrome — Free <span>→</span></a>
             <Link to="/lens?demo=1" className="btn-hero-ghost">View Demo</Link>
           </div>
           <div className="hero-free-pill">✓ 100% free</div>

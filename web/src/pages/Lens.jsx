@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { GUEST_LIMIT, guestLeft, guestSpend } from '../utils/guestLimit'
 import './Lens.css'
+import { CHROME_STORE_URL } from '../config/extension'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -379,7 +380,7 @@ export default function Lens() {
                     <p>Create a free account to keep scanning — unlimited for members.</p>
                     <div className="lens-guest-actions">
                       <Link to="/register" className="lens-btn primary">Sign up free</Link>
-                      <Link to="/install" className="lens-btn ghost">Install</Link>
+                      <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="lens-btn ghost">Install</a>
                     </div>
                   </div>
                 )}

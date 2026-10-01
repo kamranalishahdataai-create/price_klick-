@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Download, Store, UserPlus, BadgeCheck } from 'lucide-react'
+import { CHROME_STORE_URL } from '../config/extension'
 
 /**
  * Dual sign-up / download paths: one for shoppers (members), one for vendors.
@@ -37,7 +38,7 @@ export default function JoinPaths({
             ))}
           </ul>
           <div className="kl-jp-actions">
-            <Link to="/install" className="kl-btn kl-btn-brand"><Download className="kl-ic-sm" /> Download free</Link>
+            <a href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" className="kl-btn kl-btn-brand"><Download className="kl-ic-sm" /> Download free</a>
             <Link to="/register" className="kl-btn kl-btn-glass"><UserPlus className="kl-ic-sm" /> Create account</Link>
           </div>
           <p className="kl-jp-alt">Already a member? <Link to="/login" className="kl-link">Sign in</Link></p>
