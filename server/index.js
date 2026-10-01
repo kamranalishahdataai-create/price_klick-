@@ -35,18 +35,30 @@ import User from './models/User.js';
 
 dotenv.config();
 const app = express();
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://priceklick.com',
-    'http://www.priceklick.com',
-    'https://priceklick.com',
-    'https://www.priceklick.com',
-    'http://15.222.243.251',
-    'http://ec2-15-222-243-251.ca-central-1.compute.amazonaws.com'
-  ],
-  credentials: true
+// Site origins that may send credentials (cookies / auth headers).
+const SITE_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://priceklick.com',
+  'http://www.priceklick.com',
+  'https://priceklick.com',
+  'https://www.priceklick.com'
+];
+
+// Endpoints the Chrome extension calls. Its content script runs on shopping
+// sites, so requests arrive with those sites' origins — open these to any
+// origin, but without credentials. They serve public data only.
+const EXTENSION_API = /^\/api\/(health|compare|coupons|search|services|promo|privacy|recommendations)\b/;
+
+app.use(cors((req, cb) => {
+  const origin = req.header('Origin');
+  if (origin && origin.startsWith('chrome-extension://')) {
+    return cb(null, { origin: true, credentials: false });
+  }
+  if (EXTENSION_API.test(req.path)) {
+    return cb(null, { origin: true, credentials: false });
+  }
+  cb(null, { origin: SITE_ORIGINS, credentials: true });
 }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
