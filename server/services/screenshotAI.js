@@ -1966,7 +1966,9 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
   // Verified SERP/Lens/retailer URLs are trusted as-is (they can legitimately 403
   // a server-side HEAD while working fine in a browser). Then guarantee at least
   // one working destination via a product web search.
-  const isGuessSrc = (s) => !s || /homepage|ai_detected|constructed|domain|brand/i.test(String(s));
+  // generic_store_search / ai_product_search build `site.com/search?q=` paths the
+  // site may not have (playstation.com/search → 404), so they're guesses too.
+  const isGuessSrc = (s) => !s || /homepage|ai_|constructed|domain|brand|generic/i.test(String(s));
   if (redirectUrl && isGuessSrc(urlSource) && !(await validateUrl(redirectUrl))) {
     console.log(`  ✗ Dropping dead guessed redirectUrl: ${redirectUrl}`);
     redirectUrl = null;
