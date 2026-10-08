@@ -1073,6 +1073,8 @@ app.post('/api/promo/capture', async (req, res) => {
 // Upload a screenshot of any promotion â†’ get redirected to official promo page
 app.post('/api/promo/find-url', async (req, res) => {
   const { image } = req.body;
+  // Shopper's country (sent by the Lens page) picks which retailers to link to.
+  const country = /^[A-Za-z]{2}$/.test(req.body.country || '') ? req.body.country.toUpperCase() : undefined;
   
   if (!image) return res.status(400).json({ error: 'No image provided. Please upload a screenshot.' });
   
@@ -1080,7 +1082,7 @@ app.post('/api/promo/find-url', async (req, res) => {
     const { base64 } = processImageUpload(image);
     
     console.log('ðŸ”Ž Processing Google Lens-like promo detection...');
-    const result = await detectPromoAndFindUrl(base64);
+    const result = await detectPromoAndFindUrl(base64, { country });
     
     if (!result.success) {
       // Provide specific error message based on the failure reason
@@ -1130,10 +1132,11 @@ app.post('/api/promo/find-url', async (req, res) => {
     let redirectUrl = result.redirectUrl;
     let urlSource = result.urlSource;
     if (!redirectUrl && result.brand) {
+      // No Google fallback: use the brand's site, else the retailer page Lens found.
       redirectUrl = result.domain
         ? (result.domain.startsWith('http') ? result.domain : `https://www.${result.domain}`)
-        : `https://www.google.com/search?q=${encodeURIComponent(result.brand + ' ' + (result.promotionTitle || 'deals'))}`;
-      urlSource = result.domain ? 'brand_homepage' : 'google_search';
+        : (result.productUrl || null);
+      urlSource = result.domain ? 'brand_homepage' : (result.productSource || 'none');
     }
     
     res.json({

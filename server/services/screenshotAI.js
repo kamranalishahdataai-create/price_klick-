@@ -702,6 +702,66 @@ const STORE_SEARCH_PATTERNS = {
   'apple.com':        (q) => `https://www.apple.com/shop/buy-mac?fh=${encodeURIComponent(q)}`,
 };
 
+// Retailer search pages per shopper country. Used whenever no verified product
+// page was found, so Lens always lands on a store that sells the item instead of
+// a Google results page. These need no API key, so they work without SerpAPI.
+const q2 = (q) => encodeURIComponent(q);
+const RETAILER_SEARCH_BY_COUNTRY = {
+  US: [
+    ['Amazon',   (q) => `https://www.amazon.com/s?k=${q2(q)}`],
+    ['Walmart',  (q) => `https://www.walmart.com/search?q=${q2(q)}`],
+    ['eBay',     (q) => `https://www.ebay.com/sch/i.html?_nkw=${q2(q)}`],
+    ['Target',   (q) => `https://www.target.com/s?searchTerm=${q2(q)}`],
+  ],
+  CA: [
+    ['Amazon.ca',       (q) => `https://www.amazon.ca/s?k=${q2(q)}`],
+    ['Walmart Canada',  (q) => `https://www.walmart.ca/search?q=${q2(q)}`],
+    ['eBay Canada',     (q) => `https://www.ebay.ca/sch/i.html?_nkw=${q2(q)}`],
+    ['Canadian Tire',   (q) => `https://www.canadiantire.ca/en/search-results.html?q=${q2(q)}`],
+  ],
+  GB: [
+    ['Amazon UK', (q) => `https://www.amazon.co.uk/s?k=${q2(q)}`],
+    ['eBay UK',   (q) => `https://www.ebay.co.uk/sch/i.html?_nkw=${q2(q)}`],
+    ['Argos',     (q) => `https://www.argos.co.uk/search/${q2(q)}/`],
+  ],
+  AU: [
+    ['Amazon Australia', (q) => `https://www.amazon.com.au/s?k=${q2(q)}`],
+    ['eBay Australia',   (q) => `https://www.ebay.com.au/sch/i.html?_nkw=${q2(q)}`],
+  ],
+  IN: [
+    ['Amazon India', (q) => `https://www.amazon.in/s?k=${q2(q)}`],
+    ['Flipkart',     (q) => `https://www.flipkart.com/search?q=${q2(q)}`],
+  ],
+  PK: [
+    ['Daraz',  (q) => `https://www.daraz.pk/catalog/?q=${q2(q)}`],
+    ['Amazon', (q) => `https://www.amazon.com/s?k=${q2(q)}`],
+    ['eBay',   (q) => `https://www.ebay.com/sch/i.html?_nkw=${q2(q)}`],
+  ],
+};
+const ELECTRONICS_SEARCH = {
+  US: ['Best Buy',        (q) => `https://www.bestbuy.com/site/searchpage.jsp?st=${q2(q)}`],
+  CA: ['Best Buy Canada', (q) => `https://www.bestbuy.ca/en-ca/search?search=${q2(q)}`],
+};
+const ELECTRONICS_RE = /phone|laptop|computer|tablet|earbud|headphone|speaker|console|gaming|camera|tv|television|monitor|electronic|watch|appliance|printer|router|drone/i;
+
+function retailerSearchOptions(query, country, category = '') {
+  if (!query) return [];
+  const cc = String(country || 'US').toUpperCase();
+  const stores = [...(RETAILER_SEARCH_BY_COUNTRY[cc] || RETAILER_SEARCH_BY_COUNTRY.US)];
+  const electronics = ELECTRONICS_SEARCH[RETAILER_SEARCH_BY_COUNTRY[cc] ? cc : 'US'];
+  if (electronics && ELECTRONICS_RE.test(`${category} ${query}`)) stores.splice(1, 0, electronics);
+  return stores.map(([name, build]) => ({
+    title: `${query} on ${name}`,
+    url: build(query),
+    price: null,
+    source: name,
+    thumbnail: null,
+    snippet: `Search results on ${name}`
+  }));
+}
+
+const isGoogleSearchUrl = (u) => /^https?:\/\/(www\.)?google\.[a-z.]+\/search/i.test(u || '');
+
 // URL patterns that indicate a direct product page (not search results)
 const PRODUCT_PAGE_INDICATORS = [
   '/dp/', '/ip/', '/product/', '/pdp/', '/p/', '/item/',
@@ -1977,14 +2037,25 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     console.log(`  ✗ Dropping dead guessed productUrl: ${productUrl}`);
     productUrl = null;
   }
-  if (!redirectUrl && !productUrl) {
-    const q = promoDetails.productSearchQuery
-      || [promoDetails.brand, (promoDetails.products || [])[0]].filter(Boolean).join(' ').trim()
-      || promoDetails.brand;
-    if (q) {
-      redirectUrl = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
-      urlSource = 'web_search';
-      console.log(`  → Web-search fallback (no verified page): ${redirectUrl}`);
+  // Never hand back a Google results page — it isn't somewhere to buy the item.
+  // Use retailer search pages for the product instead (no API key needed).
+  if (isGoogleSearchUrl(productUrl)) productUrl = null;
+  if (isGoogleSearchUrl(redirectUrl)) redirectUrl = null;
+  const productQuery = promoDetails.productSearchQuery
+    || [promoDetails.brand, (promoDetails.products || [])[0]].filter(Boolean).join(' ').trim();
+  const retailerOptions = retailerSearchOptions(
+    productQuery || promoDetails.brand, options.country, promoDetails.productCategory || '');
+  if (!productUrl && retailerOptions.length && (productQuery || !redirectUrl)) {
+    productUrl = retailerOptions[0].url;
+    productSource = 'retailer_search';
+    console.log(`  → Retailer search (no verified page): ${productUrl}`);
+  }
+  // Keep the compare list useful when shopping results are unavailable.
+  if (productQuery && similarProducts.length < 3) {
+    for (const opt of retailerOptions) {
+      if (similarProducts.length >= 6) break;
+      if (opt.url === productUrl || similarProducts.some(s => s.url === opt.url)) continue;
+      similarProducts.push(opt);
     }
   }
 

@@ -211,7 +211,7 @@ export default function Lens() {
       const res = await fetch(`${API}/api/promo/find-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image })
+        body: JSON.stringify({ image, country: geo.country || undefined })
       })
       // A slow scan can hit a gateway timeout (504) which returns an HTML page,
       // not JSON — handle that with a clear message instead of a parse error.
@@ -635,7 +635,7 @@ export default function Lens() {
                     <div className="lens-section-label">{hasDirectProductMatch ? 'OTHER MATCHES' : 'SIMILAR PRODUCTS'}</div>
                     <div className="lens-similar-grid">
                       {result.similarProducts.slice(0, 6).map((item, i) => {
-                        const isCheapest = cheapest && !cheapest.isMain && cheapest.url === item.url
+                        const isCheapest = cheapest && cheapest.price != null && !cheapest.isMain && cheapest.url === item.url
                         return (
                         <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" className={`lens-similar-card ${isCheapest ? 'cheapest' : ''}`}>
                           {isCheapest && <span className="lens-similar-flag">💰 Cheapest</span>}
