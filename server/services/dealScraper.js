@@ -195,12 +195,25 @@ async function runFirecrawlScrape({ minDiscount = 5, maxSources = ALL_SOURCES.le
 }
 
 // ── SerpAPI fallback ──────────────────────────────────────
+const SERP_SCRAPE_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000;
+let lastSerpScrapeAt = 0;
 async function runSerpApiScrape({ minDiscount = 15 } = {}) {
   const SERPAPI = process.env.SERPAPI_KEY;
   if (!SERPAPI) return { ok: false, error: 'SERPAPI_KEY missing' };
 
-  const stats = { scanned: 0, kept: 0, errors: [], source: 'serpapi' };
-  for (const { category, query } of SERPAPI_CATEGORIES) {
+  // SerpAPI searches are metered and shared with Lens and the extension. The cron
+  // fires every 2h, which would burn ~2,900 searches a month here, so on this
+  // fallback path scrape at most once a day and only two categories per run
+  // (rotating), i.e. about 60 searches a month.
+  if (Date.now() - lastSerpScrapeAt < SERP_SCRAPE_MIN_INTERVAL_MS) {
+    return { scanned: 0, kept: 0, errors: [], source: 'serpapi', skipped: 'daily_limit' };
+  }
+  lastSerpScrapeAt = Date.now();
+  const day = Math.floor(Date.now() / 86400000);
+  const todays = [0, 1].map(i => SERPAPI_CATEGORIES[(day * 2 + i) % SERPAPI_CATEGORIES.length]);
+
+  const stats = { scanned: 0, kept: 0, errors: [], source: 'serpapi', categories: todays.map(c => c.category) };
+  for (const { category, query } of todays) {
     try {
       const url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&gl=ca&hl=en&api_key=${SERPAPI}`;
       const r = await fetch(url, { timeout: 20000 });

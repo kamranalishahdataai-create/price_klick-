@@ -760,6 +760,41 @@ function retailerSearchOptions(query, country, category = '') {
   }));
 }
 
+// Cap a slow step so one unresponsive store or search can't stall the whole
+// scan — the caller gets `fallback` and the pipeline moves on.
+function withBudget(promise, ms, fallback, label) {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      console.log(`  ⏱️ ${label} took over ${ms / 1000}s — skipping`);
+      resolve(fallback);
+    }, ms);
+  });
+  return Promise.race([Promise.resolve(promise).catch(() => fallback), timeout])
+    .finally(() => clearTimeout(timer));
+}
+
+// Google Shopping results name the merchant ("Walmart", "Best Buy", "eBay - seller")
+// but no longer link to it, so build that store's own search URL for the item.
+function merchantSearchUrl(merchant, query, country) {
+  const name = String(merchant || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!name || !query) return null;
+  const cc = String(country || 'US').toUpperCase();
+  const local = [...(RETAILER_SEARCH_BY_COUNTRY[cc] || RETAILER_SEARCH_BY_COUNTRY.US)];
+  if (ELECTRONICS_SEARCH[cc]) local.push(ELECTRONICS_SEARCH[cc]);
+  for (const brand of ['amazon', 'walmart', 'bestbuy', 'ebay', 'target', 'canadiantire', 'argos', 'flipkart', 'daraz']) {
+    if (!name.includes(brand)) continue;
+    const hit = local.find(([n]) => n.toLowerCase().replace(/[^a-z0-9]/g, '').includes(brand));
+    if (hit) return hit[1](query);
+  }
+  if (name.startsWith('apple')) return `https://www.apple.com/us/search/${encodeURIComponent(query)}`;
+  for (const [domain, build] of Object.entries(STORE_SEARCH_PATTERNS)) {
+    if (domain === 'apple.com') continue;
+    if (name.includes(domain.split('.')[0])) return build(query);
+  }
+  return null;
+}
+
 const isGoogleSearchUrl = (u) => /^https?:\/\/(www\.)?google\.[a-z.]+\/search/i.test(u || '');
 
 // URL patterns that indicate a direct product page (not search results)
@@ -1099,7 +1134,7 @@ async function findMainProductImage(promoDetails) {
   }
 }
 
-async function findSimilarProducts(promoDetails, excludeUrl = null) {
+async function findSimilarProducts(promoDetails, excludeUrl = null, country = null) {
   const serpKey = process.env.SERP_API_KEY || process.env.SERPAPI_KEY;
   const searchQuery = promoDetails.productSearchQuery || promoDetails.products?.[0] || null;
   const brand = promoDetails.brand || '';
@@ -1116,16 +1151,23 @@ async function findSimilarProducts(promoDetails, excludeUrl = null) {
 
   try {
     const shoppingQuery = `${searchQuery}${brand ? ` ${brand}` : ''}`.trim();
-    const shoppingUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(shoppingQuery)}&api_key=${serpKey}&tbm=shop&num=6`;
+    const gl = /^[A-Za-z]{2}$/.test(country || '') ? `&gl=${country.toLowerCase()}` : '';
+    const shoppingUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(shoppingQuery)}&api_key=${serpKey}&tbm=shop&num=6${gl}`;
     const shoppingRes = await fetch(shoppingUrl);
     if (shoppingRes.ok) {
       const shoppingData = await shoppingRes.json();
+      const seenMerchants = new Set();
       for (const item of (shoppingData.shopping_results || [])) {
-        if (!item.link) continue;
         const merchant = item.source || getHostname(item.link) || 'Retailer';
+        // One offer per store keeps the list a comparison across stores.
+        const merchantKey = merchant.toLowerCase().split(' - ')[0];
+        if (seenMerchants.has(merchantKey)) continue;
+        const link = item.link || merchantSearchUrl(merchant, item.title || searchQuery, country);
+        if (!link) continue;
+        seenMerchants.add(merchantKey);
         pushSimilarProduct(similarProducts, seenLinks, {
           title: item.title,
-          link: item.link,
+          link,
           price: item.price,
           source: merchant,
           thumbnail: item.thumbnail || null,
@@ -1138,6 +1180,8 @@ async function findSimilarProducts(promoDetails, excludeUrl = null) {
   } catch (e) {
     console.log('  Similar products shopping search failed:', e.message);
   }
+
+  if (similarProducts.length >= 3) return similarProducts;
 
   try {
     const organicQuery = `${searchQuery}${brand ? ` ${brand}` : ''} buy`;
@@ -1781,11 +1825,11 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
 
   if (!redirectUrl || redirectUrl === 'null') {
     console.log('  → Searching for official promo URL via SERP...');
-    const searchResult = await searchForPromoUrl(
+    const searchResult = await withBudget(searchForPromoUrl(
       promoDetails.brand,
       promoDetails.promotionTitle,
       promoDetails.domain
-    );
+    ), 8000, { url: null, source: 'none' }, 'Promo URL search');
     redirectUrl = enforceHttps(searchResult.url);
     urlSource = searchResult.source;
     console.log(`  ✓ Found URL: ${redirectUrl} (source: ${urlSource})`);
@@ -1824,46 +1868,43 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     console.log(`  → Constructed fallback URL: ${redirectUrl}`);
   }
 
-  // Step 7: Build checkout URL for the detected store — deep-validate it (catches soft 404s)
+  // Step 7: Build checkout URL for the detected store — deep-validate it (catches soft 404s).
+  // Runs alongside the product search below and is awaited at the end; it only
+  // feeds an optional button, so it must never hold up the scan.
   const websiteBase = promoDetails.websiteUrl || redirectUrl;
-  let { checkoutUrl, source: checkoutSource } = getCheckoutUrl(
-    promoDetails.domain, promoDetails.brand, websiteBase
-  );
-  if (checkoutUrl) {
-    console.log(`  🛒 Checkout URL candidate: ${checkoutUrl} (${checkoutSource})`);
+  const resolveCheckout = async () => {
+    const first = getCheckoutUrl(promoDetails.domain, promoDetails.brand, websiteBase);
+    if (!first.checkoutUrl) return { checkoutUrl: first.checkoutUrl, checkoutSource: first.source };
+    console.log(`  🛒 Checkout URL candidate: ${first.checkoutUrl} (${first.source})`);
     // Deep-validate — reads HTML body to catch soft 404 pages
-    const checkoutValid = await deepValidateProductUrl(checkoutUrl);
-    if (!checkoutValid) {
-      console.log(`  ⚠️ Checkout URL is soft 404, trying alternatives...`);
-      const cleanDomain = (promoDetails.domain || '').replace(/^www\./, '').toLowerCase();
-      const base = websiteBase || `https://www.${cleanDomain}`;
-      const cartAlternatives = ['/cart', '/checkout', '/shopping-cart', '/basket', '/bag'];
-      let foundCart = false;
-      for (const alt of cartAlternatives) {
-        const altUrl = `${base.replace(/\/$/, '')}${alt}`;
-        const altValid = await deepValidateProductUrl(altUrl);
-        if (altValid) {
-          checkoutUrl = altUrl;
-          checkoutSource = 'validated_alternative';
-          console.log(`  ✅ Found working cart URL: ${altUrl}`);
-          foundCart = true;
-          break;
-        }
-      }
-      if (!foundCart) {
-        // No cart URL works — set to null so popup doesn't show a broken button
-        console.log(`  ✗ No working cart URL found, disabling checkout button`);
-        checkoutUrl = null;
-        checkoutSource = 'none';
-      }
+    if (await deepValidateProductUrl(first.checkoutUrl)) {
+      return { checkoutUrl: first.checkoutUrl, checkoutSource: first.source };
     }
-  }
+    console.log(`  ⚠️ Checkout URL is soft 404, trying alternatives...`);
+    const cleanDomain = (promoDetails.domain || '').replace(/^www\./, '').toLowerCase();
+    const base = (websiteBase || `https://www.${cleanDomain}`).replace(/\/$/, '');
+    const alternatives = ['/cart', '/checkout', '/shopping-cart', '/basket', '/bag'].map(alt => `${base}${alt}`);
+    const results = await Promise.all(alternatives.map(u => deepValidateProductUrl(u).catch(() => false)));
+    const hit = alternatives.find((_, i) => results[i]);
+    if (hit) {
+      console.log(`  ✅ Found working cart URL: ${hit}`);
+      return { checkoutUrl: hit, checkoutSource: 'validated_alternative' };
+    }
+    // No cart URL works — null so the UI doesn't show a broken button
+    console.log(`  ✗ No working cart URL found, disabling checkout button`);
+    return { checkoutUrl: null, checkoutSource: 'none' };
+  };
+  const checkoutPromise = withBudget(resolveCheckout(), 9000,
+    { checkoutUrl: null, checkoutSource: 'none' }, 'Checkout URL check');
 
   // Step 8: Build a direct-to-product URL using detected product info
   console.log('  → Building product-specific checkout URL...');
 
   // Collect Lens + OCR results now (they've been running in parallel)
-  const [lensMatches, ocrResult] = await Promise.all([lensMatchesPromise, ocrPromise]);
+  const [lensMatches, ocrResult] = await Promise.all([
+    withBudget(lensMatchesPromise, 12000, [], 'Google Lens search'),
+    withBudget(ocrPromise, 8000, null, 'OCR')
+  ]);
 
   // Step 8a: Grocery-flyer short-circuit. If this is a Food Basics / No Frills /
   // Loblaws etc. flyer, there is no online product page to redirect to — the
@@ -1947,12 +1988,18 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
     }
   }
 
+  // Independent of the product-page search, so fetch it at the same time.
+  const mainImagePromise = withBudget(findMainProductImage(promoDetails), 8000, null, 'Product image lookup');
+  const offersPromise = withBudget(findSimilarProducts(promoDetails, null, options.country),
+    10000, [], 'Price comparison search');
+
   let productUrl, productSource;
   if (lensProductUrl) {
     productUrl = lensProductUrl;
     productSource = lensProductSource;
   } else {
-    const built = await buildProductCheckoutUrl(promoDetails);
+    const built = await withBudget(buildProductCheckoutUrl(promoDetails), 15000,
+      { productUrl: null, source: 'none' }, 'Product page search');
     productUrl = built.productUrl;
     productSource = built.source;
   }
@@ -1963,7 +2010,7 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
   const hasDirectProductMatch = isDirectProductMatch(productUrl, productSource);
   let similarProducts = [];
   // Always try to enrich with a product image from Google Shopping
-  let mainProductImage = await findMainProductImage(promoDetails);
+  let mainProductImage = await mainImagePromise;
   // Prefer a Lens visual-match thumbnail for the main product image — it's
   // guaranteed to visually match the upload.
   if (lensMatches.length > 0) {
@@ -2007,12 +2054,13 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
       });
     }
   }
-  if (!hasDirectProductMatch && similarProducts.length < 4) {
-    console.log('  → No direct product match, finding more similar products...');
-    const extra = await findSimilarProducts(promoDetails, productUrl || redirectUrl || null);
-    for (const p of extra) {
+  // Priced offers from shopping results (one per store) fill the rest.
+  if (similarProducts.length < 6) {
+    const mainUrl = enforceHttps(productUrl || redirectUrl || '');
+    for (const p of await offersPromise) {
       if (similarProducts.length >= 6) break;
-      if (!similarProducts.find(s => s.url === p.url)) similarProducts.push(p);
+      if (p.url === mainUrl || similarProducts.find(s => s.url === p.url)) continue;
+      similarProducts.push(p);
     }
   }
   if (similarProducts.length > 0) {
@@ -2029,18 +2077,27 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
   // generic_store_search / ai_product_search build `site.com/search?q=` paths the
   // site may not have (playstation.com/search → 404), so they're guesses too.
   const isGuessSrc = (s) => !s || /homepage|ai_|constructed|domain|brand|generic/i.test(String(s));
-  if (redirectUrl && isGuessSrc(urlSource) && !(await validateUrl(redirectUrl))) {
+  const [redirectOk, productOk, checkout] = await Promise.all([
+    redirectUrl && isGuessSrc(urlSource) ? withBudget(validateUrl(redirectUrl), 7000, false, 'Redirect link check') : true,
+    productUrl && isGuessSrc(productSource) ? withBudget(validateUrl(productUrl), 7000, false, 'Product link check') : true,
+    checkoutPromise
+  ]);
+  const { checkoutUrl, checkoutSource } = checkout;
+  if (!redirectOk) {
     console.log(`  ✗ Dropping dead guessed redirectUrl: ${redirectUrl}`);
     redirectUrl = null;
   }
-  if (productUrl && isGuessSrc(productSource) && !(await validateUrl(productUrl))) {
+  if (!productOk) {
     console.log(`  ✗ Dropping dead guessed productUrl: ${productUrl}`);
     productUrl = null;
   }
   // Never hand back a Google results page — it isn't somewhere to buy the item.
   // Use retailer search pages for the product instead (no API key needed).
-  if (isGoogleSearchUrl(productUrl)) productUrl = null;
-  if (isGoogleSearchUrl(redirectUrl)) redirectUrl = null;
+  // Same for social/video pages a search can surface (a YouTube review, a Facebook post).
+  const isNotAStore = (u) => isGoogleSearchUrl(u) ||
+    /^https?:\/\/([a-z0-9-]+\.)*(youtube\.com|youtu\.be|facebook\.com|instagram\.com|tiktok\.com|pinterest\.[a-z.]+|reddit\.com|twitter\.com|x\.com|linkedin\.com)\//i.test(u || '');
+  if (isNotAStore(productUrl)) productUrl = null;
+  if (isNotAStore(redirectUrl)) redirectUrl = null;
   const productQuery = promoDetails.productSearchQuery
     || [promoDetails.brand, (promoDetails.products || [])[0]].filter(Boolean).join(' ').trim();
   const retailerOptions = retailerSearchOptions(
@@ -2054,7 +2111,9 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
   if (productQuery && similarProducts.length < 3) {
     for (const opt of retailerOptions) {
       if (similarProducts.length >= 6) break;
-      if (opt.url === productUrl || similarProducts.some(s => s.url === opt.url)) continue;
+      const store = opt.source.toLowerCase().split(/[ .]/)[0];
+      if (opt.url === productUrl) continue;
+      if (similarProducts.some(s => s.url === opt.url || String(s.source || '').toLowerCase().startsWith(store))) continue;
       similarProducts.push(opt);
     }
   }
