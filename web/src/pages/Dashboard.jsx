@@ -3,8 +3,10 @@ import React, { useEffect, useState } from "react";
 import { useConsent, useWishlist, useCompare, useCoupons, useTrends } from "../hooks/useBackendExamples";
 import RunAgentButton from "../components/RunAgentButton";
 import { useToast } from "../components/ToastProvider";
+import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { userId, giveConsent } = useConsent();
   const { add, list, remove } = useWishlist(userId);
   const { compare } = useCompare();
@@ -89,14 +91,15 @@ export default function Dashboard() {
           All your wishlist items, latest best prices, coupons and trend summaries in one place.
         </p>
 
-        {/* Run Agent (manual) */}
-        <RunAgentButton
-          secret="changeme"
-          onAfterRun={({ at, updated, notified }) => {
-            setLastRunAt(at);
-            addToast(`Agent ran. Updated ${updated} item(s); emailed ${notified}.`, "success");
-          }}
-        />
+        {/* Run Agent (manual) — admins only; it emails users */}
+        {user?.role === 'admin' && (
+          <RunAgentButton
+            onAfterRun={({ at, updated, notified }) => {
+              setLastRunAt(at);
+              addToast(`Agent ran. Updated ${updated} item(s); emailed ${notified}.`, "success");
+            }}
+          />
+        )}
 
         {/* Consent / Email row */}
         <div

@@ -1,16 +1,21 @@
 // server/providers/surpr.js
-// Generic live coupon adapter. If no provider configured, returns the WELCOME10 mock.
+// Generic live coupon adapter. Without a configured provider it uses the best
+// real code from CouponFollow. It never returns a made-up fallback code — a
+// code that fails at checkout is worse than showing no code.
 
 import fetch from 'node-fetch';
+import { getBestCouponFromCouponFollow } from './couponfollow.js';
 
 const BASE = process.env.COUPON_API_BASE;
 const KEY  = process.env.COUPON_API_KEY;
 
 export async function getBestCoupon(cartUrl) {
   if (!BASE || !KEY) {
-    // Safe demo code when no provider is configured
-    console.log("No coupon API configured, returning mock coupon");
-    return { code: 'WELCOME10', discount: 10, type: 'PERCENT', source: 'mock' };
+    try {
+      return await getBestCouponFromCouponFollow(new URL(cartUrl).hostname.replace(/^www\./, ''));
+    } catch {
+      return null;
+    }
   }
 
   try {
@@ -40,13 +45,7 @@ export async function getBestCoupon(cartUrl) {
 
     return best || null;
   } catch (e) {
-    // If provider call fails, fall back to mock coupon
-    console.log("Coupon API call failed, falling back to mock:", e.message);
-    return getMockCoupon();
+    console.log("Coupon API call failed:", e.message);
+    return null;
   }
-}
-
-// Fallback mock coupon if API fails
-function getMockCoupon() {
-  return { code: 'WELCOME10', discount: 10, type: 'PERCENT', source: 'mock' };
 }

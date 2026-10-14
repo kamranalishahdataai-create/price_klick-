@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { API_BASE } from "../api/client";
 
-export default function RunAgentButton({ secret = "changeme" }) {
+export default function RunAgentButton() {
   const [loading, setLoading] = useState(false);
   const [lastRun, setLastRun] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -13,8 +13,9 @@ export default function RunAgentButton({ secret = "changeme" }) {
     setError(null);
     try {
       const res = await fetch(
-        `${API_BASE}/api/agent/run?secret=${encodeURIComponent(secret)}`,
-        { method: "POST" }
+        `${API_BASE}/api/agent/run`,
+        // Admin session, not a shared secret — anything in this file is public.
+        { method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem("accessToken") || ""}` } }
       );
       const data = await res.json();
       if (!res.ok || data?.ok !== true) {

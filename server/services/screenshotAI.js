@@ -1989,9 +1989,9 @@ export async function detectPromoAndFindUrl(base64Image, options = {}) {
   }
 
   // Independent of the product-page search, so fetch it at the same time.
-  const mainImagePromise = withBudget(findMainProductImage(promoDetails), 8000, null, 'Product image lookup');
+  const mainImagePromise = withBudget(findMainProductImage(promoDetails), 12000, null, 'Product image lookup');
   const offersPromise = withBudget(findSimilarProducts(promoDetails, null, options.country),
-    10000, [], 'Price comparison search');
+    16000, [], 'Price comparison search');
 
   let productUrl, productSource;
   if (lensProductUrl) {
@@ -2419,6 +2419,30 @@ export async function extractCouponsFromScreenshot(base64Image, options = {}) {
 /**
  * Validate and process uploaded image
  */
+/**
+ * True when the upload's bytes are really an image (JPEG, PNG, GIF, WebP,
+ * HEIC/AVIF, BMP). Without this, a non-image went to the vision model, which
+ * confidently "recognised" something anyway.
+ */
+export function isValidImageData(imageData) {
+  if (typeof imageData !== 'string' || !imageData) return false;
+  const b64 = imageData.startsWith('data:') ? imageData.slice(imageData.indexOf(',') + 1) : imageData;
+  let head;
+  try {
+    head = Buffer.from(b64.slice(0, 64), 'base64');
+  } catch {
+    return false;
+  }
+  if (head.length < 12) return false;
+  const ascii = (start, end) => head.subarray(start, end).toString('latin1');
+  return (head[0] === 0xFF && head[1] === 0xD8 && head[2] === 0xFF)            // JPEG
+    || ascii(0, 8) === '\x89PNG\r\n\x1a\n'                                        // PNG
+    || ascii(0, 4) === 'GIF8'                                                     // GIF
+    || (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP')                        // WebP
+    || (ascii(4, 8) === 'ftyp' && /heic|heix|hevc|mif1|msf1|avif/.test(ascii(8, 12))) // HEIC/AVIF
+    || ascii(0, 2) === 'BM';                                                      // BMP
+}
+
 export function processImageUpload(imageData) {
   // Handle data URL format
   if (imageData.startsWith('data:image')) {

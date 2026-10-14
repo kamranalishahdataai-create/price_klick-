@@ -174,7 +174,8 @@ async function fetchWikiImage(brand, model) {
             const title = String(pg?.title || '');
             // Safety net: the matched article's title must contain the brand.
             if (brandWord && !new RegExp(brandWord, 'i').test(title)) continue;
-            if (typeof src === 'string' && /^https:\/\/upload\.wikimedia\.org/i.test(src)) return src;
+            // Wikipedia serves thumbnails from upload.* and (since 2026) thumb.wikimedia.org.
+            if (typeof src === 'string' && /^https:\/\/(upload|thumb)\.wikimedia\.org\//i.test(src)) return src;
           }
           return null; // valid response, genuinely no image — no point retrying
         }

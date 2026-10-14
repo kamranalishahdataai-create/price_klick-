@@ -10,9 +10,9 @@ import { db, init as initDB } from './db.js';
 import * as trends from './trends.js';
 import { comparePrices } from './providers/compare.js';
 import { getBestCoupon } from './providers/surpr.js';
-import { fetchCouponsFromCouponFollow, getBestCouponFromCouponFollow } from './providers/couponfollow.js';
+import { fetchCouponsFromCouponFollow, fetchCouponFollowOffers, getBestCouponFromCouponFollow } from './providers/couponfollow.js';
 import { sendEmail } from './services/notify.js';
-import { extractCouponsFromScreenshot, processImageUpload, detectPromoAndFindUrl } from './services/screenshotAI.js';
+import { extractCouponsFromScreenshot, processImageUpload, detectPromoAndFindUrl, isValidImageData } from './services/screenshotAI.js';
 import {
   recordSearch, getRecommendations, getTrendingBrands,
   getUserSearchHistory, getBrandSearchStats,
@@ -30,11 +30,22 @@ import insightsRoutes from './routes/insights.js';
 import smartCompareRoutes from './routes/smartCompare.js';
 import { runDealScraperOnce, runStaggeredScrape, cleanOldDeals } from './services/dealScraper.js';
 import { scrapeProductPrice, isConfigured as firecrawlReady } from './services/firecrawl.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, adminOnly } from './middleware/auth.js';
 import User from './models/User.js';
 
 dotenv.config();
 const app = express();
+
+// Cron-style jobs (price agent, deal scan) run either with the server-side
+// AGENT_SECRET (for schedulers) or for a signed-in admin. "changeme" was shipped
+// in the public site code, so it never counts as a valid secret, and an unset
+// secret no longer leaves the endpoints open to everyone.
+function agentOrAdmin(req, res, next) {
+  const expected = process.env.AGENT_SECRET;
+  const given = req.query.secret || req.get('x-agent-secret');
+  if (expected && expected !== 'changeme' && given === expected) return next();
+  return authenticate(req, res, () => adminOnly(req, res, next));
+}
 // Site origins that may send credentials (cookies / auth headers).
 const SITE_ORIGINS = [
   'http://localhost:3000',
@@ -60,6 +71,18 @@ app.use(cors((req, cb) => {
   }
   cb(null, { origin: SITE_ORIGINS, credentials: true });
 }));
+// Baseline security headers. (No CSP yet: the site loads Mapbox, Google Fonts
+// and remote product images, so a policy needs its own testing pass.)
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set({
+    'Strict-Transport-Security': 'max-age=15552000',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  });
+  next();
+});
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
@@ -292,30 +315,32 @@ app.get('/api/compare', async (req, res) => {
 });
 
 // --- Auto Coupon Discovery (Agent Mode) ---
+// The extension calls this on store pages whenever no code is known, and each
+// call is a paid SerpAPI search — so results are cached per store for 12h
+// (one search per store, not one per page view).
+const DISCOVER_TTL_MS = 12 * 60 * 60 * 1000;
+const discoverCache = new Map();
 app.post('/api/coupons/discover', async (req, res) => {
   const { store, productName } = req.body;
   if (!store) return res.status(400).json({ error: 'store required' });
+  const storeKey = String(store).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  const hit = discoverCache.get(storeKey);
+  if (hit && Date.now() - hit.at < DISCOVER_TTL_MS) {
+    return res.json({ ...hit.payload, store, productName: productName || null, cached: true });
+  }
   
   try {
     const SERP_KEY = process.env.SERPAPI_KEY;
     
     if (!SERP_KEY) {
-      // Return mock coupons when no API key
-      return res.json({
-        store,
-        coupons: [
-          { code: 'WELCOME10', discount: 10, type: 'PERCENT', description: '10% off your order' },
-          { code: 'SAVE20', discount: 20, type: 'PERCENT', description: '20% off $100+' }
-        ],
-        found: true
-      });
+      // No search provider: report nothing rather than made-up codes.
+      return res.json({ store, coupons: [], found: false });
     }
     
     // Use SERPAPI to search for coupons
     const fetch = (await import('node-fetch')).default;
-    const query = productName 
-      ? `${store} coupon code ${productName}` 
-      : `${store} coupon code promo discount`;
+    // Store-level query so one cached result serves every product page.
+    const query = `${storeKey} coupon code promo discount`;
     
     const params = new URLSearchParams({
       engine: 'google',
@@ -334,63 +359,51 @@ app.post('/api/coupons/discover', async (req, res) => {
     const coupons = [];
     const organicResults = data.organic_results || [];
     
-    // Extract coupon codes from snippets and titles
-    const couponRegex = /\b[A-Z0-9]{4,12}\b/g;
-    const percentRegex = /(\d+)%\s*off/gi;
-    const dollarRegex = /\$(\d+)\s*off/gi;
-    
+    // Only take a code the text explicitly presents as one ("use code FALL25",
+    // "promo code: SAVE20"). Grabbing any capitalised token picked up years
+    // ("2026") and brand words, and a default discount invented savings.
+    const codeRegex = /\b(?:[Cc]ode|CODE|[Cc]oupon|[Pp]romo)\s*(?:[Cc]ode)?\s*[:\-–]?\s*["“'‘]?([A-Z0-9]{4,15})\b/g;
+    const seenCodes = new Set();
+
     for (const result of organicResults.slice(0, 5)) {
       const text = `${result.title || ''} ${result.snippet || ''}`;
-      
-      // Extract coupon codes
-      const codes = text.match(couponRegex) || [];
-      
-      // Extract discount amounts
-      let percentMatch = percentRegex.exec(text);
-      let dollarMatch = dollarRegex.exec(text);
-      
-      for (const code of codes) {
-        // Skip common words
-        if (['HTTPS', 'HTTP', 'CODE', 'PROMO', 'DEAL'].includes(code)) continue;
-        
-        let discount = 10;
-        let type = 'PERCENT';
-        let description = 'Discount on your order';
-        
+      const percentMatch = text.match(/(\d+)%\s*off/i);
+      const dollarMatch = text.match(/\$(\d+)\s*off/i);
+
+      for (const m of text.matchAll(codeRegex)) {
+        const code = m[1];
+        if (!/[A-Z]/.test(code) || seenCodes.has(code)) continue; // pure numbers are years/prices
+        if (['HTTPS', 'HTTP', 'CODE', 'CODES', 'PROMO', 'DEAL', 'DEALS', 'COUPON', 'COUPONS', 'SALE'].includes(code)) continue;
+        seenCodes.add(code);
+
+        let discount = null;
+        let type = null;
+        let description = 'Promo code found in search results';
         if (percentMatch) {
-          discount = parseInt(percentMatch[1]);
+          discount = parseInt(percentMatch[1], 10);
           type = 'PERCENT';
           description = `${discount}% off`;
         } else if (dollarMatch) {
-          discount = parseInt(dollarMatch[1]);
+          discount = parseInt(dollarMatch[1], 10);
           type = 'FIXED';
           description = `$${discount} off`;
         }
-        
+
         coupons.push({
           code,
           discount,
           type,
           description,
-          source: result.title
+          source: result.title,
+          sourceUrl: result.link || null
         });
       }
     }
     
-    // Fallback to mock if no coupons found
-    if (coupons.length === 0) {
-      coupons.push(
-        { code: 'WELCOME10', discount: 10, type: 'PERCENT', description: '10% off your order', source: 'Generic' },
-        { code: 'SAVE15', discount: 15, type: 'PERCENT', description: '15% off $50+', source: 'Generic' }
-      );
-    }
-    
-    res.json({
-      store,
-      productName: productName || null,
-      coupons: coupons.slice(0, 5), // Top 5 coupons
-      found: coupons.length > 0
-    });
+    const payload = { coupons: coupons.slice(0, 5), found: coupons.length > 0 };
+    discoverCache.set(storeKey, { at: Date.now(), payload });
+    if (discoverCache.size > 5000) discoverCache.delete(discoverCache.keys().next().value);
+    res.json({ store, productName: productName || null, ...payload });
   } catch (e) {
     console.error('COUPON DISCOVERY ERROR', e);
     res.status(500).json({ error: 'server_error' });
@@ -404,24 +417,20 @@ app.get('/api/coupons/couponfollow', async (req, res) => {
   if (!store) return res.status(400).json({ error: 'store query parameter required' });
   
   try {
-    const coupons = await fetchCouponsFromCouponFollow(store);
-    
-    if (!coupons || coupons.length === 0) {
-      return res.json({
-        store,
-        coupons: [],
-        found: false,
-        source: 'CouponFollow',
-        message: 'No coupons found for this store'
-      });
-    }
-    
+    // `coupons` holds only real codes (safe to try at checkout); sales that need
+    // no code come back separately as `deals`.
+    const offers = await fetchCouponFollowOffers(store);
+    const coupons = offers.filter(o => o.hasCode);
+    const deals = offers.filter(o => !o.hasCode);
+
     res.json({
       store,
       coupons,
-      found: true,
+      deals,
+      found: coupons.length > 0,
       source: 'CouponFollow',
-      count: coupons.length
+      count: coupons.length,
+      ...(coupons.length ? {} : { message: 'No coupon codes found for this store' })
     });
   } catch (e) {
     console.error('COUPONFOLLOW ERROR', e);
@@ -512,6 +521,7 @@ app.get('/api/coupons/all', async (req, res) => {
 // Extract coupon codes from uploaded screenshots using AI
 app.post('/api/coupons/screenshot', async (req, res) => {
   const { image, preferredProvider } = req.body;
+  if (image && !isValidImageData(image)) return res.status(400).json({ error: 'That file is not a valid image. Please upload a JPG, PNG, WebP or HEIC photo.' });
   
   if (!image) {
     return res.status(400).json({ 
@@ -745,11 +755,7 @@ async function runAgentOnce() {
   return { ok: true, results };
 }
 
-app.post('/api/agent/run', async (req, res) => {
-  const { secret } = req.query;
-  if (process.env.AGENT_SECRET && secret !== process.env.AGENT_SECRET) {
-    return res.status(403).json({ error: 'forbidden' });
-  }
+app.post('/api/agent/run', agentOrAdmin, async (req, res) => {
   try {
     res.json(await runAgentOnce());
   } catch (e) {
@@ -955,7 +961,7 @@ app.get('/api/brand/alerts', async (req, res) => {
 });
 
 // Manually trigger brand alert
-app.post('/api/brand/alert/send', async (req, res) => {
+app.post('/api/brand/alert/send', authenticate, adminOnly, async (req, res) => {
   const { brand } = req.body;
   if (!brand) return res.status(400).json({ error: 'brand required' });
   
@@ -988,6 +994,7 @@ app.post('/api/promo/capture', async (req, res) => {
   const { image, vendorUrl, brand, productName } = req.body;
   
   if (!image) return res.status(400).json({ error: 'image required' });
+  if (!isValidImageData(image)) return res.status(400).json({ error: 'That file is not a valid image. Please upload a JPG, PNG, WebP or HEIC photo.' });
   
   try {
     // Process screen capture
@@ -1077,6 +1084,7 @@ app.post('/api/promo/find-url', async (req, res) => {
   const country = /^[A-Za-z]{2}$/.test(req.body.country || '') ? req.body.country.toUpperCase() : undefined;
   
   if (!image) return res.status(400).json({ error: 'No image provided. Please upload a screenshot.' });
+  if (!isValidImageData(image)) return res.status(400).json({ error: 'That file is not a valid image. Please upload a JPG, PNG, WebP or HEIC photo.' });
   
   try {
     const { base64 } = processImageUpload(image);
@@ -1194,11 +1202,7 @@ app.post('/api/prices/scrape', async (req, res) => {
 });
 
 // --- Firecrawl: Manually trigger deal scan ---
-app.post('/api/deals/firecrawl-scan', async (req, res) => {
-  const { secret } = req.query;
-  if (process.env.AGENT_SECRET && secret !== process.env.AGENT_SECRET) {
-    return res.status(403).json({ error: 'forbidden' });
-  }
+app.post('/api/deals/firecrawl-scan', agentOrAdmin, async (req, res) => {
   try {
     const stats = await runDealScraperOnce({ minDiscount: 5 });
     res.json({ ok: true, stats });
@@ -1221,5 +1225,8 @@ if (fs.existsSync(path.join(CLIENT_DIR, 'index.html'))) {
   });
   console.log('Serving frontend from', CLIENT_DIR);
 }
+
+// Unknown API routes get a JSON 404 (not Express's HTML page).
+app.use('/api', (req, res) => res.status(404).json({ error: 'not_found' }));
 
 app.listen(PORT, () => console.log('Server listening on', PORT));

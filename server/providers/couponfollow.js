@@ -1,5 +1,6 @@
 // server/providers/couponfollow.js
-// CouponFollow.com scraper for fetching real coupon codes
+// CouponFollow.com scraper. Returns sales ("deals"); CouponFollow hides the
+// actual code values from its page, so it is not a source of coupon codes.
 
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
@@ -9,11 +10,21 @@ const cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 /**
- * Fetch coupons from CouponFollow for a specific store
+ * Real coupon codes from CouponFollow for a store (code-free sales excluded, so
+ * callers that try codes at checkout only ever get real ones).
  * @param {string} store - The store domain (e.g., 'amazon.ca', 'amazon.com')
  * @returns {Promise<Array>} - Array of coupon objects
  */
 export async function fetchCouponsFromCouponFollow(store) {
+  const offers = await fetchCouponFollowOffers(store);
+  return offers.filter(o => o.hasCode);
+}
+
+/**
+ * Codes plus code-free sales ("deals", code: null) for a store.
+ * @returns {Promise<Array>}
+ */
+export async function fetchCouponFollowOffers(store) {
   // Normalize store name
   const storeDomain = normalizeStoreName(store);
   const cacheKey = `couponfollow:${storeDomain}`;
@@ -103,26 +114,26 @@ function parseCouponFollowHTML(html, storeDomain) {
           type = 'FIXED';
         }
         
-        // Try to find coupon code patterns in the element
-        const codePatterns = text.match(/\b[A-Z][A-Z0-9]{3,14}\b/g) || [];
-        const filteredCodes = codePatterns.filter(code => 
-          !['CODE', 'OFF', 'SAVE', 'PROMO', 'DEAL', 'FREE', 'SHOP', 'AMAZON', 'HTTPS', 'HTTP'].includes(code) &&
-          code.length >= 4
-        );
+        // CouponFollow never shows code values in the page — they're revealed
+        // only on its own site — so offers here are sales ("deals"), never codes.
+        // Words pulled from titles (brand names like "SHEWIN", "BUY1") and
+        // made-up codes ("AMAZON75" from "Up to 75% off") used to be returned
+        // as codes and failed at checkout.
+        const codeAvailable = $el.attr('data-has-code') === 'true' || $el.attr('data-offer-type') === 'coupon';
         
-        // Generate a placeholder code if none found but it's marked as CODE
-        const code = filteredCodes[0] || (isCode ? `${storeDomain.split('.')[0].toUpperCase()}${discount || Math.floor(Math.random() * 20 + 5)}` : null);
-        
-        if (code || discount > 0) {
+        if (discount > 0) {
           coupons.push({
-            code: code || `SAVE${discount}`,
+            code: null,
             discount,
             type,
-            description: title.replace(/\s+/g, ' ').slice(0, 150),
+            description: title.replace(/s+/g, ' ').slice(0, 150),
             source: 'CouponFollow',
             store: storeDomain,
+            url: `https://www.${storeDomain}`,
             isVerified: text.toLowerCase().includes('verified'),
-            hasCode: isCode,
+            hasCode: false,
+            isDeal: true,
+            ...(codeAvailable ? { codeAvailable: true, revealUrl: `https://couponfollow.com/site/${storeDomain}` } : {}),
           });
         }
       }
@@ -131,37 +142,16 @@ function parseCouponFollowHTML(html, storeDomain) {
     }
   });
   
-  // Alternative parsing: look for specific percentage/discount text patterns
-  const bodyText = $('body').text();
-  const percentMatches = [...bodyText.matchAll(/(\d+)%\s*(?:off|OFF)[^.]*?(?:code|Code|CODE)?[^.]*?([A-Z][A-Z0-9]{3,14})?/gi)];
-  
-  for (const match of percentMatches.slice(0, 10)) {
-    const discount = parseInt(match[1], 10);
-    const code = match[2];
-    
-    if (discount > 0 && discount <= 95) {
-      const exists = coupons.find(c => c.discount === discount && (!code || c.code === code));
-      if (!exists) {
-        coupons.push({
-          code: code || `SAVE${discount}`,
-          discount,
-          type: 'PERCENT',
-          description: `${discount}% off your order`,
-          source: 'CouponFollow',
-          store: storeDomain,
-          isVerified: false,
-          hasCode: !!code,
-        });
-      }
-    }
-  }
-  
+  // (A whole-page text scan used to run here. It matched any word as a "code"
+  // — the regex was case-insensitive — and padded results with SAVE<n>
+  // placeholders, so it was removed.)
+
   // Remove duplicates and sort by discount (highest first)
   const uniqueCoupons = [];
   const seen = new Set();
   
   for (const coupon of coupons) {
-    const key = `${coupon.code}-${coupon.discount}`;
+    const key = `${coupon.code || coupon.description}-${coupon.discount}`;
     if (!seen.has(key)) {
       seen.add(key);
       uniqueCoupons.push(coupon);
